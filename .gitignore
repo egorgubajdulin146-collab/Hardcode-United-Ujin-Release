@@ -1,0 +1,33 @@
+# Local working material
+/work/
+.DS_Store
+.idea/
+.vscode/
+*.iml
+
+# Secrets and local configuration
+.env
+.env.*
+!.env.example
+!.env.*.example
+*.pem
+*.key
+*.p12
+*.pfx
+
+# Build outputs
+node_modules/
+dist/
+build/
+target/
+coverage/
+*.log
+
+# Local databases and backups
+*.dump
+*.sqlite
+*.sqlite3
+
+# Python tooling
+.venv/
+__pycache__/
