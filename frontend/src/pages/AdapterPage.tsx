@@ -14,12 +14,14 @@ export function AdapterPage() {
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<UjinAdapterSignalValue | null>(null);
 
-  const { setAuthed, terminateSession, sessionEpoch } = useSession();
+  const { terminateSession, sessionEpoch } = useSession();
   const mock = isMock();
   const navigate = useNavigate();
 
   const abortRef = useRef<AbortController | null>(null);
-  const startEpochRef = useRef(0);
+  // Ref для актуального значения epoch — обновляется при каждом рендере
+  const currentEpochRef = useRef(sessionEpoch);
+  currentEpochRef.current = sessionEpoch;
 
   // Отмена запроса при размонтировании
   useEffect(() => {
@@ -38,8 +40,7 @@ export function AdapterPage() {
     abortRef.current = controller;
 
     // Запоминаем epoch на момент старта запроса
-    const startEpoch = sessionEpoch;
-    startEpochRef.current = startEpoch;
+    const startEpoch = currentEpochRef.current;
 
     setLoading(true);
     setError(null);
@@ -54,13 +55,13 @@ export function AdapterPage() {
 
       // Проверяем: запрос не отменён и сессия не изменилась
       if (controller.signal.aborted) return;
-      if (sessionEpoch !== startEpochRef.current) return;
+      if (currentEpochRef.current !== startEpoch) return;
 
       setResult(data);
-      setAuthed(true);
+      // Не вызываем setAuthed(true) — чтение не устанавливает авторизацию
     } catch (err) {
       if (controller.signal.aborted) return;
-      if (sessionEpoch !== startEpochRef.current) return;
+      if (currentEpochRef.current !== startEpoch) return;
 
       if (err instanceof AuthError) {
         if (err.kind === "invalid_credentials") {
@@ -73,7 +74,7 @@ export function AdapterPage() {
         setError("Неизвестная ошибка");
       }
     } finally {
-      if (!controller.signal.aborted && sessionEpoch === startEpochRef.current) {
+      if (!controller.signal.aborted && currentEpochRef.current === startEpoch) {
         setLoading(false);
       }
     }

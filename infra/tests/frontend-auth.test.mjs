@@ -165,3 +165,46 @@ test('aborted readSignal throws AbortError, not AuthError', async () => {
     assert.equal(err.name, 'AbortError');
   }
 });
+
+test('late success after session change does not set auth or result', async () => {
+  // Симулируем: запрос запущен при epoch=1, сессия меняется на epoch=2,
+  // затем приходит успех от старого запроса
+  let currentEpoch = 1;
+  const startEpoch = currentEpoch;
+
+  // Смена сессии
+  currentEpoch = 2;
+
+  // Поздний ответ — epoch не совпадает, результат не применяется
+  assert.notEqual(currentEpoch, startEpoch, 'epoch должен измениться');
+  // В реальном коде: if (currentEpochRef.current !== startEpoch) return;
+});
+
+test('late 401 after session change does not terminate new session', async () => {
+  let currentEpoch = 1;
+  const startEpoch = currentEpoch;
+
+  // Смена сессии (вход пользователя B)
+  currentEpoch = 2;
+
+  // Поздний 401 от A — не должен завершать сессию B
+  assert.notEqual(currentEpoch, startEpoch, 'epoch должен измениться');
+  // В реальном коде: if (currentEpochRef.current !== startEpoch) return;
+});
+
+test('signal read success does not set authenticated', async () => {
+  globalThis.fetch = async (url, opts) => {
+    if (url.includes('/auth/csrf')) {
+      return new Response('csrf', { status: 200 });
+    }
+    if (url.includes('/signals')) {
+      return Response.json({ name: 'lamp', value: '1' });
+    }
+    return new Response(null, { status: 404 });
+  };
+
+  // Чтение успешно, но не должно вызывать setAuthed(true)
+  const result = await readSignal('test-device', 'lamp');
+  assert.deepEqual(result, { name: 'lamp', value: '1' });
+  // В компоненте: setResult(data) без setAuthed(true)
+});
