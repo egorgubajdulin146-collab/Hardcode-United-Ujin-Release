@@ -110,15 +110,12 @@ public class PlatformBindingService {
         requireToken(ujinToken);
         Instant observedAt = Instant.now();
         List<PlatformDevice> snapshot = fetchSnapshot(ujinToken);
-        PlatformDevice platform =
-                snapshot.stream()
-                        .filter(entry -> binding.getSerialNumber().equals(entry.id()))
-                        .findFirst()
-                        .orElseThrow(() ->
-                                new CatalogException(
-                                        404,
-                                        "UJIN_DEVICE_NOT_VISIBLE",
-                                        "Resident session does not see the bound serial number"));
+        var devices = snapshot.stream()
+                .filter(entry -> binding.getSerialNumber().equals(entry.id())).toList();
+        if (devices.size() > 1) throw ambiguousSerial();
+        PlatformDevice platform = devices.stream().findFirst().orElseThrow(() ->
+                new CatalogException(404, "UJIN_DEVICE_NOT_VISIBLE",
+                        "Resident session does not see the bound serial number"));
         List<Map<String, Object>> values = new ArrayList<>();
         List<Map<String, Object>> issues = new ArrayList<>();
         for (BindingSignal mapping : binding.getSignals()) {
@@ -155,7 +152,9 @@ public class PlatformBindingService {
                 continue;
             }
             if ((declaration.min() != null && value < declaration.min())
-                    || (declaration.max() != null && value > declaration.max())) {
+                    || (declaration.max() != null && value > declaration.max())
+                    || (declaration.enumValues() != null && !declaration.enumValues().isEmpty()
+                        && !declaration.enumValues().contains(value))) {
                 issues.add(issue(signalKey, "OUT_OF_RANGE", "Value is outside the declared range"));
                 continue;
             }
@@ -230,13 +229,19 @@ public class PlatformBindingService {
     }
 
     private void requireVisibleSerial(String ujinToken, String serialNumber) {
-        boolean visible =
-                fetchSnapshot(ujinToken).stream().anyMatch(d -> serialNumber.equals(d.id()));
-        if (!visible)
+        long matches = fetchSnapshot(ujinToken).stream()
+                .filter(d -> serialNumber.equals(d.id())).count();
+        if (matches > 1) throw ambiguousSerial();
+        if (matches == 0)
             throw new CatalogException(
                     422,
                     "UJIN_SN_NOT_VISIBLE",
                     "Resident session does not see this serial number");
+    }
+
+    private static CatalogException ambiguousSerial() {
+        return new CatalogException(502, "UJIN_BAD_RESPONSE",
+                "Platform snapshot contains an ambiguous device serial number");
     }
 
     private List<PlatformDevice> fetchSnapshot(String ujinToken) {
