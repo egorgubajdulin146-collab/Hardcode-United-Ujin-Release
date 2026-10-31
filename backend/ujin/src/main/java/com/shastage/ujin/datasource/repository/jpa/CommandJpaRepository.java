@@ -6,4 +6,5 @@ import java.util.*;
 
 public interface CommandJpaRepository extends JpaRepository<CommandEntity, UUID> {
     Optional<CommandEntity> findByCommandIdAndOwner(UUID commandId, String owner);
+    boolean existsByCommandId(UUID commandId);
 }

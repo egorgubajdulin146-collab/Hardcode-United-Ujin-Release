@@ -92,15 +92,18 @@ public class LocalRuntimeService {
 
         var device = catalogService.device(deviceId, owner);
 
-        // Идемпотентность: существующий event
-        var existing = eventRepo.findByEventIdAndOwner(eventId, owner);
-        if (existing.isPresent()) {
-            var ex = existing.get();
-            // Проверяем совпадение параметров
-            if (!ex.getDeviceId().equals(deviceId) || !ex.getKind().equals(kind) || ex.getValue() != value) {
-                throw new CatalogException(409, "IDEMPOTENCY_CONFLICT", "eventId already used with different parameters");
+        // Проверка глобальной коллизии eventId
+        if (eventRepo.existsByEventId(eventId)) {
+            var existing = eventRepo.findByEventIdAndOwner(eventId, owner);
+            if (existing.isPresent()) {
+                var ex = existing.get();
+                if (!ex.getDeviceId().equals(deviceId) || !ex.getKind().equals(kind) || ex.getValue() != value) {
+                    throw new CatalogException(409, "IDEMPOTENCY_CONFLICT", "eventId already used with different parameters");
+                }
+                return buildEventReceipt(ex);
             }
-            return buildEventReceipt(ex);
+            // eventId принадлежит другому пользователю
+            throw new CatalogException(404, "EVENT_NOT_FOUND", "Event not found");
         }
 
         requireOnline(deviceId);
@@ -178,14 +181,18 @@ public class LocalRuntimeService {
 
         var device = catalogService.device(deviceId, owner);
 
-        // Идемпотентность
-        var existing = commandRepo.findByCommandIdAndOwner(commandId, owner);
-        if (existing.isPresent()) {
-            var ex = existing.get();
-            if (!ex.getDeviceId().equals(deviceId) || !ex.getSignalKey().equals(signalKey) || ex.getValue() != value || !ex.getExecutionMode().equals(mode)) {
-                throw new CatalogException(409, "IDEMPOTENCY_CONFLICT", "commandId already used with different parameters");
+        // Проверка глобальной коллизии commandId
+        if (commandRepo.existsByCommandId(commandId)) {
+            var existing = commandRepo.findByCommandIdAndOwner(commandId, owner);
+            if (existing.isPresent()) {
+                var ex = existing.get();
+                if (!ex.getDeviceId().equals(deviceId) || !ex.getSignalKey().equals(signalKey) || ex.getValue() != value || !ex.getExecutionMode().equals(mode)) {
+                    throw new CatalogException(409, "IDEMPOTENCY_CONFLICT", "commandId already used with different parameters");
+                }
+                return buildCommandReceipt(ex);
             }
-            return buildCommandReceipt(ex);
+            // commandId принадлежит другому пользователю
+            throw new CatalogException(404, "COMMAND_NOT_FOUND", "Command not found");
         }
 
         requireOnline(deviceId);
@@ -440,7 +447,7 @@ public class LocalRuntimeService {
         int page = 0;
         org.springframework.data.domain.Page<RunEntity> runs;
         do {
-            runs = runRepo.findByEventId(event.getEventId(), org.springframework.data.domain.PageRequest.of(page++, 100, org.springframework.data.domain.Sort.by("id")));
+            runs = runRepo.findByOwnerAndEventId(event.getOwner(), event.getEventId(), org.springframework.data.domain.PageRequest.of(page++, 100, org.springframework.data.domain.Sort.by("id")));
             runs.forEach(run -> runIds.add(run.getId().toString()));
         } while (runs.hasNext());
         Map<String, Object> result = new LinkedHashMap<>();

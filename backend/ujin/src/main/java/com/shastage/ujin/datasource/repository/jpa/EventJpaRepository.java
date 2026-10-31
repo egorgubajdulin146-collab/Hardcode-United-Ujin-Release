@@ -6,4 +6,5 @@ import java.util.*;
 
 public interface EventJpaRepository extends JpaRepository<EventEntity, UUID> {
     Optional<EventEntity> findByEventIdAndOwner(UUID eventId, String owner);
+    boolean existsByEventId(UUID eventId);
 }
