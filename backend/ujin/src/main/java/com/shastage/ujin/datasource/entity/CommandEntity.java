@@ -1,7 +1,7 @@
 package com.shastage.ujin.datasource.entity;
 
 import jakarta.persistence.*;
-import java.time.Instant;
+
 import java.util.UUID;
 
 @Entity
@@ -27,10 +27,10 @@ public class CommandEntity {
     private String status; // PENDING, CONFIRMED, FAILED, UNKNOWN
 
     @Column(name = "created_at", nullable = false)
-    private Instant createdAt;
+    private String createdAt;
 
     @Column(name = "confirmed_at")
-    private Instant confirmedAt;
+    private String confirmedAt;
 
     public UUID getCommandId() { return commandId; }
     public void setCommandId(UUID commandId) { this.commandId = commandId; }
@@ -44,8 +44,8 @@ public class CommandEntity {
     public void setExecutionMode(String executionMode) { this.executionMode = executionMode; }
     public String getStatus() { return status; }
     public void setStatus(String status) { this.status = status; }
-    public Instant getCreatedAt() { return createdAt; }
-    public void setCreatedAt(Instant createdAt) { this.createdAt = createdAt; }
-    public Instant getConfirmedAt() { return confirmedAt; }
-    public void setConfirmedAt(Instant confirmedAt) { this.confirmedAt = confirmedAt; }
+    public String getCreatedAt() { return createdAt; }
+    public void setCreatedAt(String createdAt) { this.createdAt = createdAt; }
+    public String getConfirmedAt() { return confirmedAt; }
+    public void setConfirmedAt(String confirmedAt) { this.confirmedAt = confirmedAt; }
 }

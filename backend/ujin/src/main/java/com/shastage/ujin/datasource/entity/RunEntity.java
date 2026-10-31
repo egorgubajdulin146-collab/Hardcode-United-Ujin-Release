@@ -1,7 +1,7 @@
 package com.shastage.ujin.datasource.entity;
 
 import jakarta.persistence.*;
-import java.time.Instant;
+
 import java.util.*;
 
 @Entity
@@ -29,7 +29,7 @@ public class RunEntity {
     private String reason;
 
     @Column(name = "created_at", nullable = false)
-    private Instant createdAt;
+    private String createdAt;
 
     // Входное событие
     @Column(name = "input_signal_key", length = 64)
@@ -39,7 +39,7 @@ public class RunEntity {
     private Double inputValue;
 
     @Column(name = "input_updated_at")
-    private Instant inputUpdatedAt;
+    private String inputUpdatedAt;
 
     // Действие
     @Column(name = "action_device_id")
@@ -70,14 +70,14 @@ public class RunEntity {
     public void setStatus(String status) { this.status = status; }
     public String getReason() { return reason; }
     public void setReason(String reason) { this.reason = reason; }
-    public Instant getCreatedAt() { return createdAt; }
-    public void setCreatedAt(Instant createdAt) { this.createdAt = createdAt; }
+    public String getCreatedAt() { return createdAt; }
+    public void setCreatedAt(String createdAt) { this.createdAt = createdAt; }
     public String getInputSignalKey() { return inputSignalKey; }
     public void setInputSignalKey(String inputSignalKey) { this.inputSignalKey = inputSignalKey; }
     public Double getInputValue() { return inputValue; }
     public void setInputValue(Double inputValue) { this.inputValue = inputValue; }
-    public Instant getInputUpdatedAt() { return inputUpdatedAt; }
-    public void setInputUpdatedAt(Instant inputUpdatedAt) { this.inputUpdatedAt = inputUpdatedAt; }
+    public String getInputUpdatedAt() { return inputUpdatedAt; }
+    public void setInputUpdatedAt(String inputUpdatedAt) { this.inputUpdatedAt = inputUpdatedAt; }
     public UUID getActionDeviceId() { return actionDeviceId; }
     public void setActionDeviceId(UUID actionDeviceId) { this.actionDeviceId = actionDeviceId; }
     public String getActionSignalKey() { return actionSignalKey; }
@@ -87,7 +87,7 @@ public class RunEntity {
     public List<RunEntryEntity> getEntries() { return entries; }
     public void setEntries(List<RunEntryEntity> entries) { this.entries = entries; }
 
-    public void addEntry(String stage, String message, Instant at) {
+    public void addEntry(String stage, String message, String at) {
         RunEntryEntity entry = new RunEntryEntity();
         entry.setRun(this);
         entry.setStage(stage);

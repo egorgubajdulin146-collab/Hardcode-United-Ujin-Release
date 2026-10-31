@@ -1,5 +1,6 @@
 package com.shastage.ujin.domain.service;
 
+import com.shastage.ujin.datasource.repository.jpa.LocalSignalStateJpaRepository;
 import com.shastage.ujin.domain.exception.CatalogException;
 import com.shastage.ujin.domain.model.Catalog.*;
 import com.shastage.ujin.domain.repository.CatalogStore;
@@ -13,9 +14,11 @@ import java.util.*;
 @Transactional
 public class CatalogService {
     private final CatalogStore repository;
+    private final LocalSignalStateJpaRepository stateRepo;
 
-    public CatalogService(CatalogStore repository) {
+    public CatalogService(CatalogStore repository, LocalSignalStateJpaRepository stateRepo) {
         this.repository = repository;
+        this.stateRepo = stateRepo;
     }
 
     public Page<Device> devices(int page, int size) {
@@ -92,6 +95,8 @@ public class CatalogService {
         version(expectedVersion, old.version());
         if (!dependencies(id).scenarioIds().isEmpty())
             throw new CatalogException(409, "DEVICE_IN_USE", "Device is referenced by scenarios");
+        // Очищаем локальное состояние сигналов
+        stateRepo.deleteByDeviceId(id);
         repository.deleteDevice(id);
     }
 

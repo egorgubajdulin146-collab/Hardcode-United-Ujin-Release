@@ -1,7 +1,7 @@
 package com.shastage.ujin.datasource.entity;
 
 import jakarta.persistence.*;
-import java.time.Instant;
+
 import java.util.UUID;
 
 @Entity
@@ -24,10 +24,10 @@ public class EventEntity {
     private String status; // ACCEPTED, PROCESSED, FAILED
 
     @Column(name = "created_at", nullable = false)
-    private Instant createdAt;
+    private String createdAt;
 
     @Column(name = "processed_at")
-    private Instant processedAt;
+    private String processedAt;
 
     public UUID getEventId() { return eventId; }
     public void setEventId(UUID eventId) { this.eventId = eventId; }
@@ -39,8 +39,8 @@ public class EventEntity {
     public void setValue(double value) { this.value = value; }
     public String getStatus() { return status; }
     public void setStatus(String status) { this.status = status; }
-    public Instant getCreatedAt() { return createdAt; }
-    public void setCreatedAt(Instant createdAt) { this.createdAt = createdAt; }
-    public Instant getProcessedAt() { return processedAt; }
-    public void setProcessedAt(Instant processedAt) { this.processedAt = processedAt; }
+    public String getCreatedAt() { return createdAt; }
+    public void setCreatedAt(String createdAt) { this.createdAt = createdAt; }
+    public String getProcessedAt() { return processedAt; }
+    public void setProcessedAt(String processedAt) { this.processedAt = processedAt; }
 }

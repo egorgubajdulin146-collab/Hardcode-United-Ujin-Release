@@ -33,34 +33,49 @@ public class LocalRuntimeService {
         this.catalogService = catalogService;
     }
 
-    // Получение состояния устройства
+    // ===== GET /devices/{id}/state =====
     @Transactional(readOnly = true)
     public Map<String, Object> getDeviceState(UUID deviceId, String mode) {
+        if (!"LOCAL".equals(mode)) {
+            throw new CatalogException(503, "MODE_UNAVAILABLE", "Mode " + mode + " is not available in this runtime");
+        }
         var device = catalogService.device(deviceId);
         var states = stateRepo.findByDeviceId(deviceId);
 
-        var values = states.stream().map(s -> Map.of(
-                "signalKey", s.getSignalKey(),
-                "value", s.getValue(),
-                "updatedAt", s.getUpdatedAt().toString()
-        )).toList();
+        var values = states.stream().map(s -> {
+            Map<String, Object> v = new LinkedHashMap<>();
+            v.put("signalKey", s.getSignalKey());
+            v.put("value", s.getValue());
+            v.put("updatedAt", s.getUpdatedAt().toString());
+            return v;
+        }).toList();
 
-        return Map.of(
-                "deviceId", deviceId.toString(),
-                "executionMode", mode,
-                "values", values,
-                "availability", "ONLINE"
-        );
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("deviceId", deviceId.toString());
+        result.put("executionMode", mode);
+        result.put("values", values);
+        result.put("availability", "ONLINE");
+        return result;
     }
 
-    // Обработка стимула (WET)
-    public Map<String, Object> processStimulus(UUID deviceId, UUID eventId, String kind, int value) {
+    // ===== POST /devices/{id}/stimuli =====
+    public Map<String, Object> processStimulus(UUID deviceId, UUID eventId, String kind, Integer value) {
+        // Валидация обязательных полей
+        if (eventId == null) throw new CatalogException(422, "VALIDATION_ERROR", "eventId is required");
+        if (kind == null) throw new CatalogException(422, "VALIDATION_ERROR", "kind is required");
+        if (value == null) throw new CatalogException(422, "VALIDATION_ERROR", "value is required");
+
         var device = catalogService.device(deviceId);
 
-        // Идемпотентность: проверяем существующий event
+        // Идемпотентность: существующий event
         var existing = eventRepo.findById(eventId);
         if (existing.isPresent()) {
-            return buildEventReceipt(existing.get());
+            var ex = existing.get();
+            // Проверяем совпадение параметров
+            if (!ex.getDeviceId().equals(deviceId) || !ex.getKind().equals(kind) || ex.getValue() != value) {
+                throw new CatalogException(409, "IDEMPOTENCY_CONFLICT", "eventId already used with different parameters");
+            }
+            return buildEventReceipt(ex);
         }
 
         // Валидация: WET только для leak, value 0/1
@@ -74,6 +89,20 @@ public class LocalRuntimeService {
             throw new CatalogException(422, "STIMULUS_UNSUPPORTED", "WET only supported for leak devices");
         }
 
+        // Проверяем, что сигнал leak существует в декларации
+        var leakSignal = device.signals().stream()
+                .filter(s -> "leak".equals(s.key()))
+                .findFirst()
+                .orElseThrow(() -> new CatalogException(422, "VALIDATION_ERROR", "Device has no 'leak' signal"));
+
+        // Проверяем диапазон
+        if (leakSignal.min() != null && value < leakSignal.min()) {
+            throw new CatalogException(422, "VALIDATION_ERROR", "Value below minimum");
+        }
+        if (leakSignal.max() != null && value > leakSignal.max()) {
+            throw new CatalogException(422, "VALIDATION_ERROR", "Value above maximum");
+        }
+
         // Создаём событие
         var event = new EventEntity();
         event.setEventId(eventId);
@@ -81,7 +110,7 @@ public class LocalRuntimeService {
         event.setKind(kind);
         event.setValue(value);
         event.setStatus("ACCEPTED");
-        event.setCreatedAt(Instant.now());
+        event.setCreatedAt(java.time.Instant.now().toString());
         eventRepo.save(event);
 
         // Обновляем состояние сигнала leak
@@ -91,27 +120,45 @@ public class LocalRuntimeService {
         var runIds = processScenarios(deviceId, "leak", value, eventId);
 
         event.setStatus("PROCESSED");
-        event.setProcessedAt(Instant.now());
+        event.setProcessedAt(java.time.Instant.now().toString());
         eventRepo.save(event);
 
-        return Map.of(
-                "eventId", eventId.toString(),
-                "status", "PROCESSED",
-                "runIds", runIds
-        );
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("eventId", eventId.toString());
+        result.put("status", "PROCESSED");
+        result.put("runIds", runIds);
+        return result;
     }
 
-    // Обработка команды
-    public Map<String, Object> processCommand(UUID deviceId, UUID commandId, String signalKey, double value, String mode) {
+    // ===== POST /devices/{id}/commands =====
+    public Map<String, Object> processCommand(UUID deviceId, UUID commandId, String signalKey, Double value, String mode) {
+        // Валидация обязательных полей
+        if (commandId == null) throw new CatalogException(422, "VALIDATION_ERROR", "commandId is required");
+        if (signalKey == null || signalKey.isBlank()) throw new CatalogException(422, "VALIDATION_ERROR", "signalKey is required");
+        if (value == null || !Double.isFinite(value)) throw new CatalogException(422, "VALIDATION_ERROR", "value must be a finite number");
+        if (mode == null) throw new CatalogException(422, "VALIDATION_ERROR", "executionMode is required");
+
+        // UJIN не поддерживается в LOCAL-контуре
+        if ("UJIN".equals(mode)) {
+            throw new CatalogException(503, "MODE_UNAVAILABLE", "UJIN mode is not available in this runtime");
+        }
+        if (!"LOCAL".equals(mode)) {
+            throw new CatalogException(422, "VALIDATION_ERROR", "Unknown executionMode: " + mode);
+        }
+
         var device = catalogService.device(deviceId);
 
         // Идемпотентность
         var existing = commandRepo.findById(commandId);
         if (existing.isPresent()) {
-            return buildCommandReceipt(existing.get());
+            var ex = existing.get();
+            if (!ex.getDeviceId().equals(deviceId) || !ex.getSignalKey().equals(signalKey) || ex.getValue() != value || !ex.getExecutionMode().equals(mode)) {
+                throw new CatalogException(409, "IDEMPOTENCY_CONFLICT", "commandId already used with different parameters");
+            }
+            return buildCommandReceipt(ex);
         }
 
-        // Валидация: сигнал должен существовать и быть управляемым
+        // Валидация сигнала
         var signal = device.signals().stream()
                 .filter(s -> s.key().equals(signalKey))
                 .findFirst()
@@ -121,15 +168,17 @@ public class LocalRuntimeService {
             throw new CatalogException(422, "SIGNAL_READ_ONLY", "Signal is read-only: " + signalKey);
         }
 
-        // Проверка диапазона
         if (signal.min() != null && value < signal.min()) {
             throw new CatalogException(422, "VALIDATION_ERROR", "Value below minimum");
         }
         if (signal.max() != null && value > signal.max()) {
             throw new CatalogException(422, "VALIDATION_ERROR", "Value above maximum");
         }
-        if (signal.enumValues() != null && !signal.enumValues().isEmpty() && !signal.enumValues().contains(value)) {
-            throw new CatalogException(422, "VALIDATION_ERROR", "Value not in enumValues");
+        if (signal.enumValues() != null && !signal.enumValues().isEmpty()) {
+            boolean match = signal.enumValues().stream().anyMatch(v -> Math.abs(v - value) < 1e-9);
+            if (!match) {
+                throw new CatalogException(422, "VALIDATION_ERROR", "Value not in enumValues");
+            }
         }
 
         // Создаём команду
@@ -140,8 +189,8 @@ public class LocalRuntimeService {
         command.setValue(value);
         command.setExecutionMode(mode);
         command.setStatus("CONFIRMED");
-        command.setCreatedAt(Instant.now());
-        command.setConfirmedAt(Instant.now());
+        command.setCreatedAt(java.time.Instant.now().toString());
+        command.setConfirmedAt(java.time.Instant.now().toString());
         commandRepo.save(command);
 
         // Обновляем состояние
@@ -150,32 +199,44 @@ public class LocalRuntimeService {
         return buildCommandReceipt(command);
     }
 
-    // Запуск сценариев для события
+    // ===== Обработка сценариев =====
     private List<UUID> processScenarios(UUID sourceDeviceId, String signalKey, double value, UUID eventId) {
-        var scenarios = catalogService.scenarios(0, 1000).items();
+        var scenarios = loadAllScenarios();
         var runIds = new ArrayList<UUID>();
-        var now = Instant.now();
+        var now = java.time.Instant.now().toString();
 
         for (var scenario : scenarios) {
-            // Только LOCAL-сценарии
-            if (!"LOCAL".equals(scenario.executionMode())) continue;
-
-            // Только включённые
-            if (!scenario.enabled()) {
-                createSkippedRun(scenario, eventId, "SCENARIO_DISABLED", now);
-                continue;
-            }
-
-            // Проверяем триггер
             var trigger = scenario.trigger();
+
+            // Проверяем триггер ДО проверки enabled
             if (!sourceDeviceId.equals(trigger.deviceId()) || !signalKey.equals(trigger.signalKey())) {
                 continue;
             }
 
-            // Проверяем условие
+            // Только LOCAL-сценарии
+            if (!"LOCAL".equals(scenario.executionMode())) {
+                continue;
+            }
+
+            // Выключенные — SKIPPED
+            if (!scenario.enabled()) {
+                createSkippedRun(scenario, eventId, "SCENARIO_DISABLED", signalKey, value, now);
+                continue;
+            }
+
+            // Проверяем событие (eventKey)
+            var sourceDevice = catalogService.device(sourceDeviceId);
+            boolean eventMatches = sourceDevice.events().stream()
+                    .anyMatch(e -> e.key().equals(trigger.eventKey()) && e.signalKey().equals(trigger.signalKey()));
+            if (!eventMatches) {
+                createSkippedRun(scenario, eventId, "EVENT_MISMATCH", signalKey, value, now);
+                continue;
+            }
+
+            // Проверяем условие EQ — точное равенство
             if ("EQ".equals(trigger.operator())) {
-                if (Math.abs(value - trigger.value()) > 0.001) {
-                    createSkippedRun(scenario, eventId, "CONDITION_FALSE", now);
+                if (value != trigger.value()) {
+                    createSkippedRun(scenario, eventId, "CONDITION_FALSE", signalKey, value, now);
                     continue;
                 }
             }
@@ -188,8 +249,23 @@ public class LocalRuntimeService {
         return runIds;
     }
 
-    // Выполнение действия сценария
-    private RunEntity executeAction(Catalog.Scenario scenario, UUID eventId, String inputSignalKey, double inputValue, Instant now) {
+    // Загрузка всех сценариев с пагинацией
+    private List<Catalog.Scenario> loadAllScenarios() {
+        var all = new ArrayList<Catalog.Scenario>();
+        int page = 0;
+        int size = 100;
+        for (;;) {
+            var resp = catalogService.scenarios(page, size);
+            all.addAll(resp.items());
+            if (all.size() >= resp.total() || resp.items().isEmpty()) break;
+            page++;
+            if (page > 100) break;
+        }
+        return all;
+    }
+
+    // Выполнение действия
+    private RunEntity executeAction(Catalog.Scenario scenario, UUID eventId, String inputSignalKey, double inputValue, String now) {
         var run = new RunEntity();
         run.setId(UUID.randomUUID());
         run.setEventId(eventId);
@@ -202,18 +278,14 @@ public class LocalRuntimeService {
         run.setInputUpdatedAt(now);
 
         run.addEntry("EVENT", "Событие " + inputSignalKey + "=" + inputValue, now);
-
-        // Проверка условия
         run.addEntry("CONDITION", "Условие " + scenario.trigger().signalKey() + " EQ " + scenario.trigger().value() + " — истинно", now);
 
-        // Действие
         var action = scenario.action();
         run.setActionDeviceId(action.deviceId());
         run.setActionSignalKey(action.signalKey());
         run.setActionValue(action.value());
 
         try {
-            // Проверяем доступность устройства назначения
             var targetDevice = catalogService.device(action.deviceId());
             var targetSignal = targetDevice.signals().stream()
                     .filter(s -> s.key().equals(action.signalKey()))
@@ -233,7 +305,7 @@ public class LocalRuntimeService {
         } catch (CatalogException e) {
             run.addEntry("ACTION", "Ошибка: " + e.getMessage(), now);
             run.setStatus("BLOCKED");
-            run.setReason(e.getCode());
+            run.setReason(e.code);
         }
 
         runRepo.save(run);
@@ -241,7 +313,7 @@ public class LocalRuntimeService {
     }
 
     // Пропущенный запуск
-    private void createSkippedRun(Catalog.Scenario scenario, UUID eventId, String reason, Instant now) {
+    private void createSkippedRun(Catalog.Scenario scenario, UUID eventId, String reason, String signalKey, double value, String now) {
         var run = new RunEntity();
         run.setId(UUID.randomUUID());
         run.setEventId(eventId);
@@ -249,14 +321,17 @@ public class LocalRuntimeService {
         run.setScenarioVersion(scenario.version());
         run.setExecutionMode("LOCAL");
         run.setCreatedAt(now);
+        run.setInputSignalKey(signalKey);
+        run.setInputValue(value);
+        run.setInputUpdatedAt(now);
         run.setStatus("SKIPPED");
         run.setReason(reason);
-        run.addEntry("EVENT", "Событие получено", now);
+        run.addEntry("EVENT", "Событие " + signalKey + "=" + value, now);
         run.addEntry("CONDITION", "Причина: " + reason, now);
         runRepo.save(run);
     }
 
-    // Обновление состояния сигнала
+    // Обновление состояния
     private void updateSignalState(UUID deviceId, String signalKey, double value) {
         var state = stateRepo.findByDeviceIdAndSignalKey(deviceId, signalKey)
                 .orElseGet(() -> {
@@ -266,11 +341,11 @@ public class LocalRuntimeService {
                     return s;
                 });
         state.setValue(value);
-        state.setUpdatedAt(Instant.now());
+        state.setUpdatedAt(java.time.Instant.now().toString());
         stateRepo.save(state);
     }
 
-    // Получение события
+    // ===== GET /events/{eventId} =====
     @Transactional(readOnly = true)
     public Map<String, Object> getEvent(UUID eventId) {
         var event = eventRepo.findById(eventId)
@@ -278,7 +353,7 @@ public class LocalRuntimeService {
         return buildEventReceipt(event);
     }
 
-    // Получение команды
+    // ===== GET /commands/{commandId} =====
     @Transactional(readOnly = true)
     public Map<String, Object> getCommand(UUID commandId) {
         var command = commandRepo.findById(commandId)
@@ -286,9 +361,12 @@ public class LocalRuntimeService {
         return buildCommandReceipt(command);
     }
 
-    // Список запусков
+    // ===== GET /runs =====
     @Transactional(readOnly = true)
     public Map<String, Object> getRuns(int page, int size, UUID eventId, UUID scenarioId) {
+        if (page < 0) throw new CatalogException(400, "INVALID_REQUEST", "page must be >= 0");
+        if (size < 1 || size > 100) throw new CatalogException(400, "INVALID_REQUEST", "size must be 1-100");
+
         var pageable = org.springframework.data.domain.PageRequest.of(page, size);
         org.springframework.data.domain.Page<RunEntity> runPage;
 
@@ -303,15 +381,15 @@ public class LocalRuntimeService {
         }
 
         var items = runPage.getContent().stream().map(this::buildRunResponse).toList();
-        return Map.of(
-                "items", items,
-                "page", page,
-                "size", size,
-                "total", runPage.getTotalElements()
-        );
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("items", items);
+        result.put("page", page);
+        result.put("size", size);
+        result.put("total", runPage.getTotalElements());
+        return result;
     }
 
-    // Карточка запуска
+    // ===== GET /runs/{runId} =====
     @Transactional(readOnly = true)
     public Map<String, Object> getRun(UUID runId) {
         var run = runRepo.findById(runId)
@@ -319,15 +397,15 @@ public class LocalRuntimeService {
         return buildRunResponse(run);
     }
 
-    // Построение DTO
+    // ===== Построение DTO =====
     private Map<String, Object> buildEventReceipt(EventEntity event) {
         var runs = runRepo.findByEventId(event.getEventId(), org.springframework.data.domain.PageRequest.of(0, 100));
         var runIds = runs.getContent().stream().map(RunEntity::getId).map(UUID::toString).toList();
-        return Map.of(
-                "eventId", event.getEventId().toString(),
-                "status", event.getStatus(),
-                "runIds", runIds
-        );
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("eventId", event.getEventId().toString());
+        result.put("status", event.getStatus());
+        result.put("runIds", runIds);
+        return result;
     }
 
     private Map<String, Object> buildCommandReceipt(CommandEntity command) {
@@ -351,26 +429,28 @@ public class LocalRuntimeService {
         result.put("createdAt", run.getCreatedAt().toString());
 
         if (run.getInputSignalKey() != null) {
-            result.put("input", Map.of(
-                    "signalKey", run.getInputSignalKey(),
-                    "value", run.getInputValue(),
-                    "updatedAt", run.getInputUpdatedAt().toString()
-            ));
+            Map<String, Object> input = new LinkedHashMap<>();
+            input.put("signalKey", run.getInputSignalKey());
+            input.put("value", run.getInputValue());
+            input.put("updatedAt", run.getInputUpdatedAt().toString());
+            result.put("input", input);
         }
 
         if (run.getActionSignalKey() != null) {
-            result.put("action", Map.of(
-                    "deviceId", run.getActionDeviceId().toString(),
-                    "signalKey", run.getActionSignalKey(),
-                    "value", run.getActionValue()
-            ));
+            Map<String, Object> action = new LinkedHashMap<>();
+            action.put("deviceId", run.getActionDeviceId().toString());
+            action.put("signalKey", run.getActionSignalKey());
+            action.put("value", run.getActionValue());
+            result.put("action", action);
         }
 
-        var entries = run.getEntries().stream().map(e -> Map.of(
-                "at", e.getAt().toString(),
-                "stage", e.getStage(),
-                "message", e.getMessage()
-        )).toList();
+        var entries = run.getEntries().stream().map(e -> {
+            Map<String, Object> entry = new LinkedHashMap<>();
+            entry.put("at", e.getAt().toString());
+            entry.put("stage", e.getStage());
+            entry.put("message", e.getMessage());
+            return entry;
+        }).toList();
         result.put("entries", entries);
 
         return result;

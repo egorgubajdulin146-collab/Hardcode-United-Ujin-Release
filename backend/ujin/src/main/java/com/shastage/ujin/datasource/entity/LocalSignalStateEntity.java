@@ -1,7 +1,7 @@
 package com.shastage.ujin.datasource.entity;
 
 import jakarta.persistence.*;
-import java.time.Instant;
+
 import java.util.UUID;
 
 @Entity
@@ -21,7 +21,7 @@ public class LocalSignalStateEntity {
     private double value;
 
     @Column(name = "updated_at", nullable = false)
-    private Instant updatedAt;
+    private String updatedAt;
 
     public UUID getId() { return id; }
     public UUID getDeviceId() { return deviceId; }
@@ -30,6 +30,6 @@ public class LocalSignalStateEntity {
     public void setSignalKey(String signalKey) { this.signalKey = signalKey; }
     public double getValue() { return value; }
     public void setValue(double value) { this.value = value; }
-    public Instant getUpdatedAt() { return updatedAt; }
-    public void setUpdatedAt(Instant updatedAt) { this.updatedAt = updatedAt; }
+    public String getUpdatedAt() { return updatedAt; }
+    public void setUpdatedAt(String updatedAt) { this.updatedAt = updatedAt; }
 }

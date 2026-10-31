@@ -2,7 +2,6 @@ package com.shastage.ujin.web.controller;
 
 import com.shastage.ujin.domain.service.LocalRuntimeService;
 import com.shastage.ujin.web.dto.request.*;
-import com.shastage.ujin.web.dto.response.*;
 import java.util.*;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -29,6 +28,9 @@ public class RuntimeController {
             @PathVariable UUID deviceId,
             @RequestBody StimulusRequest request
     ) {
+        if (request == null) {
+            throw new com.shastage.ujin.domain.exception.CatalogException(400, "INVALID_REQUEST", "Request body is required");
+        }
         var result = service.processStimulus(deviceId, request.eventId(), request.kind(), request.value());
         return ResponseEntity.accepted().body(result);
     }
@@ -43,6 +45,9 @@ public class RuntimeController {
             @PathVariable UUID deviceId,
             @RequestBody CommandRequest request
     ) {
+        if (request == null) {
+            throw new com.shastage.ujin.domain.exception.CatalogException(400, "INVALID_REQUEST", "Request body is required");
+        }
         var result = service.processCommand(
                 deviceId, request.commandId(), request.signalKey(), request.value(), request.executionMode()
         );
