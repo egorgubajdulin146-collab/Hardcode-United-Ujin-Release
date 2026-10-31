@@ -1,0 +1,1820 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Ujin scenario editor API — review draft",
+    "version": "0.1.0-draft",
+    "description": "Proposed application API, not the external Ujin platform API. Not implemented or jointly approved. See MVP.md for semantics, access and open decisions."
+  },
+  "x-review-status": "DRAFT_PENDING_BACKEND_REVIEW",
+  "paths": {
+    "/api/v1/system": {
+      "get": {
+        "operationId": "getSystem",
+        "summary": "getSystem",
+        "responses": {
+          "200": {
+            "description": "Draft contract response; implementation pending",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SystemStatus"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Problem400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Problem401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Problem403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Problem404"
+          },
+          "409": {
+            "$ref": "#/components/responses/Problem409"
+          },
+          "422": {
+            "$ref": "#/components/responses/Problem422"
+          },
+          "503": {
+            "$ref": "#/components/responses/Problem503"
+          }
+        }
+      }
+    },
+    "/api/v1/devices": {
+      "get": {
+        "operationId": "listDevices",
+        "summary": "listDevices",
+        "responses": {
+          "200": {
+            "description": "Draft contract response; implementation pending",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DevicePage"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Problem400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Problem401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Problem403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Problem404"
+          },
+          "409": {
+            "$ref": "#/components/responses/Problem409"
+          },
+          "422": {
+            "$ref": "#/components/responses/Problem422"
+          },
+          "503": {
+            "$ref": "#/components/responses/Problem503"
+          }
+        },
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0
+            }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20
+            }
+          }
+        ]
+      },
+      "post": {
+        "operationId": "createDevice",
+        "summary": "createDevice",
+        "responses": {
+          "201": {
+            "description": "Draft contract response; implementation pending",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Device"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Problem400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Problem401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Problem403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Problem404"
+          },
+          "409": {
+            "$ref": "#/components/responses/Problem409"
+          },
+          "422": {
+            "$ref": "#/components/responses/Problem422"
+          },
+          "503": {
+            "$ref": "#/components/responses/Problem503"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DeviceWrite"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/devices/{deviceId}": {
+      "get": {
+        "operationId": "getDevice",
+        "summary": "getDevice",
+        "responses": {
+          "200": {
+            "description": "Draft contract response; implementation pending",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Device"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Problem400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Problem401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Problem403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Problem404"
+          },
+          "409": {
+            "$ref": "#/components/responses/Problem409"
+          },
+          "422": {
+            "$ref": "#/components/responses/Problem422"
+          },
+          "503": {
+            "$ref": "#/components/responses/Problem503"
+          }
+        },
+        "parameters": [
+          {
+            "name": "deviceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ]
+      },
+      "put": {
+        "operationId": "updateDevice",
+        "summary": "updateDevice",
+        "responses": {
+          "200": {
+            "description": "Draft contract response; implementation pending",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Device"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Problem400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Problem401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Problem403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Problem404"
+          },
+          "409": {
+            "$ref": "#/components/responses/Problem409"
+          },
+          "422": {
+            "$ref": "#/components/responses/Problem422"
+          },
+          "503": {
+            "$ref": "#/components/responses/Problem503"
+          }
+        },
+        "parameters": [
+          {
+            "name": "deviceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DeviceUpdate"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/devices/{deviceId}/state": {
+      "get": {
+        "operationId": "getDeviceState",
+        "summary": "getDeviceState",
+        "responses": {
+          "200": {
+            "description": "Draft contract response; implementation pending",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeviceState"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Problem400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Problem401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Problem403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Problem404"
+          },
+          "409": {
+            "$ref": "#/components/responses/Problem409"
+          },
+          "422": {
+            "$ref": "#/components/responses/Problem422"
+          },
+          "503": {
+            "$ref": "#/components/responses/Problem503"
+          }
+        },
+        "parameters": [
+          {
+            "name": "deviceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "mode",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/ExecutionMode"
+            }
+          }
+        ]
+      }
+    },
+    "/api/v1/devices/{deviceId}/commands": {
+      "post": {
+        "operationId": "sendCommand",
+        "summary": "sendCommand",
+        "responses": {
+          "202": {
+            "description": "Draft contract response; implementation pending",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CommandReceipt"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Problem400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Problem401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Problem403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Problem404"
+          },
+          "409": {
+            "$ref": "#/components/responses/Problem409"
+          },
+          "422": {
+            "$ref": "#/components/responses/Problem422"
+          },
+          "503": {
+            "$ref": "#/components/responses/Problem503"
+          }
+        },
+        "parameters": [
+          {
+            "name": "deviceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Command"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/commands/{commandId}": {
+      "get": {
+        "operationId": "getCommand",
+        "summary": "getCommand",
+        "responses": {
+          "200": {
+            "description": "Draft contract response; implementation pending",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CommandReceipt"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Problem400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Problem401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Problem403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Problem404"
+          },
+          "409": {
+            "$ref": "#/components/responses/Problem409"
+          },
+          "422": {
+            "$ref": "#/components/responses/Problem422"
+          },
+          "503": {
+            "$ref": "#/components/responses/Problem503"
+          }
+        },
+        "parameters": [
+          {
+            "name": "commandId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ]
+      }
+    },
+    "/api/v1/devices/{deviceId}/stimuli": {
+      "post": {
+        "operationId": "applyLocalStimulus",
+        "summary": "applyLocalStimulus",
+        "responses": {
+          "202": {
+            "description": "Draft contract response; implementation pending",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EventReceipt"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Problem400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Problem401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Problem403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Problem404"
+          },
+          "409": {
+            "$ref": "#/components/responses/Problem409"
+          },
+          "422": {
+            "$ref": "#/components/responses/Problem422"
+          },
+          "503": {
+            "$ref": "#/components/responses/Problem503"
+          }
+        },
+        "parameters": [
+          {
+            "name": "deviceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Stimulus"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/events/{eventId}": {
+      "get": {
+        "operationId": "getEventReceipt",
+        "summary": "getEventReceipt",
+        "responses": {
+          "200": {
+            "description": "Draft contract response; implementation pending",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EventReceipt"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Problem400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Problem401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Problem403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Problem404"
+          },
+          "409": {
+            "$ref": "#/components/responses/Problem409"
+          },
+          "422": {
+            "$ref": "#/components/responses/Problem422"
+          },
+          "503": {
+            "$ref": "#/components/responses/Problem503"
+          }
+        },
+        "parameters": [
+          {
+            "name": "eventId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ]
+      }
+    },
+    "/api/v1/scenarios": {
+      "get": {
+        "operationId": "listScenarios",
+        "summary": "listScenarios",
+        "responses": {
+          "200": {
+            "description": "Draft contract response; implementation pending",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScenarioPage"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Problem400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Problem401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Problem403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Problem404"
+          },
+          "409": {
+            "$ref": "#/components/responses/Problem409"
+          },
+          "422": {
+            "$ref": "#/components/responses/Problem422"
+          },
+          "503": {
+            "$ref": "#/components/responses/Problem503"
+          }
+        },
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0
+            }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20
+            }
+          }
+        ]
+      },
+      "post": {
+        "operationId": "createScenario",
+        "summary": "createScenario",
+        "responses": {
+          "201": {
+            "description": "Draft contract response; implementation pending",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Scenario"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Problem400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Problem401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Problem403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Problem404"
+          },
+          "409": {
+            "$ref": "#/components/responses/Problem409"
+          },
+          "422": {
+            "$ref": "#/components/responses/Problem422"
+          },
+          "503": {
+            "$ref": "#/components/responses/Problem503"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ScenarioWrite"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/scenarios/{scenarioId}": {
+      "get": {
+        "operationId": "getScenario",
+        "summary": "getScenario",
+        "responses": {
+          "200": {
+            "description": "Draft contract response; implementation pending",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Scenario"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Problem400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Problem401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Problem403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Problem404"
+          },
+          "409": {
+            "$ref": "#/components/responses/Problem409"
+          },
+          "422": {
+            "$ref": "#/components/responses/Problem422"
+          },
+          "503": {
+            "$ref": "#/components/responses/Problem503"
+          }
+        },
+        "parameters": [
+          {
+            "name": "scenarioId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ]
+      },
+      "put": {
+        "operationId": "updateScenario",
+        "summary": "updateScenario",
+        "responses": {
+          "200": {
+            "description": "Draft contract response; implementation pending",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Scenario"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Problem400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Problem401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Problem403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Problem404"
+          },
+          "409": {
+            "$ref": "#/components/responses/Problem409"
+          },
+          "422": {
+            "$ref": "#/components/responses/Problem422"
+          },
+          "503": {
+            "$ref": "#/components/responses/Problem503"
+          }
+        },
+        "parameters": [
+          {
+            "name": "scenarioId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ScenarioUpdate"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/runs": {
+      "get": {
+        "operationId": "listRuns",
+        "summary": "listRuns",
+        "responses": {
+          "200": {
+            "description": "Draft contract response; implementation pending",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RunPage"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Problem400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Problem401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Problem403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Problem404"
+          },
+          "409": {
+            "$ref": "#/components/responses/Problem409"
+          },
+          "422": {
+            "$ref": "#/components/responses/Problem422"
+          },
+          "503": {
+            "$ref": "#/components/responses/Problem503"
+          }
+        },
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0
+            }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20
+            }
+          },
+          {
+            "name": "eventId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "scenarioId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ]
+      }
+    },
+    "/api/v1/runs/{runId}": {
+      "get": {
+        "operationId": "getRun",
+        "summary": "getRun",
+        "responses": {
+          "200": {
+            "description": "Draft contract response; implementation pending",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Run"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Problem400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Problem401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Problem403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Problem404"
+          },
+          "409": {
+            "$ref": "#/components/responses/Problem409"
+          },
+          "422": {
+            "$ref": "#/components/responses/Problem422"
+          },
+          "503": {
+            "$ref": "#/components/responses/Problem503"
+          }
+        },
+        "parameters": [
+          {
+            "name": "runId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ]
+      }
+    },
+    "/api/v1/integrations/ujin/status": {
+      "get": {
+        "operationId": "getUjinStatus",
+        "summary": "getUjinStatus",
+        "responses": {
+          "200": {
+            "description": "Draft contract response; implementation pending",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UjinStatus"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Problem400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Problem401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Problem403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Problem404"
+          },
+          "409": {
+            "$ref": "#/components/responses/Problem409"
+          },
+          "422": {
+            "$ref": "#/components/responses/Problem422"
+          },
+          "503": {
+            "$ref": "#/components/responses/Problem503"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "SignalDefinition": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "key": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_]*$",
+            "maxLength": 64
+          },
+          "title": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 120
+          },
+          "group": {
+            "type": "string",
+            "enum": [
+              "property",
+              "capability",
+              "setting"
+            ]
+          },
+          "management": {
+            "type": "string",
+            "enum": [
+              "r",
+              "rw",
+              "w"
+            ]
+          },
+          "valueType": {
+            "type": "string",
+            "enum": [
+              "NUMBER"
+            ]
+          },
+          "control": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 40
+          },
+          "unit": {
+            "type": "string",
+            "maxLength": 24
+          },
+          "min": {
+            "type": "number"
+          },
+          "max": {
+            "type": "number"
+          },
+          "enumValues": {
+            "type": "array",
+            "items": {
+              "type": "number"
+            },
+            "minItems": 1,
+            "uniqueItems": true
+          }
+        },
+        "required": [
+          "key",
+          "title",
+          "group",
+          "management",
+          "valueType",
+          "control"
+        ]
+      },
+      "DeviceWrite": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "title": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 120
+          },
+          "family": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_]*$",
+            "maxLength": 64
+          },
+          "signals": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SignalDefinition"
+            },
+            "minItems": 1,
+            "maxItems": 100
+          }
+        },
+        "required": [
+          "title",
+          "family",
+          "signals"
+        ]
+      },
+      "DeviceUpdate": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "title": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 120
+          },
+          "family": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_]*$",
+            "maxLength": 64
+          },
+          "signals": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SignalDefinition"
+            },
+            "minItems": 1,
+            "maxItems": 100
+          },
+          "expectedVersion": {
+            "type": "integer",
+            "minimum": 1
+          }
+        },
+        "required": [
+          "title",
+          "family",
+          "signals",
+          "expectedVersion"
+        ]
+      },
+      "Device": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "title": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 120
+          },
+          "family": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_]*$",
+            "maxLength": 64
+          },
+          "signals": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SignalDefinition"
+            },
+            "minItems": 1,
+            "maxItems": 100
+          },
+          "platformLink": {
+            "type": "string",
+            "enum": [
+              "NOT_CONFIGURED",
+              "BOUND",
+              "BLOCKED"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "version",
+          "title",
+          "family",
+          "signals",
+          "platformLink"
+        ]
+      },
+      "SignalValue": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "signalKey": {
+            "type": "string"
+          },
+          "value": {
+            "type": "number"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "signalKey",
+          "value",
+          "updatedAt"
+        ]
+      },
+      "DeviceState": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "deviceId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "executionMode": {
+            "$ref": "#/components/schemas/ExecutionMode"
+          },
+          "values": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SignalValue"
+            }
+          }
+        },
+        "required": [
+          "deviceId",
+          "executionMode",
+          "values"
+        ]
+      },
+      "ExecutionMode": {
+        "type": "string",
+        "enum": [
+          "LOCAL",
+          "UJIN"
+        ]
+      },
+      "Command": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "commandId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "signalKey": {
+            "type": "string"
+          },
+          "value": {
+            "type": "number"
+          },
+          "executionMode": {
+            "$ref": "#/components/schemas/ExecutionMode"
+          }
+        },
+        "required": [
+          "commandId",
+          "signalKey",
+          "value",
+          "executionMode"
+        ]
+      },
+      "CommandReceipt": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "commandId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "deviceId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "PENDING",
+              "CONFIRMED",
+              "FAILED",
+              "UNKNOWN"
+            ]
+          },
+          "executionMode": {
+            "$ref": "#/components/schemas/ExecutionMode"
+          }
+        },
+        "required": [
+          "commandId",
+          "deviceId",
+          "status",
+          "executionMode"
+        ]
+      },
+      "Stimulus": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "eventId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "WET"
+            ]
+          },
+          "value": {
+            "type": "integer",
+            "enum": [
+              0,
+              1
+            ]
+          }
+        },
+        "required": [
+          "eventId",
+          "kind",
+          "value"
+        ]
+      },
+      "EventReceipt": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "eventId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "ACCEPTED",
+              "PROCESSED",
+              "FAILED"
+            ]
+          },
+          "runIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        },
+        "required": [
+          "eventId",
+          "status",
+          "runIds"
+        ]
+      },
+      "Trigger": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "deviceId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "signalKey": {
+            "type": "string"
+          },
+          "operator": {
+            "type": "string",
+            "enum": [
+              "EQ"
+            ]
+          },
+          "value": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "deviceId",
+          "signalKey",
+          "operator",
+          "value"
+        ]
+      },
+      "Action": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "deviceId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "signalKey": {
+            "type": "string"
+          },
+          "value": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "deviceId",
+          "signalKey",
+          "value"
+        ]
+      },
+      "ScenarioWrite": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "title": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 120
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "executionMode": {
+            "$ref": "#/components/schemas/ExecutionMode"
+          },
+          "trigger": {
+            "$ref": "#/components/schemas/Trigger"
+          },
+          "action": {
+            "$ref": "#/components/schemas/Action"
+          }
+        },
+        "required": [
+          "title",
+          "enabled",
+          "executionMode",
+          "trigger",
+          "action"
+        ]
+      },
+      "ScenarioUpdate": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "title": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 120
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "executionMode": {
+            "$ref": "#/components/schemas/ExecutionMode"
+          },
+          "trigger": {
+            "$ref": "#/components/schemas/Trigger"
+          },
+          "action": {
+            "$ref": "#/components/schemas/Action"
+          },
+          "expectedVersion": {
+            "type": "integer",
+            "minimum": 1
+          }
+        },
+        "required": [
+          "title",
+          "enabled",
+          "executionMode",
+          "trigger",
+          "action",
+          "expectedVersion"
+        ]
+      },
+      "Scenario": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "title": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 120
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "executionMode": {
+            "$ref": "#/components/schemas/ExecutionMode"
+          },
+          "trigger": {
+            "$ref": "#/components/schemas/Trigger"
+          },
+          "action": {
+            "$ref": "#/components/schemas/Action"
+          }
+        },
+        "required": [
+          "id",
+          "version",
+          "title",
+          "enabled",
+          "executionMode",
+          "trigger",
+          "action"
+        ]
+      },
+      "RunEntry": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "stage": {
+            "type": "string",
+            "enum": [
+              "EVENT",
+              "CONDITION",
+              "ACTION",
+              "RESULT"
+            ]
+          },
+          "message": {
+            "type": "string",
+            "maxLength": 1000
+          }
+        },
+        "required": [
+          "at",
+          "stage",
+          "message"
+        ]
+      },
+      "Run": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "eventId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "scenarioId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "scenarioVersion": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "executionMode": {
+            "$ref": "#/components/schemas/ExecutionMode"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "PENDING",
+              "SUCCEEDED",
+              "SKIPPED",
+              "FAILED",
+              "BLOCKED",
+              "UNKNOWN"
+            ]
+          },
+          "reason": {
+            "type": "string",
+            "maxLength": 120
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "input": {
+            "$ref": "#/components/schemas/SignalValue"
+          },
+          "action": {
+            "$ref": "#/components/schemas/Action"
+          },
+          "entries": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RunEntry"
+            }
+          }
+        },
+        "required": [
+          "id",
+          "eventId",
+          "scenarioId",
+          "scenarioVersion",
+          "executionMode",
+          "status",
+          "createdAt",
+          "entries"
+        ]
+      },
+      "IntegrationCapability": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "UNKNOWN",
+              "AVAILABLE",
+              "BLOCKED"
+            ]
+          },
+          "reason": {
+            "type": "string",
+            "maxLength": 500
+          },
+          "checkedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "status",
+          "reason"
+        ]
+      },
+      "UjinStatus": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "publish": {
+            "$ref": "#/components/schemas/IntegrationCapability"
+          },
+          "read": {
+            "$ref": "#/components/schemas/IntegrationCapability"
+          },
+          "downlink": {
+            "$ref": "#/components/schemas/IntegrationCapability"
+          },
+          "autoscripts": {
+            "$ref": "#/components/schemas/IntegrationCapability"
+          }
+        },
+        "required": [
+          "publish",
+          "read",
+          "downlink",
+          "autoscripts"
+        ]
+      },
+      "SystemStatus": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "contractVersion": {
+            "type": "string",
+            "enum": [
+              "0.1.0-draft"
+            ]
+          },
+          "supportedModes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ExecutionMode"
+            },
+            "minItems": 1
+          },
+          "runtimeSha": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "contractVersion",
+          "supportedModes"
+        ]
+      },
+      "Problem": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "type": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "status": {
+            "type": "integer",
+            "minimum": 400,
+            "maximum": 599
+          },
+          "code": {
+            "type": "string"
+          },
+          "detail": {
+            "type": "string"
+          },
+          "errors": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "field": {
+                  "type": "string"
+                },
+                "message": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "field",
+                "message"
+              ]
+            }
+          }
+        },
+        "required": [
+          "type",
+          "title",
+          "status",
+          "code",
+          "detail"
+        ]
+      },
+      "DevicePage": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Device"
+            }
+          },
+          "page": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "size": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100
+          },
+          "total": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "items",
+          "page",
+          "size",
+          "total"
+        ]
+      },
+      "ScenarioPage": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Scenario"
+            }
+          },
+          "page": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "size": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100
+          },
+          "total": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "items",
+          "page",
+          "size",
+          "total"
+        ]
+      },
+      "RunPage": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Run"
+            }
+          },
+          "page": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "size": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100
+          },
+          "total": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "items",
+          "page",
+          "size",
+          "total"
+        ]
+      }
+    },
+    "responses": {
+      "Problem400": {
+        "description": "Malformed request",
+        "content": {
+          "application/problem+json": {
+            "schema": {
+              "$ref": "#/components/schemas/Problem"
+            }
+          }
+        }
+      },
+      "Problem401": {
+        "description": "Authentication required when deployment auth is configured",
+        "content": {
+          "application/problem+json": {
+            "schema": {
+              "$ref": "#/components/schemas/Problem"
+            }
+          }
+        }
+      },
+      "Problem403": {
+        "description": "Operation not permitted",
+        "content": {
+          "application/problem+json": {
+            "schema": {
+              "$ref": "#/components/schemas/Problem"
+            }
+          }
+        }
+      },
+      "Problem404": {
+        "description": "Not found",
+        "content": {
+          "application/problem+json": {
+            "schema": {
+              "$ref": "#/components/schemas/Problem"
+            }
+          }
+        }
+      },
+      "Problem409": {
+        "description": "Version or idempotency conflict",
+        "content": {
+          "application/problem+json": {
+            "schema": {
+              "$ref": "#/components/schemas/Problem"
+            }
+          }
+        }
+      },
+      "Problem422": {
+        "description": "Semantic validation failed",
+        "content": {
+          "application/problem+json": {
+            "schema": {
+              "$ref": "#/components/schemas/Problem"
+            }
+          }
+        }
+      },
+      "Problem503": {
+        "description": "Integration unavailable",
+        "content": {
+          "application/problem+json": {
+            "schema": {
+              "$ref": "#/components/schemas/Problem"
+            }
+          }
+        }
+      }
+    }
+  }
+}
