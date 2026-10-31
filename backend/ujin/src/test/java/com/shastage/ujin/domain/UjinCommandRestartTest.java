@@ -44,6 +44,12 @@ class UjinCommandRestartTest {
                         output.write(body);
                     }
                 });
+        server.createContext("/api/bmsdevice/get-device-info/", exchange -> {
+            byte[] body = "{\"error\":0,\"data\":{\"signals\":[]}}".getBytes(StandardCharsets.UTF_8);
+            exchange.getResponseHeaders().set("Content-Type", "application/json");
+            exchange.sendResponseHeaders(200, body.length);
+            try (var output = exchange.getResponseBody()) { output.write(body); }
+        });
         server.start();
         return server;
     }
@@ -105,6 +111,8 @@ class UjinCommandRestartTest {
                     commands.applyTask(
                             device, "owner", new PlatformTask("lamp", "1", "t-restart", "0"), "session-token");
             assertEquals(UjinCommandService.ApplyOutcome.APPLIED, outcome);
+            assertEquals(UjinCommandService.ApplyOutcome.APPLIED,
+                    commands.applyTask(device, "owner", new PlatformTask("lamp", "0", "t-next", "1"), "session-token"));
         }
         try (var context = start()) {
             var commands = context.getBean(UjinCommandService.class);

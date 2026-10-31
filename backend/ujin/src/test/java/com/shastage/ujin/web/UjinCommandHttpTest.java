@@ -645,4 +645,17 @@ class UjinCommandHttpTest {
         assertEquals(422, outOfRange.statusCode());
         assertEquals(0, sendCalls.get(), "validation must happen before dispatch");
     }
+    @Test
+    void taskAlreadyPresentBeforeSendDoesNotConfirmNewCommand() throws Exception {
+        login(userA, "review-stale-task");
+        String device = prepareBoundDevice(userA, "Review baseline");
+        infoBody = """
+                {"error":0,"data":{"signals":[{"name":"lamp","task":1,"signal_task_dt":"old-task","state":{"value":0}}]}}
+                """;
+        String command = UUID.randomUUID().toString();
+        sendCommand(userA, device, command, "1");
+        var receipt = JSON.readTree(check(userA, command).body());
+        assertNotEquals("CONFIRMED", receipt.path("status").asString(), receipt.toString());
+    }
+
 }

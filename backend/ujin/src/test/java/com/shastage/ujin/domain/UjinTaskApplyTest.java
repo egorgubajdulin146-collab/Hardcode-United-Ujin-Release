@@ -164,4 +164,15 @@ class UjinTaskApplyTest {
                         commandService.applyTask(
                                 device, "ownerG", new PlatformTask("lamp", "1", "t-7", "0"), "token"));
     }
+    @Test
+    void olderTaskIsNotAppliedAgainAfterAnotherTask() {
+        UUID device = deviceFor("History review", "review-owner");
+        assertEquals(UjinCommandService.ApplyOutcome.APPLIED,
+                commandService.applyTask(device, "review-owner", new PlatformTask("lamp", "1", "review-a", "0"), "token"));
+        assertEquals(UjinCommandService.ApplyOutcome.APPLIED,
+                commandService.applyTask(device, "review-owner", new PlatformTask("lamp", "0", "review-b", "1"), "token"));
+        assertEquals(UjinCommandService.ApplyOutcome.SKIPPED_DUPLICATE,
+                commandService.applyTask(device, "review-owner", new PlatformTask("lamp", "1", "review-a", "0"), "token"));
+    }
+
 }

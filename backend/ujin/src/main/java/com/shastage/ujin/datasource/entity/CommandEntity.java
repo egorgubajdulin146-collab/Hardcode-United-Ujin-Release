@@ -47,6 +47,11 @@ public class CommandEntity {
     @Column(name = "owner", length = 120)
     private String owner;
 
+    @Column(name = "task_baseline_key", length = 255)
+    private String taskBaselineKey;
+    public String getTaskBaselineKey() { return taskBaselineKey; }
+    public void setTaskBaselineKey(String key) { this.taskBaselineKey = key; }
+
     public UUID getCommandId() { return commandId; }
     public void setCommandId(UUID commandId) { this.commandId = commandId; }
     public UUID getDeviceId() { return deviceId; }

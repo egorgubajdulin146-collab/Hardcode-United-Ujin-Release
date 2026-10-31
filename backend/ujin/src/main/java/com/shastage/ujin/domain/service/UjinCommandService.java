@@ -45,6 +45,7 @@ public class UjinCommandService {
 
     private final CommandJpaRepository commands;
     private final TaskAckJpaRepository acks;
+    private final com.shastage.ujin.datasource.repository.TaskHistoryStore history;
     private final CatalogService catalog;
     private final CatalogStore store;
     private final PlatformBindingService binding;
@@ -57,6 +58,7 @@ public class UjinCommandService {
     public UjinCommandService(
             CommandJpaRepository commands,
             TaskAckJpaRepository acks,
+            com.shastage.ujin.datasource.repository.TaskHistoryStore history,
             CatalogService catalog,
             CatalogStore store,
             PlatformBindingService binding,
@@ -67,6 +69,7 @@ public class UjinCommandService {
             @Value("${ujin.api.base-url}") URI baseUrl) {
         this.commands = commands;
         this.acks = acks;
+        this.history = history;
         this.catalog = catalog;
         this.store = store;
         this.binding = binding;
@@ -93,6 +96,17 @@ public class UjinCommandService {
         Prepared prepared = tx.execute(status -> prepare(deviceId, commandId, signalKey, value, owner));
         if (!prepared.created()) return receipt(prepared.entity());
         try {
+            if (config.isTaskFetchEnabled()) {
+                // Capture the pre-dispatch task; an unchanged old queue entry is not
+                // evidence of this command. No network call holds the catalogue lock.
+                List<PlatformTask> baseline = client.fetchDeviceInfoTasks(ujinToken, prepared.serialNumber());
+                String baselineKey = baseline.stream().filter(task ->
+                        task.signalName().equals(prepared.platformName()) ||
+                        (!config.getTaskSignalPrefix().isEmpty() && task.signalName().equals(config.getTaskSignalPrefix() + prepared.platformName())))
+                        .map(PlatformTask::dedupKey).findFirst().orElse("");
+                tx.execute(s -> { store.lock(); var command = owned(commandId, owner);
+                    command.setTaskBaselineKey(baselineKey); commands.saveAndFlush(command); return null; });
+            }
             client.sendSignal(ujinToken, prepared.serialNumber(), prepared.platformName(), value);
         } catch (UjinApiException failure) {
             boolean refused =
@@ -167,6 +181,11 @@ public class UjinCommandService {
         requireToken(ujinToken);
         CommandEntity command = tx.execute(s -> owned(commandId, owner));
         if (isTerminal(command) || command.getResolutionNote() != null) return receipt(command);
+        if ("DISPATCHING".equals(command.getReason())) {
+            if (Instant.parse(command.getCreatedAt()).plusSeconds(config.getObservationWindowSeconds()).isBefore(Instant.now()))
+                return finish(commandId, owner, "UNKNOWN", "DISPATCH_INTERRUPTED");
+            return receipt(command);
+        }
         ApplyReport report = pollAndApply(command.getDeviceId(), owner, ujinToken);
         CommandEntity current = tx.execute(s -> owned(commandId, owner));
         if (isTerminal(current) || current.getResolutionNote() != null) return receipt(current);
@@ -225,6 +244,8 @@ public class UjinCommandService {
             return ApplyOutcome.SKIPPED_NOT_PENDING;
         String signalKey = resolveSignalKey(bound, task.signalName());
         if (signalKey == null) return ApplyOutcome.SKIPPED_UNMAPPED;
+        if (task.taskDt() == null || task.taskDt().isBlank() || task.taskDt().length() > 255)
+            return ApplyOutcome.FAILED;
         String key = task.dedupKey();
         Double value = strictNumber(task.taskValue());
         if (value == null) return ApplyOutcome.FAILED;
@@ -233,7 +254,7 @@ public class UjinCommandService {
                         status -> {
                             store.lock();
                             var ack = acks.findByIdDeviceIdAndIdSignalKey(device.id(), signalKey);
-                            if (ack.isPresent() && key.equals(ack.get().getTaskKey()))
+                            if (history.contains(device.id(), signalKey, key) || (ack.isPresent() && key.equals(ack.get().getTaskKey())))
                                 return ApplyOutcome.SKIPPED_DUPLICATE;
                             Signal signal =
                                     device.signals().stream()
@@ -253,18 +274,20 @@ public class UjinCommandService {
                             row.setTaskKey(key);
                             row.setAppliedAt(Instant.now().toString());
                             acks.saveAndFlush(row);
-                            confirmPending(device.id(), signalKey, value, owner);
+                            history.record(device.id(), signalKey, key, row.getAppliedAt());
+                            confirmPending(device.id(), signalKey, value, owner, key);
                             return ApplyOutcome.APPLIED;
                         });
         if (outcome == ApplyOutcome.APPLIED) publishFact(device.id(), signalKey, value, owner, ujinToken);
         return outcome;
     }
 
-    private void confirmPending(UUID deviceId, String signalKey, double value, String owner) {
+    private void confirmPending(UUID deviceId, String signalKey, double value, String owner, String taskKey) {
         for (CommandEntity command :
                 commands.findByDeviceIdAndOwnerAndSignalKeyAndStatusIn(
                         deviceId, owner, signalKey, List.of("PENDING", "UNKNOWN"))) {
-            if (command.getResolutionNote() != null) continue;
+            if (command.getResolutionNote() != null || "DISPATCHING".equals(command.getReason())) continue;
+            if (command.getTaskBaselineKey() == null || command.getTaskBaselineKey().equals(taskKey)) continue;
             if (Double.compare(command.getValue(), value) != 0) continue;
             command.setStatus("CONFIRMED");
             command.setReason("TASK_APPLIED");
@@ -335,7 +358,10 @@ public class UjinCommandService {
                 transaction -> {
                     store.lock();
                     CommandEntity command = owned(commandId, owner);
-                    if (!isTerminal(command)) {
+                    if (resolutionNote != null && command.getResolutionNote() != null && !resolutionNote.equals(command.getResolutionNote()))
+                        throw error(409, "RESOLUTION_CONFLICT", "Command already resolved with a different note");
+                    if (!isTerminal(command) && command.getResolutionNote() == null
+                            && !("UNKNOWN".equals(command.getStatus()) && "PENDING".equals(status))) {
                         command.setStatus(status);
                         command.setReason(reason);
                         command.setUpdatedAt(Instant.now().toString());
