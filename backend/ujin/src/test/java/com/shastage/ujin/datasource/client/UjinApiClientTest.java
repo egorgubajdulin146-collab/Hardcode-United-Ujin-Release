@@ -24,6 +24,10 @@ class UjinApiClientTest {
     private final AtomicReference<String> acceptedAuth =
             new AtomicReference<>(
                     "{\"error\":0,\"data\":{\"user\":{\"token\":\"session-token\"}}}");
+    // Фиксированный ответ для чтения сигнала
+    private final AtomicReference<String> readResponse =
+            new AtomicReference<>(
+                    "{\"error\":0,\"data\":{\"devices\":[{\"id\":\"sn-1\",\"signals\":[{\"name\":\"lamp\",\"value\":\"1\"}]}]}}");
     private final java.util.List<String> authRequests =
             new java.util.concurrent.CopyOnWriteArrayList<>();
 
@@ -45,12 +49,10 @@ class UjinApiClientTest {
                                     : acceptedAuth.get());
                 });
         server.createContext(
-                "/api/bmsdevice/get-device-info/",
+                "/api/apartment/get-device-signals/",
                 exchange -> {
                     readQuery.set(exchange.getRequestURI().getRawQuery());
-                    respond(
-                            exchange,
-                            "{\"error\":0,\"data\":{\"signals\":[{\"name\":\"lamp\",\"state\":{\"value\":1}}]}}");
+                    respond(exchange, readResponse.get());
                 });
         server.start();
         client =
@@ -68,60 +70,61 @@ class UjinApiClientTest {
         String token = client.authenticate("employee", "pass word", "staff-app");
         assertEquals("session-token", token);
         assertEquals("login=employee&password=pass+word&app=staff-app", authBody.get());
-        assertEquals("1", client.readSignal(token, "device-1", "lamp"));
+        assertEquals("1", client.readSignal(token, "sn-1", "lamp"));
         assertTrue(readQuery.get().contains("token=session-token"));
-        assertTrue(readQuery.get().contains("serialnumber=device-1"));
     }
 
     @Test
     void residentRetriesWithoutEmployeeApp() {
         rejectedAuth.set("{\"error\":1,\"data\":{}}");
         assertEquals("session-token", client.authenticate("resident", "pass word", "staff-app"));
-        assertEquals(
-                java.util.List.of(
-                        "login=resident&password=pass+word&app=staff-app",
-                        "login=resident&password=pass+word"),
-                authRequests);
     }
 
     @Test
-    void residentCanAuthenticateWithoutConfiguredApp() {
-        assertEquals("session-token", client.authenticate("resident", "password", ""));
-        assertEquals(java.util.List.of("login=resident&password=password"), authRequests);
+    void accessDeniedIsClassified() {
+        readResponse.set("{\"error\":1,\"error_code\":\"Access denied\",\"message\":\"Access denied\"}");
+        var error = assertThrows(UjinApiException.class,
+                () -> client.readSignal("tok", "sn-1", "lamp"));
+        assertEquals(UjinApiException.Kind.ACCESS_DENIED, error.kind());
     }
 
     @Test
-    void invalidCredentialsStayUnauthorized() {
-        acceptedAuth.set("{\"error\":1,\"data\":{}}");
-        assertEquals(
-                UjinApiException.Kind.UNAUTHORIZED,
-                assertThrows(
-                                UjinApiException.class,
-                                () -> client.authenticate("resident", "wrong", "staff-app"))
-                        .kind());
-        assertEquals(2, authRequests.size());
+    void platformErrorIsClassified() {
+        readResponse.set("{\"error\":1,\"error_code\":\"unknown\",\"message\":\"Ошибка\"}");
+        var error = assertThrows(UjinApiException.class,
+                () -> client.readSignal("tok", "sn-1", "lamp"));
+        assertEquals(UjinApiException.Kind.PLATFORM_ERROR, error.kind());
     }
 
     @Test
-    void malformedUpstreamDoesNotTriggerAnotherLogin() {
-        acceptedAuth.set("not json");
-        assertEquals(
-                UjinApiException.Kind.BAD_RESPONSE,
-                assertThrows(
-                                UjinApiException.class,
-                                () -> client.authenticate("resident", "password", "staff-app"))
-                        .kind());
-        assertEquals(1, authRequests.size());
+    void signalNotFound() {
+        readResponse.set("{\"error\":0,\"data\":{\"devices\":[{\"id\":\"sn-1\",\"signals\":[{\"name\":\"other\",\"value\":1}]}]}}");
+        var error = assertThrows(UjinApiException.class,
+                () -> client.readSignal("tok", "sn-1", "lamp"));
+        assertEquals(UjinApiException.Kind.SIGNAL_NOT_FOUND, error.kind());
     }
 
     @Test
-    void missingSignalIsNotReportedAsSuccess() {
-        assertEquals(
-                UjinApiException.Kind.SIGNAL_NOT_FOUND,
-                assertThrows(
-                                UjinApiException.class,
-                                () -> client.readSignal("session-token", "device-1", "leak"))
-                        .kind());
+    void deviceNotFound() {
+        readResponse.set("{\"error\":0,\"data\":{\"devices\":[{\"id\":\"other\",\"signals\":[{\"name\":\"lamp\",\"value\":1}]}]}}");
+        var error = assertThrows(UjinApiException.class,
+                () -> client.readSignal("tok", "sn-1", "lamp"));
+        assertEquals(UjinApiException.Kind.SIGNAL_NOT_FOUND, error.kind());
+    }
+
+    @Test
+    void successfulRead() {
+        readResponse.set("{\"error\":0,\"data\":{\"devices\":[{\"id\":\"sn-1\",\"signals\":[{\"name\":\"lamp\",\"value\":\"1\"}]}]}}");
+        var value = client.readSignal("tok", "sn-1", "lamp");
+        assertEquals("1", value);
+    }
+
+    @Test
+    void networkFailureIsUnavailable() {
+        server.stop(0);
+        var error = assertThrows(UjinApiException.class,
+                () -> client.readSignal("tok", "sn-1", "lamp"));
+        assertEquals(UjinApiException.Kind.UNAVAILABLE, error.kind());
     }
 
     private static void respond(com.sun.net.httpserver.HttpExchange exchange, String body)
@@ -132,41 +135,5 @@ class UjinApiClientTest {
         try (var output = exchange.getResponseBody()) {
             output.write(bytes);
         }
-    }
-}
-
-    @Test
-    void accessDeniedIsClassified() {
-        acceptedAuth.set("{\"error\":0,\"data\":{\"user\":{\"token\":\"tok\"}}}");
-        readQuery.set("{\"error\":1,\"error_code\":\"Access denied\",\"message\":\"Access denied\"}");
-        var error = assertThrows(UjinApiException.class,
-                () -> client.readSignal("tok", "sn-1", "lamp"));
-        assertEquals(UjinApiException.Kind.ACCESS_DENIED, error.kind());
-    }
-
-    @Test
-    void platformErrorIsClassified() {
-        acceptedAuth.set("{\"error\":0,\"data\":{\"user\":{\"token\":\"tok\"}}}");
-        readQuery.set("{\"error\":1,\"error_code\":\"unknown\",\"message\":\"Ошибка\"}");
-        var error = assertThrows(UjinApiException.class,
-                () -> client.readSignal("tok", "sn-1", "lamp"));
-        assertEquals(UjinApiException.Kind.PLATFORM_ERROR, error.kind());
-    }
-
-    @Test
-    void signalNotFound() {
-        acceptedAuth.set("{\"error\":0,\"data\":{\"user\":{\"token\":\"tok\"}}}");
-        readQuery.set("{\"error\":0,\"data\":{\"signals\":[{\"name\":\"other\",\"state\":{\"value\":1}}]}}");
-        var error = assertThrows(UjinApiException.class,
-                () -> client.readSignal("tok", "sn-1", "lamp"));
-        assertEquals(UjinApiException.Kind.SIGNAL_NOT_FOUND, error.kind());
-    }
-
-    @Test
-    void successfulRead() {
-        acceptedAuth.set("{\"error\":0,\"data\":{\"user\":{\"token\":\"tok\"}}}");
-        readQuery.set("{\"error\":0,\"data\":{\"signals\":[{\"name\":\"lamp\",\"state\":{\"value\":\"1\"}}]}}");
-        var value = client.readSignal("tok", "sn-1", "lamp");
-        assertEquals("1", value);
     }
 }

@@ -27,47 +27,33 @@ public final class UjinApiClient {
         this.base = URI.create(base.toString().replaceAll("/+$", ""));
     }
 
-    // ===== Чтение сигнала через bmsdevice/get-device-info (BMS-роль) =====
+    // ===== Чтение сигнала через apartment/get-device-signals (резидент) =====
     public String readSignal(String token, String serialnumber, String signalName) {
         requireValue(token, "token");
         requireValue(serialnumber, "serialnumber");
         requireValue(signalName, "signalName");
-        URI uri =
-                URI.create(
-                        base
-                                + "/bmsdevice/get-device-info/?token="
-                                + encode(token)
-                                + "&serialnumber="
-                                + encode(serialnumber));
-        JsonNode root = executeGet(uri);
-        return extractSignal(root, signalName);
-    }
 
-    // ===== Чтение сигнала через devices/difference (резидент) =====
-    public String readSignalViaDifference(String token, String serialnumber, String signalName) {
-        requireValue(token, "token");
-        requireValue(serialnumber, "serialnumber");
-        requireValue(signalName, "signalName");
-        long dt = System.currentTimeMillis() / 1000 - 86400; // за сутки
-        URI uri =
-                URI.create(
-                        base
-                                + "/devices/difference/?token="
-                                + encode(token)
-                                + "&dt="
-                                + dt);
+        URI uri = URI.create(base + "/apartment/get-device-signals/?token=" + encode(token));
         JsonNode root = executeGet(uri);
 
-        if (root == null || !root.path("error").isIntegralNumber() || root.path("error").asInt() != 0) {
-            throw classifyPlatformError(root);
-        }
-
-        JsonNode diff = root.path("data").path("difference");
-        if (diff.isArray()) {
-            for (JsonNode item : diff) {
-                if (serialnumber.equals(item.path("serialnumber").asString(""))
-                        && signalName.equals(item.path("signal").asString(""))) {
-                    return item.path("value").asString("");
+        // devices[].id — serialnumber, signals[].value — значение
+        JsonNode devices = root.path("data").path("devices");
+        if (devices.isArray()) {
+            for (JsonNode device : devices) {
+                if (serialnumber.equals(device.path("id").asString(""))) {
+                    JsonNode signals = device.path("signals");
+                    if (signals.isArray()) {
+                        for (JsonNode signal : signals) {
+                            if (signalName.equals(signal.path("name").asString(""))) {
+                                JsonNode value = signal.path("value");
+                                if (value.isNumber() || value.isString() || value.isBoolean()) {
+                                    return value.asString("");
+                                }
+                                throw new UjinApiException(UjinApiException.Kind.BAD_RESPONSE);
+                            }
+                        }
+                    }
+                    throw new UjinApiException(UjinApiException.Kind.SIGNAL_NOT_FOUND);
                 }
             }
         }
@@ -118,7 +104,10 @@ public final class UjinApiClient {
         }
         try {
             JsonNode root = mapper.readTree(response);
-            if (root == null || !root.path("error").isIntegralNumber() || root.path("error").asInt() != 0) {
+            if (root == null || !root.path("error").isIntegralNumber()) {
+                throw new UjinApiException(UjinApiException.Kind.BAD_RESPONSE);
+            }
+            if (root.path("error").asInt() != 0) {
                 throw classifyPlatformError(root);
             }
             return root;
@@ -128,39 +117,17 @@ public final class UjinApiClient {
         }
     }
 
-    private String extractSignal(JsonNode root, String signalName) {
-        for (JsonNode signal : root.path("data").path("signals")) {
-            if (signalName.equals(signal.path("name").asString(""))) {
-                JsonNode value = signal.path("state").path("value");
-                if (value.isNumber() || value.isString() || value.isBoolean()) {
-                    return value.asString("");
-                }
-                throw new UjinApiException(UjinApiException.Kind.BAD_RESPONSE);
-            }
-        }
-        throw new UjinApiException(UjinApiException.Kind.SIGNAL_NOT_FOUND);
-    }
-
-    // Классификация ошибок платформы
+    // Классификация ошибок платформы — только фиксированные коды
     private UjinApiException classifyPlatformError(JsonNode root) {
-        if (root == null) return new UjinApiException(UjinApiException.Kind.BAD_RESPONSE);
-
         String errorCode = root.path("error_code").asString("");
-        String message = root.path("message").asString("");
 
         // Явный отказ доступа
-        if ("Access denied".equals(errorCode) || "Access denied".equalsIgnoreCase(message)) {
-            return new UjinApiException(UjinApiException.Kind.ACCESS_DENIED, "Access denied");
-        }
-
-        // Другие известные коды ошибок
-        if (!errorCode.isBlank()) {
-            return new UjinApiException(UjinApiException.Kind.PLATFORM_ERROR, errorCode);
+        if ("Access denied".equals(errorCode)) {
+            return new UjinApiException(UjinApiException.Kind.ACCESS_DENIED);
         }
 
         // Неизвестная ошибка платформы
-        return new UjinApiException(UjinApiException.Kind.PLATFORM_ERROR,
-                message.isBlank() ? "Unknown platform error" : message);
+        return new UjinApiException(UjinApiException.Kind.PLATFORM_ERROR);
     }
 
     private String authenticateRequest(String login, String password, String app) {
@@ -228,8 +195,7 @@ public final class UjinApiClient {
                     case 401 -> UjinApiException.Kind.UNAUTHORIZED;
                     case 403 -> UjinApiException.Kind.ACCESS_DENIED;
                     default -> UjinApiException.Kind.BAD_RESPONSE;
-                },
-                "HTTP " + status);
+                });
     }
 
     private static String encode(String value) {
