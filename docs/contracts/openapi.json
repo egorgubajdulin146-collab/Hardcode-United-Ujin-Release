@@ -520,6 +520,7 @@
       "post": {
         "operationId": "sendCommand",
         "summary": "sendCommand",
+        "description": "LOCAL исполняется в локальном контуре сразу. UJIN отправляет apartment/send-signal (флаг ujin.commands.enabled, по умолчанию выключен); HTTP 200/error=0 означает приём запроса платформой и оставляет PENDING — исполнение подтверждается только применением задачи. Повтор commandId с тем же payload возвращает квитанцию без отправки, с иным — 409. При сетевой неопределённости статус UNKNOWN без автоматического повтора.",
         "responses": {
           "202": {
             "description": "Draft contract response; implementation pending",
@@ -608,6 +609,51 @@
           },
           "422": {
             "$ref": "#/components/responses/Problem422"
+          },
+          "503": {
+            "$ref": "#/components/responses/Problem503"
+          }
+        },
+        "parameters": [
+          {
+            "name": "commandId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ]
+      }
+    },
+    "/api/v1/commands/{commandId}/check": {
+      "post": {
+        "operationId": "checkCommand",
+        "summary": "Опросить задачи Ujin и оценить результат команды",
+        "description": "Применяет новые задачи task/task_dt к локальному эмулятору и подтверждает команду только по факту применения. Приём запроса платформой и старое совпавшее значение исполнение не подтверждают. Автоматический повтор команды не выполняется.",
+        "responses": {
+          "200": {
+            "description": "Актуальная квитанция команды",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CommandReceipt"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Problem400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Problem401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Problem403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Problem404"
           },
           "503": {
             "$ref": "#/components/responses/Problem503"
@@ -2169,7 +2215,13 @@
               "CONFIRMED",
               "FAILED",
               "UNKNOWN"
-            ]
+            ],
+            "description": "CONFIRMED выставляется только после применения задачи Ujin; приём платформой запроса оставляет PENDING."
+          },
+          "reason": {
+            "type": "string",
+            "maxLength": 80,
+            "description": "Безопасный код причины статуса: ACCEPTED_AWAITING_APPLY, TASK_APPLIED, TASK_SOURCE_BLOCKED, OBSERVATION_WINDOW_EXPIRED, UJIN_* и подобные."
           },
           "executionMode": {
             "$ref": "#/components/schemas/ExecutionMode"
