@@ -1,8 +1,8 @@
 # Локальная сборка компонентов
 
 Это промежуточный запуск frontend + backend + PostgreSQL, не полный продукт.
-Datasource/Flyway, предметные endpoints и эмуляторы пока не подключены.
-PostgreSQL запускается отдельно: его health не означает, что backend хранит данные.
+Backend подключается к PostgreSQL по внутренней сети после healthcheck БД;
+Flyway применяет миграции при запуске. Эмуляторы в этот Compose не включены.
 Бизнес-сценарий и реальная интеграция Ujin этим запуском не подтверждены.
 
 Требования: Linux/GNU, Bash, Docker/Compose v2, Node22/npm, curl и OpenSSL.
