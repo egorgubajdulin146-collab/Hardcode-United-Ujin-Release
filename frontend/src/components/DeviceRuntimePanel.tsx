@@ -9,8 +9,29 @@ import styles from "./DeviceRuntimePanel.module.css";
 
 const COMMAND_STATUS = { PENDING: "Ожидает подтверждения", CONFIRMED: "Выполнено", FAILED: "Ошибка выполнения", UNKNOWN: "Результат неизвестен" };
 const EVENT_STATUS = { ACCEPTED: "Событие принято", PROCESSED: "Событие обработано", FAILED: "Ошибка обработки" };
+const ISSUE_LABEL: Record<string, string> = {
+  MISSING_SIGNAL: "Сигнал отсутствует на платформе",
+  MISSING_VALUE: "Платформа не передала значение",
+  BAD_SCHEMA: "Некорректное значение",
+  OUT_OF_RANGE: "Значение вне диапазона",
+};
 function errorMessage(error: unknown): string {
   if (error instanceof ApiError) {
+    switch (error.problem?.code) {
+      case "PLATFORM_NOT_BOUND":
+        return "Устройство не привязано к платформенному SN. Добавьте привязку в карточке устройства.";
+      case "UJIN_DEVICE_NOT_VISIBLE":
+        return "Привязанный SN сейчас не виден в Ujin.";
+      case "UJIN_AUTH_REQUIRED":
+        return "Нужен вход в Ujin для чтения состояния.";
+      case "UJIN_ACCESS_DENIED":
+        return "Ujin запретил доступ к данным устройства.";
+      case "UJIN_UNAVAILABLE":
+        return "Платформа Ujin недоступна (сеть или таймаут).";
+      case "UJIN_BAD_RESPONSE":
+      case "UJIN_PLATFORM_ERROR":
+        return "Ujin вернул некорректный ответ.";
+    }
     if (error.status === 404 || error.status === 501) return "Управление этим устройством пока недоступно на сервере.";
     if (error.status === 403) return "Нет разрешения на эту операцию.";
     return error.problem?.detail ?? `Ошибка сервера (${error.status})`;
@@ -124,12 +145,18 @@ export function DeviceRuntimePanel({ device, onClose }: { device: Device; onClos
       <span>{state.isLoading ? "Загрузка…" : state.error ? "Состояние недоступно" : state.data?.availability === "ONLINE" ? "На связи" : state.data?.availability === "OFFLINE" ? "Не на связи" : "Состояние неизвестно"}</span>
     </div>
     {requestError && <p role="alert" className={styles.error}>{errorMessage(requestError)}</p>}
+    {mode === "UJIN" && state.data?.observedAt && (
+      <p>Наблюдение: {new Date(state.data.observedAt).toLocaleString("ru-RU")} (время чтения backend, не время измерения устройством)</p>
+    )}
     {mode === "UJIN" && !canCommand && <p>Управление доступно после привязки устройства и подтверждения командного канала Ujin.</p>}
     <div className={styles.signals}>{device.signals.map(signal => {
       const value = state.data?.values.find(v => v.signalKey === signal.key);
+      const issue = state.data?.signalIssues?.find(i => i.signalKey === signal.key);
       return <article key={signal.key}>
         <h3>{signal.title}</h3><p>{signal.management === "w" ? "Команда" : value ? `${value.value}${signal.unit ? ` ${signal.unit}` : ""}` : "Нет данных"}</p>
         {value && <small>Обновлено: {new Date(value.updatedAt).toLocaleString("ru-RU")}</small>}
+        {value?.measuredAt && <small>Измерено устройством: {new Date(value.measuredAt).toLocaleString("ru-RU")}</small>}
+        {!value && issue && <small role="status">{ISSUE_LABEL[issue.status] ?? issue.detail}</small>}
         {signal.management !== "r" && <form onSubmit={e => { e.preventDefault(); void sendCommand(signal); }}>
           <ValueInput signal={signal} value={values[signal.key] ?? ""} disabled={busy || !!unresolved || !canCommand}
             onChange={value => setValues(v => ({ ...v, [signal.key]: value }))} />
