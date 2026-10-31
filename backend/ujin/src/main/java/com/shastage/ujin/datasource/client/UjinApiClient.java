@@ -27,17 +27,68 @@ public final class UjinApiClient {
         this.base = URI.create(base.toString().replaceAll("/+$", ""));
     }
 
+    // ===== Чтение сигнала через apartment/get-device-signals (резидент) =====
     public String readSignal(String token, String serialnumber, String signalName) {
         requireValue(token, "token");
         requireValue(serialnumber, "serialnumber");
         requireValue(signalName, "signalName");
-        URI uri =
-                URI.create(
-                        base
-                                + "/bmsdevice/get-device-info/?token="
-                                + encode(token)
-                                + "&serialnumber="
-                                + encode(serialnumber));
+
+        URI uri = URI.create(base + "/apartment/get-device-signals/?token=" + encode(token));
+        JsonNode root = executeGet(uri);
+
+        JsonNode data = root.path("data");
+        JsonNode devices = data.path("devices");
+        // Проверка схемы: data.devices должен быть массивом
+        if (!devices.isArray()) {
+            throw new UjinApiException(UjinApiException.Kind.BAD_RESPONSE);
+        }
+        for (JsonNode device : devices) {
+            if (!device.isObject()) {
+                throw new UjinApiException(UjinApiException.Kind.BAD_RESPONSE);
+            }
+            if (serialnumber.equals(device.path("id").asString(""))) {
+                JsonNode signals = device.path("signals");
+                if (!signals.isArray()) {
+                    throw new UjinApiException(UjinApiException.Kind.BAD_RESPONSE);
+                }
+                for (JsonNode signal : signals) {
+                    if (!signal.isObject()) {
+                        throw new UjinApiException(UjinApiException.Kind.BAD_RESPONSE);
+                    }
+                    if (signalName.equals(signal.path("name").asString(""))) {
+                        JsonNode value = signal.path("value");
+                        if (value.isMissingNode() || value.isNull()) {
+                            throw new UjinApiException(UjinApiException.Kind.BAD_RESPONSE);
+                        }
+                        // Поддерживаем числа (включая 0), строки и boolean (включая false)
+                        if (value.isNumber() || value.isString() || value.isBoolean()) {
+                            return value.asString("");
+                        }
+                        throw new UjinApiException(UjinApiException.Kind.BAD_RESPONSE);
+                    }
+                }
+                throw new UjinApiException(UjinApiException.Kind.SIGNAL_NOT_FOUND);
+            }
+        }
+        throw new UjinApiException(UjinApiException.Kind.SIGNAL_NOT_FOUND);
+    }
+
+    // ===== Аутентификация =====
+    public String authenticate(String login, String password, String app) {
+        requireValue(login, "login");
+        requireValue(password, "password");
+        if (app == null || app.isBlank()) return authenticateRequest(login, password, null);
+        try {
+            return authenticateRequest(login, password, app);
+        } catch (UjinApiException error) {
+            if (error.kind() != UjinApiException.Kind.UNAUTHORIZED) throw error;
+            return authenticateRequest(login, password, null);
+        }
+    }
+
+    // ===== Вспомогательные методы =====
+
+    private JsonNode executeGet(URI uri) {
         HttpURLConnection connection = null;
         String response;
         try {
@@ -64,39 +115,32 @@ public final class UjinApiClient {
                 connection.disconnect();
             }
         }
-        JsonNode root;
         try {
-            root = mapper.readTree(response);
-        } catch (RuntimeException error) {
-            throw new UjinApiException(UjinApiException.Kind.BAD_RESPONSE);
-        }
-        if (root == null
-                || !root.path("error").isIntegralNumber()
-                || root.path("error").asInt() != 0) {
-            throw new UjinApiException(UjinApiException.Kind.BAD_RESPONSE);
-        }
-        for (JsonNode signal : root.path("data").path("signals")) {
-            if (signalName.equals(signal.path("name").asString(""))) {
-                JsonNode value = signal.path("state").path("value");
-                if (value.isNumber() || value.isString() || value.isBoolean()) {
-                    return value.asString();
-                }
+            JsonNode root = mapper.readTree(response);
+            if (root == null || !root.path("error").isIntegralNumber()) {
                 throw new UjinApiException(UjinApiException.Kind.BAD_RESPONSE);
             }
+            if (root.path("error").asInt() != 0) {
+                throw classifyPlatformError(root);
+            }
+            return root;
+        } catch (RuntimeException error) {
+            if (error instanceof UjinApiException uae) throw uae;
+            throw new UjinApiException(UjinApiException.Kind.BAD_RESPONSE);
         }
-        throw new UjinApiException(UjinApiException.Kind.SIGNAL_NOT_FOUND);
     }
 
-    public String authenticate(String login, String password, String app) {
-        requireValue(login, "login");
-        requireValue(password, "password");
-        if (app == null || app.isBlank()) return authenticateRequest(login, password, null);
-        try {
-            return authenticateRequest(login, password, app);
-        } catch (UjinApiException error) {
-            if (error.kind() != UjinApiException.Kind.UNAUTHORIZED) throw error;
-            return authenticateRequest(login, password, null);
+    // Классификация ошибок платформы — только фиксированные коды
+    private UjinApiException classifyPlatformError(JsonNode root) {
+        String errorCode = root.path("error_code").asString("");
+
+        // Явный отказ доступа
+        if ("Access denied".equals(errorCode)) {
+            return new UjinApiException(UjinApiException.Kind.ACCESS_DENIED);
         }
+
+        // Неизвестная ошибка платформы
+        return new UjinApiException(UjinApiException.Kind.PLATFORM_ERROR);
     }
 
     private String authenticateRequest(String login, String password, String app) {
@@ -162,7 +206,7 @@ public final class UjinApiClient {
         return new UjinApiException(
                 switch (status) {
                     case 401 -> UjinApiException.Kind.UNAUTHORIZED;
-                    case 403 -> UjinApiException.Kind.FORBIDDEN;
+                    case 403 -> UjinApiException.Kind.ACCESS_DENIED;
                     default -> UjinApiException.Kind.BAD_RESPONSE;
                 });
     }

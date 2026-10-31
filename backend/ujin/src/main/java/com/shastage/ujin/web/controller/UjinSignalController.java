@@ -37,13 +37,22 @@ public class UjinSignalController {
         } catch (IllegalArgumentException error) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST);
         } catch (UjinApiException error) {
-            throw new ResponseStatusException(
+            throw new com.shastage.ujin.domain.exception.CatalogException(
                     switch (error.kind()) {
-                        case UNAUTHORIZED -> HttpStatus.UNAUTHORIZED;
-                        case FORBIDDEN -> HttpStatus.FORBIDDEN;
-                        case UNAVAILABLE -> HttpStatus.SERVICE_UNAVAILABLE;
-                        case SIGNAL_NOT_FOUND -> HttpStatus.NOT_FOUND;
-                        case BAD_RESPONSE -> HttpStatus.BAD_GATEWAY;
+                        case UNAUTHORIZED -> 401;
+                        case FORBIDDEN, ACCESS_DENIED -> 403;
+                        case UNAVAILABLE -> 503;
+                        case SIGNAL_NOT_FOUND -> 404;
+                        case BAD_RESPONSE, PLATFORM_ERROR -> 502;
+                    },
+                    "UJIN_" + error.kind().name(),
+                    switch (error.kind()) {
+                        case UNAUTHORIZED -> "Ujin authentication is required";
+                        case FORBIDDEN, ACCESS_DENIED -> "No access to device data";
+                        case UNAVAILABLE -> "Ujin platform is unavailable";
+                        case SIGNAL_NOT_FOUND -> "Requested device or signal was not found";
+                        case BAD_RESPONSE -> "Ujin returned an invalid response";
+                        case PLATFORM_ERROR -> "Ujin returned a platform error";
                     });
         }
     }

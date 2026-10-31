@@ -102,22 +102,25 @@ export async function readSignal(
       throw new AuthError("invalid_credentials", "Требуется авторизация");
     }
     if (response.status === 403) {
-      throw new AuthError("forbidden", "Нет доступа");
+      throw new AuthError("forbidden", "Нет доступа к данным устройства");
     }
     if (response.status === 404) {
       throw new AuthError("unknown", "Сигнал не найден");
     }
-    if (response.status === 502 || response.status === 503) {
-      throw new AuthError("server_error", "Upstream недоступен");
+    if (response.status === 502) {
+      throw new AuthError("server_error", "Платформа вернула ошибку");
+    }
+    if (response.status === 503) {
+      throw new AuthError("server_error", "Платформа недоступна");
     }
     if (!response.ok) {
-      throw new AuthError("unknown", `HTTP ${response.status}`);
+      throw new AuthError("unknown", `Ошибка сервера (${response.status})`);
     }
     return await response.json();
   } catch (err) {
     if (err instanceof AuthError) throw err;
     if (err instanceof DOMException && err.name === "AbortError") {
-      throw err; // Пробрасываем отмену как есть
+      throw err;
     }
     if (err instanceof TypeError) {
       throw new AuthError("network", "Сервер недоступен");
