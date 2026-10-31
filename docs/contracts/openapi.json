@@ -2,7 +2,7 @@
   "openapi": "3.0.3",
   "info": {
     "title": "Ujin scenario editor API — review draft",
-    "version": "0.1.1-draft",
+    "version": "0.1.2-draft",
     "description": "Proposed application API, not the external Ujin platform API. Not implemented or jointly approved. See MVP.md for semantics, access and open decisions."
   },
   "x-review-status": "DRAFT_PENDING_BACKEND_REVIEW",
@@ -1026,6 +1026,122 @@
           }
         }
       }
+    },
+    "/api/v1/commands/{commandId}/resolution": {
+      "post": {
+        "operationId": "resolveUnknownCommandReceipt",
+        "summary": "Acknowledge UNKNOWN and release deletion hold without retry",
+        "description": "Only UNKNOWN may be resolved. Status remains UNKNOWN. Atomically record an immutable note/time and release its deletion hold; never send a command. Linked run/command holds are released together. Same note retry returns existing result; conflicting note or non-UNKNOWN returns 409. Requires command-management permission when auth is configured.",
+        "parameters": [
+          {
+            "name": "commandId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UnknownResolutionRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Existing receipt with immutable resolution; execution status remains UNKNOWN",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CommandReceipt"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Problem400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Problem401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Problem403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Problem404"
+          },
+          "409": {
+            "$ref": "#/components/responses/Problem409"
+          },
+          "422": {
+            "$ref": "#/components/responses/Problem422"
+          }
+        }
+      }
+    },
+    "/api/v1/runs/{runId}/resolution": {
+      "post": {
+        "operationId": "resolveUnknownRun",
+        "summary": "Acknowledge UNKNOWN and release deletion hold without retry",
+        "description": "Only UNKNOWN may be resolved. Status remains UNKNOWN. Atomically record an immutable note/time and release its deletion hold; never send a command. Linked run/command holds are released together. Same note retry returns existing result; conflicting note or non-UNKNOWN returns 409. Requires command-management permission when auth is configured.",
+        "parameters": [
+          {
+            "name": "runId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UnknownResolutionRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Existing receipt with immutable resolution; execution status remains UNKNOWN",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Run"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Problem400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Problem401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Problem403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Problem404"
+          },
+          "409": {
+            "$ref": "#/components/responses/Problem409"
+          },
+          "422": {
+            "$ref": "#/components/responses/Problem422"
+          }
+        }
+      }
     }
   },
   "components": {
@@ -1343,6 +1459,9 @@
           },
           "executionMode": {
             "$ref": "#/components/schemas/ExecutionMode"
+          },
+          "resolution": {
+            "$ref": "#/components/schemas/UnknownResolution"
           }
         },
         "required": [
@@ -1649,6 +1768,9 @@
             "items": {
               "$ref": "#/components/schemas/RunEntry"
             }
+          },
+          "resolution": {
+            "$ref": "#/components/schemas/UnknownResolution"
           }
         },
         "required": [
@@ -1719,7 +1841,7 @@
           "contractVersion": {
             "type": "string",
             "enum": [
-              "0.1.1-draft"
+              "0.1.2-draft"
             ]
           },
           "supportedModes": {
@@ -1931,13 +2053,55 @@
             "items": {
               "type": "string",
               "format": "uuid"
-            }
+            },
+            "description": "Unresolved PENDING/UNKNOWN commandId or runId values. Acknowledged UNKNOWN operations are excluded; scenario dependencies still block deletion."
           }
         },
         "required": [
           "deviceId",
           "scenarioIds",
           "pendingOperationIds"
+        ]
+      },
+      "UnknownResolutionRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "note": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1000,
+            "description": "Non-blank operator note; acknowledge uncertainty, never claim confirmed execution."
+          }
+        },
+        "required": [
+          "note"
+        ]
+      },
+      "UnknownResolution": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "note": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1000
+          },
+          "resolvedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "ACKNOWLEDGED_UNKNOWN"
+            ]
+          }
+        },
+        "required": [
+          "note",
+          "resolvedAt",
+          "kind"
         ]
       }
     },

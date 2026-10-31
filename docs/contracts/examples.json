@@ -4,7 +4,7 @@
     {
       "schema": "SystemStatus",
       "value": {
-        "contractVersion": "0.1.1-draft",
+        "contractVersion": "0.1.2-draft",
         "supportedModes": [
           "LOCAL"
         ]
@@ -389,6 +389,26 @@
           "20000000-0000-4000-8000-000000000001"
         ],
         "pendingOperationIds": []
+      }
+    },
+    {
+      "schema": "UnknownResolutionRequest",
+      "value": {
+        "note": "Исход не подтверждён; неопределённость принята, повтор команды запрещён."
+      }
+    },
+    {
+      "schema": "CommandReceipt",
+      "value": {
+        "commandId": "50000000-0000-4000-8000-000000000001",
+        "deviceId": "10000000-0000-4000-8000-000000000002",
+        "status": "UNKNOWN",
+        "executionMode": "LOCAL",
+        "resolution": {
+          "kind": "ACKNOWLEDGED_UNKNOWN",
+          "note": "Исход не подтверждён; неопределённость принята, повтор команды запрещён.",
+          "resolvedAt": "2026-10-31T12:00:00+05:00"
+        }
       }
     }
   ]
