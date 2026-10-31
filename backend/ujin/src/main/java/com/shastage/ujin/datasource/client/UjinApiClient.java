@@ -16,9 +16,13 @@ public final class UjinApiClient {
 
     public UjinApiClient(URI base) {
         boolean loopback = "http".equals(base.getScheme()) && "127.0.0.1".equals(base.getHost());
-        if ((!"https".equals(base.getScheme()) && !loopback) || base.getHost() == null
-                || base.getUserInfo() != null || base.getQuery() != null || base.getFragment() != null) {
-            throw new IllegalArgumentException("Use an HTTPS API base URL without credentials or query parameters");
+        if ((!"https".equals(base.getScheme()) && !loopback)
+                || base.getHost() == null
+                || base.getUserInfo() != null
+                || base.getQuery() != null
+                || base.getFragment() != null) {
+            throw new IllegalArgumentException(
+                    "Use an HTTPS API base URL without credentials or query parameters");
         }
         this.base = URI.create(base.toString().replaceAll("/+$", ""));
     }
@@ -27,8 +31,13 @@ public final class UjinApiClient {
         requireValue(token, "token");
         requireValue(serialnumber, "serialnumber");
         requireValue(signalName, "signalName");
-        URI uri = URI.create(base + "/bmsdevice/get-device-info/?token=" + encode(token)
-                + "&serialnumber=" + encode(serialnumber));
+        URI uri =
+                URI.create(
+                        base
+                                + "/bmsdevice/get-device-info/?token="
+                                + encode(token)
+                                + "&serialnumber="
+                                + encode(serialnumber));
         HttpURLConnection connection = null;
         String response;
         try {
@@ -61,7 +70,9 @@ public final class UjinApiClient {
         } catch (RuntimeException error) {
             throw new UjinApiException(UjinApiException.Kind.BAD_RESPONSE);
         }
-        if (root == null || !root.path("error").isIntegralNumber() || root.path("error").asInt() != 0) {
+        if (root == null
+                || !root.path("error").isIntegralNumber()
+                || root.path("error").asInt() != 0) {
             throw new UjinApiException(UjinApiException.Kind.BAD_RESPONSE);
         }
         for (JsonNode signal : root.path("data").path("signals")) {
@@ -97,11 +108,17 @@ public final class UjinApiClient {
             connection.setConnectTimeout(10_000);
             connection.setReadTimeout(15_000);
             connection.setRequestMethod("POST");
-            connection.setRequestProperty("Content-Type", "application/x-www-form-urlencoded; charset=UTF-8");
+            connection.setRequestProperty(
+                    "Content-Type", "application/x-www-form-urlencoded; charset=UTF-8");
             connection.setRequestProperty("Accept", "application/json");
             connection.setDoOutput(true);
-            byte[] body = ("login=" + encode(login) + "&password=" + encode(password)
-                    + (app == null ? "" : "&app=" + encode(app))).getBytes(StandardCharsets.UTF_8);
+            byte[] body =
+                    ("login="
+                                    + encode(login)
+                                    + "&password="
+                                    + encode(password)
+                                    + (app == null ? "" : "&app=" + encode(app)))
+                            .getBytes(StandardCharsets.UTF_8);
             try (OutputStream output = connection.getOutputStream()) {
                 output.write(body);
             }
@@ -112,17 +129,22 @@ public final class UjinApiClient {
             JsonNode root;
             try (var input = connection.getInputStream()) {
                 byte[] response = input.readNBytes(1_048_577);
-                if (response.length > 1_048_576) throw new UjinApiException(UjinApiException.Kind.BAD_RESPONSE);
+                if (response.length > 1_048_576)
+                    throw new UjinApiException(UjinApiException.Kind.BAD_RESPONSE);
                 try {
                     root = mapper.readTree(new String(response, StandardCharsets.UTF_8));
                 } catch (RuntimeException error) {
                     throw new UjinApiException(UjinApiException.Kind.BAD_RESPONSE);
                 }
             }
-            if (root != null && root.path("error").isIntegralNumber() && root.path("error").asInt() == 1) {
+            if (root != null
+                    && root.path("error").isIntegralNumber()
+                    && root.path("error").asInt() == 1) {
                 throw new UjinApiException(UjinApiException.Kind.UNAUTHORIZED);
             }
-            if (root == null || !root.path("error").isIntegralNumber() || root.path("error").asInt() != 0) {
+            if (root == null
+                    || !root.path("error").isIntegralNumber()
+                    || root.path("error").asInt() != 0) {
                 throw new UjinApiException(UjinApiException.Kind.BAD_RESPONSE);
             }
             String token = root.path("data").path("user").path("token").asString("");
@@ -136,13 +158,13 @@ public final class UjinApiClient {
         }
     }
 
-
     private static UjinApiException httpError(int status) {
-        return new UjinApiException(switch (status) {
-            case 401 -> UjinApiException.Kind.UNAUTHORIZED;
-            case 403 -> UjinApiException.Kind.FORBIDDEN;
-            default -> UjinApiException.Kind.BAD_RESPONSE;
-        });
+        return new UjinApiException(
+                switch (status) {
+                    case 401 -> UjinApiException.Kind.UNAUTHORIZED;
+                    case 403 -> UjinApiException.Kind.FORBIDDEN;
+                    default -> UjinApiException.Kind.BAD_RESPONSE;
+                });
     }
 
     private static String encode(String value) {
