@@ -1,8 +1,8 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Workflow, Plus, Pencil, Trash2, AlertCircle, Loader2, ChevronLeft, ChevronRight, RefreshCw, ArrowRight } from "lucide-react";
+import { Workflow, Plus, Pencil, ChevronLeft, ChevronRight, RefreshCw, ArrowRight } from "lucide-react";
 import { endpoints } from "../api/endpoints";
-import { api, ApiError, NetworkError, TimeoutError } from "../api/client";
+import { ApiError, NetworkError, TimeoutError } from "../api/client";
 import { useSession } from "../api/sessionContext";
 import { isMock } from "../api/dataSource";
 import { mockScenarioPage, mockDevices } from "../mocks/data";
@@ -13,15 +13,29 @@ import styles from "./ScenariosCrudPage.module.css";
 
 type Mode = "list" | "create" | "edit";
 
+// Загрузка всех страниц устройств
+async function fetchAllDevices(): Promise<Device[]> {
+  const all: Device[] = [];
+  let page = 0;
+  const size = 100;
+  for (;;) {
+    const resp = await endpoints.devices.list({ page, size });
+    all.push(...resp.items);
+    if (all.length >= resp.total || resp.items.length === 0) break;
+    page++;
+    if (page > 50) break; // защита от бесконечного цикла
+  }
+  return all;
+}
+
 export function ScenariosCrudPage() {
   const [mode, setMode] = useState<Mode>("list");
   const [editing, setEditing] = useState<Scenario | null>(null);
+  const [freshData, setFreshData] = useState<(ScenarioWrite & { expectedVersion?: number }) | null>(null);
   const [page, setPage] = useState(0);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [conflictType, setConflictType] = useState<"version" | "cycle" | "read_only" | "validation" | null>(null);
-  const [deleteTarget, setDeleteTarget] = useState<Scenario | null>(null);
-  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   const mock = isMock();
   const { terminateSession } = useSession();
@@ -34,26 +48,46 @@ export function ScenariosCrudPage() {
     enabled: !mock,
   });
 
-  // Загружаем устройства для формы
-  const { data: devicesData } = useQuery({
-    queryKey: ["devices-for-scenarios"],
-    queryFn: ({ signal }) => endpoints.devices.list({ size: 100 }, signal),
+  // Загрузка всех устройств
+  const {
+    data: devices,
+    isLoading: devicesLoading,
+    error: devicesError,
+    refetch: refetchDevices,
+  } = useQuery({
+    queryKey: ["all-devices"],
+    queryFn: fetchAllDevices,
     enabled: !mock,
   });
 
   const scenarioPage = mock ? mockScenarioPage : data;
-  const devices: Device[] = mock ? mockDevices : devicesData?.items ?? [];
+  const deviceList: Device[] = useMemo(() => mock ? mockDevices : devices ?? [], [mock, devices]);
+
+  // Карта устройств для быстрого поиска названий
+  const deviceMap = useMemo(() => {
+    const map = new Map<string, Device>();
+    for (const d of deviceList) map.set(d.id, d);
+    return map;
+  }, [deviceList]);
 
   const refresh = useCallback(() => {
     queryClient.invalidateQueries({ queryKey: ["scenarios"] });
   }, [queryClient]);
 
-  // Загрузка свежей версии при конфликте
+  // Загрузка свежей версии
   const handleReloadFresh = async () => {
     if (!editing) return;
     setSaving(true);
     try {
       const fresh = await endpoints.scenarios.get(editing.id);
+      setFreshData({
+        title: fresh.title,
+        enabled: fresh.enabled,
+        executionMode: fresh.executionMode,
+        trigger: fresh.trigger,
+        action: fresh.action,
+        expectedVersion: fresh.version,
+      });
       setEditing(fresh);
       setSaveError(null);
       setConflictType(null);
@@ -81,26 +115,11 @@ export function ScenariosCrudPage() {
       setMode("list");
     } catch (err) {
       if (err instanceof ApiError) {
-        if (err.status === 401) {
-          terminateSession();
-          return;
-        }
+        if (err.status === 401) { terminateSession(); return; }
         const code = err.problem?.code;
-        if (code === "SCENARIO_CYCLE") {
-          setConflictType("cycle");
-          setSaveError("Сценарий создаёт цикл. Измените устройство или сигнал.");
-          return;
-        }
-        if (code === "SIGNAL_READ_ONLY") {
-          setConflictType("read_only");
-          setSaveError("Сигнал действия доступен только для чтения. Выберите управляемый сигнал.");
-          return;
-        }
-        if (err.status === 422) {
-          setConflictType("validation");
-          setSaveError(err.problem?.detail ?? "Ошибка валидации.");
-          return;
-        }
+        if (code === "SCENARIO_CYCLE") { setConflictType("cycle"); setSaveError("Сценарий создаёт цикл."); return; }
+        if (code === "SIGNAL_READ_ONLY") { setConflictType("read_only"); setSaveError("Сигнал действия доступен только для чтения."); return; }
+        if (err.status === 422) { setConflictType("validation"); setSaveError(err.problem?.detail ?? "Ошибка валидации."); return; }
       }
       setSaveError(err instanceof Error ? err.message : "Ошибка сохранения");
     } finally {
@@ -122,61 +141,17 @@ export function ScenariosCrudPage() {
       refresh();
       setMode("list");
       setEditing(null);
+      setFreshData(null);
     } catch (err) {
       if (err instanceof ApiError) {
-        if (err.status === 401) {
-          terminateSession();
-          return;
-        }
-        if (err.status === 409) {
-          setConflictType("version");
-          setSaveError("Конфликт версии: сценарий изменён другим пользователем.");
-          return;
-        }
+        if (err.status === 401) { terminateSession(); return; }
+        if (err.status === 409) { setConflictType("version"); setSaveError("Конфликт версии."); return; }
         const code = err.problem?.code;
-        if (code === "SCENARIO_CYCLE") {
-          setConflictType("cycle");
-          setSaveError("Сценарий создаёт цикл. Измените устройство или сигнал.");
-          return;
-        }
-        if (code === "SIGNAL_READ_ONLY") {
-          setConflictType("read_only");
-          setSaveError("Сигнал действия доступен только для чтения.");
-          return;
-        }
-        if (err.status === 422) {
-          setConflictType("validation");
-          setSaveError(err.problem?.detail ?? "Ошибка валидации.");
-          return;
-        }
+        if (code === "SCENARIO_CYCLE") { setConflictType("cycle"); setSaveError("Сценарий создаёт цикл."); return; }
+        if (code === "SIGNAL_READ_ONLY") { setConflictType("read_only"); setSaveError("Сигнал действия доступен только для чтения."); return; }
+        if (err.status === 422) { setConflictType("validation"); setSaveError(err.problem?.detail ?? "Ошибка валидации."); return; }
       }
       setSaveError(err instanceof Error ? err.message : "Ошибка сохранения");
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  // Удаление
-  const handleDeleteConfirm = async () => {
-    if (!deleteTarget) return;
-    setSaving(true);
-    setDeleteError(null);
-    try {
-      await api.delete(`/api/v1/scenarios/${deleteTarget.id}?expectedVersion=${deleteTarget.version}`);
-      refresh();
-      setDeleteTarget(null);
-    } catch (err) {
-      if (err instanceof ApiError) {
-        if (err.status === 401) {
-          terminateSession();
-          return;
-        }
-        if (err.status === 409) {
-          setDeleteError("Сценарий изменён. Обновите страницу.");
-          return;
-        }
-      }
-      setDeleteError(err instanceof Error ? err.message : "Ошибка удаления");
     } finally {
       setSaving(false);
     }
@@ -187,14 +162,10 @@ export function ScenariosCrudPage() {
   if (error && !mock) {
     const desc =
       error instanceof ApiError
-        ? error.status === 401
-          ? "Требуется авторизация"
-          : error.problem?.detail ?? `Ошибка ${error.status}`
-        : error instanceof TimeoutError
-          ? "Превышено время ожидания"
-          : error instanceof NetworkError
-            ? "Сервер недоступен"
-            : "Неизвестная ошибка";
+        ? error.status === 401 ? "Требуется авторизация" : error.problem?.detail ?? `Ошибка ${error.status}`
+        : error instanceof TimeoutError ? "Превышено время ожидания"
+        : error instanceof NetworkError ? "Сервер недоступен"
+        : "Неизвестная ошибка";
     return <ErrorState title="Не удалось загрузить сценарии" description={desc} onRetry={() => refetch()} />;
   }
 
@@ -211,9 +182,13 @@ export function ScenariosCrudPage() {
             action: editing.action,
             expectedVersion: editing.version,
           } : undefined}
-          devices={devices}
+          freshData={freshData}
+          devices={deviceList}
+          devicesLoading={devicesLoading && !mock}
+          devicesError={devicesError ? "Не удалось загрузить устройства." : null}
+          onRetryDevices={() => refetchDevices()}
           onSubmit={mode === "edit" ? handleUpdate : handleCreate}
-          onCancel={() => { setMode("list"); setEditing(null); setSaveError(null); setConflictType(null); }}
+          onCancel={() => { setMode("list"); setEditing(null); setSaveError(null); setConflictType(null); setFreshData(null); }}
           loading={saving}
           error={saveError}
           conflictType={conflictType}
@@ -241,7 +216,7 @@ export function ScenariosCrudPage() {
           <button
             type="button"
             className={styles.primaryBtn}
-            onClick={() => { setMode("create"); setSaveError(null); setConflictType(null); }}
+            onClick={() => { setMode("create"); setSaveError(null); setConflictType(null); setFreshData(null); }}
             disabled={mock}
           >
             <Plus size={16} /> Создать сценарий
@@ -262,50 +237,47 @@ export function ScenariosCrudPage() {
         />
       ) : (
         <div className={styles.list}>
-          {items.map((scenario) => (
-            <div key={scenario.id} className={styles.card}>
-              <div className={styles.cardIcon}>
-                <Workflow size={20} />
-              </div>
-              <div className={styles.cardInfo}>
-                <span className={styles.cardTitle}>{scenario.title}</span>
-                <div className={styles.cardFlow}>
-                  <span className={styles.flowBadge}>
-                    {scenario.trigger.deviceId.slice(0, 8)}….{scenario.trigger.signalKey}
-                  </span>
-                  <span className={styles.flowOp}>= {scenario.trigger.value}</span>
-                  <ArrowRight size={12} className={styles.flowArrow} />
-                  <span className={styles.flowBadge}>
-                    {scenario.action.deviceId.slice(0, 8)}….{scenario.action.signalKey}
-                  </span>
-                  <span className={styles.flowOp}>= {scenario.action.value}</span>
+          {items.map((scenario) => {
+            const triggerDevice = deviceMap.get(scenario.trigger.deviceId);
+            const actionDevice = deviceMap.get(scenario.action.deviceId);
+            return (
+              <div key={scenario.id} className={styles.card}>
+                <div className={styles.cardIcon}>
+                  <Workflow size={20} />
                 </div>
-                <span className={styles.cardMeta}>
-                  {scenario.executionMode} · {scenario.enabled ? "Включён" : "Выключен"} · v{scenario.version}
-                </span>
+                <div className={styles.cardInfo}>
+                  <span className={styles.cardTitle}>{scenario.title}</span>
+                  <div className={styles.cardFlow}>
+                    <span className={styles.flowBadge}>
+                      {triggerDevice?.title ?? scenario.trigger.deviceId.slice(0, 8)}
+                      .{scenario.trigger.signalKey}
+                    </span>
+                    <span className={styles.flowOp}>= {scenario.trigger.value}</span>
+                    <ArrowRight size={12} className={styles.flowArrow} />
+                    <span className={styles.flowBadge}>
+                      {actionDevice?.title ?? scenario.action.deviceId.slice(0, 8)}
+                      .{scenario.action.signalKey}
+                    </span>
+                    <span className={styles.flowOp}>= {scenario.action.value}</span>
+                  </div>
+                  <span className={styles.cardMeta}>
+                    {scenario.executionMode} · {scenario.enabled ? "Включён" : "Выключен"} · v{scenario.version}
+                  </span>
+                </div>
+                <div className={styles.cardActions}>
+                  <button
+                    type="button"
+                    className={styles.iconBtn}
+                    onClick={() => { setEditing(scenario); setMode("edit"); setSaveError(null); setConflictType(null); setFreshData(null); }}
+                    disabled={mock}
+                    title="Редактировать"
+                  >
+                    <Pencil size={16} />
+                  </button>
+                </div>
               </div>
-              <div className={styles.cardActions}>
-                <button
-                  type="button"
-                  className={styles.iconBtn}
-                  onClick={() => { setEditing(scenario); setMode("edit"); setSaveError(null); setConflictType(null); }}
-                  disabled={mock}
-                  title="Редактировать"
-                >
-                  <Pencil size={16} />
-                </button>
-                <button
-                  type="button"
-                  className={`${styles.iconBtn} ${styles.iconBtnDanger}`}
-                  onClick={() => { setDeleteTarget(scenario); setDeleteError(null); }}
-                  disabled={mock}
-                  title="Удалить"
-                >
-                  <Trash2 size={16} />
-                </button>
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
 
@@ -331,43 +303,6 @@ export function ScenariosCrudPage() {
           >
             <ChevronRight size={16} />
           </button>
-        </div>
-      )}
-
-      {/* Диалог удаления */}
-      {deleteTarget && (
-        <div className={styles.dialogOverlay}>
-          <div className={styles.dialog}>
-            <h2 className={styles.dialogTitle}>Удалить сценарий?</h2>
-            <p className={styles.dialogText}>
-              «{deleteTarget.title}» будет удалён безвозвратно.
-            </p>
-            {deleteError && (
-              <div className={styles.dialogError} role="alert">
-                <AlertCircle size={16} />
-                <span>{deleteError}</span>
-              </div>
-            )}
-            <div className={styles.dialogActions}>
-              <button
-                type="button"
-                className={styles.cancelBtn}
-                onClick={() => { setDeleteTarget(null); setDeleteError(null); }}
-                disabled={saving}
-              >
-                Отмена
-              </button>
-              <button
-                type="button"
-                className={styles.dangerBtn}
-                onClick={handleDeleteConfirm}
-                disabled={saving}
-              >
-                {saving ? <Loader2 size={16} className={styles.spinner} /> : null}
-                Удалить
-              </button>
-            </div>
-          </div>
         </div>
       )}
     </div>
