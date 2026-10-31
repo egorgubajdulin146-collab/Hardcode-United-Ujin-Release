@@ -1,14 +1,17 @@
 import type {
   Device,
+  DevicePage,
   DeviceState,
   Run,
+  RunPage,
   Scenario,
+  ScenarioPage,
   SystemStatus,
   UjinStatus,
 } from "../api/types";
 
-// Мок-данные соответствуют docs/contracts/examples.json
-// Режим MOCK — источник синтетических данных интерфейса, не доказательство интеграции
+// Мок-данные соответствуют docs/contracts/openapi.json 0.1.2-draft
+// и docs/contracts/examples.json
 
 export const mockSystemStatus: SystemStatus = {
   contractVersion: "0.1.2-draft",
@@ -21,7 +24,6 @@ export const mockDevices: Device[] = [
     version: 1,
     title: "Датчик протечки",
     family: "leak",
-    platformLink: "NOT_CONFIGURED",
     signals: [
       {
         key: "leak",
@@ -44,13 +46,21 @@ export const mockDevices: Device[] = [
         max: 100,
       },
     ],
+    platformLink: "NOT_CONFIGURED",
+    events: [
+      {
+        key: "leak_changed",
+        title: "Протечка изменилась",
+        signalKey: "leak",
+        emission: "CHANGE",
+      },
+    ],
   },
   {
     id: "10000000-0000-4000-8000-000000000002",
     version: 1,
     title: "Светильник",
     family: "light",
-    platformLink: "NOT_CONFIGURED",
     signals: [
       {
         key: "lamp",
@@ -83,8 +93,17 @@ export const mockDevices: Device[] = [
         max: 3600,
       },
     ],
+    platformLink: "NOT_CONFIGURED",
+    events: [],
   },
 ];
+
+export const mockDevicePage: DevicePage = {
+  items: mockDevices,
+  page: 0,
+  size: 20,
+  total: 2,
+};
 
 export const mockScenarios: Scenario[] = [
   {
@@ -107,6 +126,13 @@ export const mockScenarios: Scenario[] = [
     },
   },
 ];
+
+export const mockScenarioPage: ScenarioPage = {
+  items: mockScenarios,
+  page: 0,
+  size: 20,
+  total: 1,
+};
 
 export const mockDeviceStates: Record<string, DeviceState> = {
   "10000000-0000-4000-8000-000000000001": {
@@ -139,19 +165,54 @@ export const mockRuns: Run[] = [
     executionMode: "LOCAL",
     status: "SUCCEEDED",
     createdAt: "2026-10-31T10:05:00+05:00",
-    input: {
-      signalKey: "leak",
-      value: 1,
-      updatedAt: "2026-10-31T10:05:00+05:00",
-    },
-    action: {
-      deviceId: "10000000-0000-4000-8000-000000000002",
-      signalKey: "lamp",
-      value: 1,
-      result: "SUCCEEDED",
-    },
+    entries: [
+      { at: "2026-10-31T10:05:00+05:00", stage: "EVENT", message: "Событие leak_changed" },
+      { at: "2026-10-31T10:05:00+05:00", stage: "CONDITION", message: "Условие leak EQ 1 — истинно" },
+      { at: "2026-10-31T10:05:00+05:00", stage: "ACTION", message: "Команда lamp=1" },
+      { at: "2026-10-31T10:05:01+05:00", stage: "RESULT", message: "Состояние lamp=1 подтверждено" },
+    ],
+    input: { signalKey: "leak", value: 1, updatedAt: "2026-10-31T10:05:00+05:00" },
+    action: { deviceId: "10000000-0000-4000-8000-000000000002", signalKey: "lamp", value: 1 },
+  },
+  {
+    id: "40000000-0000-4000-8000-000000000002",
+    eventId: "30000000-0000-4000-8000-000000000002",
+    scenarioId: "20000000-0000-4000-8000-000000000001",
+    scenarioVersion: 1,
+    executionMode: "LOCAL",
+    status: "SKIPPED",
+    createdAt: "2026-10-31T10:06:00+05:00",
+    entries: [
+      { at: "2026-10-31T10:06:00+05:00", stage: "EVENT", message: "Событие leak_changed" },
+      { at: "2026-10-31T10:06:00+05:00", stage: "CONDITION", message: "Условие leak EQ 0 — ложно" },
+    ],
+    input: { signalKey: "leak", value: 0, updatedAt: "2026-10-31T10:06:00+05:00" },
+    reason: "CONDITION_FALSE",
+  },
+  {
+    id: "40000000-0000-4000-8000-000000000003",
+    eventId: "30000000-0000-4000-8000-000000000003",
+    scenarioId: "20000000-0000-4000-8000-000000000001",
+    scenarioVersion: 1,
+    executionMode: "LOCAL",
+    status: "BLOCKED",
+    createdAt: "2026-10-31T10:07:00+05:00",
+    entries: [
+      { at: "2026-10-31T10:07:00+05:00", stage: "EVENT", message: "Событие leak_changed" },
+      { at: "2026-10-31T10:07:00+05:00", stage: "CONDITION", message: "Условие leak EQ 1 — истинно" },
+      { at: "2026-10-31T10:07:00+05:00", stage: "ACTION", message: "Устройство недоступно" },
+    ],
+    input: { signalKey: "leak", value: 1, updatedAt: "2026-10-31T10:07:00+05:00" },
+    reason: "DEVICE_UNAVAILABLE",
   },
 ];
+
+export const mockRunPage: RunPage = {
+  items: mockRuns,
+  page: 0,
+  size: 20,
+  total: 3,
+};
 
 export const mockUjinStatus: UjinStatus = {
   publish: { status: "UNKNOWN", reason: "Ещё не проверено" },

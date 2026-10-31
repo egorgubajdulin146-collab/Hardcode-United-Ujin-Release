@@ -1,5 +1,6 @@
 import { NavLink, Outlet } from "react-router-dom";
-import { Cpu, Workflow, PlayCircle } from "lucide-react";
+import { Cpu, Workflow, PlayCircle, Database, Globe } from "lucide-react";
+import { setDataSource, isMock } from "../api/dataSource";
 import { MockBadge } from "./States";
 import styles from "./Layout.module.css";
 
@@ -10,12 +11,19 @@ const navItems = [
 ];
 
 export function Layout() {
+  const mock = isMock();
+
+  const toggleSource = () => {
+    setDataSource(mock ? "api" : "mock");
+    window.location.reload();
+  };
+
   return (
     <div className={styles.layout}>
       <nav className={styles.sidebar} aria-label="Основная навигация">
         <div className={styles.logo}>
           <span className={styles.logoText}>Ujin Editor</span>
-          <MockBadge />
+          {mock && <MockBadge />}
         </div>
         <ul className={styles.navList}>
           {navItems.map(({ to, label, icon: Icon }) => (
@@ -32,6 +40,17 @@ export function Layout() {
             </li>
           ))}
         </ul>
+        <div className={styles.sidebarFooter}>
+          <button
+            type="button"
+            className={styles.sourceToggle}
+            onClick={toggleSource}
+            title={`Источник данных: ${mock ? "мок-данные" : "реальный API"}`}
+          >
+            {mock ? <Database size={16} /> : <Globe size={16} />}
+            <span>{mock ? "MOCK" : "API"}</span>
+          </button>
+        </div>
       </nav>
       <main className={styles.content}>
         <Outlet />

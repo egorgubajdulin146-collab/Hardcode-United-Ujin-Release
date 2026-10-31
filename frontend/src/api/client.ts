@@ -26,21 +26,44 @@ export class TimeoutError extends Error {
   }
 }
 
+export class CancelledError extends Error {
+  constructor() {
+    super("Запрос отменён");
+    this.name = "CancelledError";
+  }
+}
+
 interface RequestOptions {
   method?: string;
   body?: unknown;
   signal?: AbortSignal;
 }
 
-async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
+function isCancelled(signal?: AbortSignal): boolean {
+  return signal?.aborted ?? false;
+}
+
+async function request<T>(
+  path: string,
+  options: RequestOptions = {}
+): Promise<T> {
   const { method = "GET", body, signal } = options;
 
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 15_000);
-
-  if (signal) {
-    signal.addEventListener("abort", () => controller.abort());
+  if (isCancelled(signal)) {
+    throw new CancelledError();
   }
+
+  const controller = new AbortController();
+  const timeoutMs = 15_000;
+  let timedOut = false;
+
+  const timeout = setTimeout(() => {
+    timedOut = true;
+    controller.abort();
+  }, timeoutMs);
+
+  const onAbort = () => controller.abort();
+  signal?.addEventListener("abort", onAbort);
 
   try {
     const response = await fetch(`${BASE_URL}${path}`, {
@@ -50,12 +73,17 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
       signal: controller.signal,
     });
 
+    // 204 — успешный ответ без тела
+    if (response.status === 204) {
+      return undefined as T;
+    }
+
     if (!response.ok) {
       let problem: Problem | undefined;
       try {
         problem = await response.json();
       } catch {
-        // тело не JSON — оставляем status
+        // тело не JSON
       }
       throw new ApiError(response.status, problem);
     }
@@ -63,12 +91,20 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
     return await response.json();
   } catch (err) {
     if (err instanceof ApiError) throw err;
+
     if (err instanceof DOMException && err.name === "AbortError") {
-      throw new TimeoutError();
+      if (timedOut) throw new TimeoutError();
+      throw new CancelledError();
     }
-    throw new NetworkError();
+
+    if (err instanceof TypeError) {
+      throw new NetworkError();
+    }
+
+    throw err;
   } finally {
     clearTimeout(timeout);
+    signal?.removeEventListener("abort", onAbort);
   }
 }
 

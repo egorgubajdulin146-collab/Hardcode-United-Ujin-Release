@@ -1,26 +1,26 @@
 import { useQuery } from "@tanstack/react-query";
 import { Cpu } from "lucide-react";
 import { endpoints } from "../api/endpoints";
-import { mockDevices } from "../mocks/data";
+import { getDataSource, isMock } from "../api/dataSource";
+import { mockDevicePage } from "../mocks/data";
 import { LoadingState, EmptyState, ErrorState, MockBadge } from "../components/States";
+import { ApiError, NetworkError, TimeoutError } from "../api/client";
 import type { Device } from "../api/types";
 import styles from "./Pages.module.css";
 
-// Временно используем мок-данные, пока API не готов
-const USE_MOCK = true;
-
-function DeviceCard({ device }: { device: Device }) {
+function DeviceCard({ device, mock }: { device: Device; mock: boolean }) {
   return (
     <div className={styles.card}>
       <div className={styles.cardHeader}>
         <Cpu size={20} aria-hidden="true" />
         <h3 className={styles.cardTitle}>{device.title}</h3>
-        {USE_MOCK && <MockBadge />}
+        {mock && <MockBadge />}
       </div>
       <div className={styles.cardMeta}>
         <span className={styles.badge}>{device.family}</span>
         <span className={`${styles.badge} ${styles.badgeOutline}`}>
-          {device.platformLink === "NOT_CONFIGURED" ? "Не привязан" : device.platformLink}
+          {device.platformLink === "NOT_CONFIGURED" ? "Не привязан" :
+           device.platformLink === "BOUND" ? "Привязан" : "Заблокирован"}
         </span>
       </div>
       <div className={styles.signalList}>
@@ -34,29 +34,56 @@ function DeviceCard({ device }: { device: Device }) {
           </div>
         ))}
       </div>
+      {device.events.length > 0 && (
+        <div className={styles.eventList}>
+          <span className={styles.eventLabel}>События:</span>
+          {device.events.map((e) => (
+            <span key={e.key} className={`${styles.badge} ${styles.badgeSmall}`}>
+              {e.title}
+            </span>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
 
 export function DevicesPage() {
+  const mock = isMock();
+  const source = getDataSource();
+
   const { data, isLoading, error, refetch } = useQuery({
-    queryKey: ["devices"],
-    queryFn: () => endpoints.devices.list(),
-    enabled: !USE_MOCK,
+    queryKey: ["devices", source],
+    queryFn: ({ signal }) => endpoints.devices.list(undefined, signal),
+    enabled: !mock,
   });
 
-  const devices = USE_MOCK ? mockDevices : data ?? [];
+  const page = mock ? mockDevicePage : data;
 
-  if (isLoading && !USE_MOCK) return <LoadingState />;
-  if (error && !USE_MOCK) {
+  if (isLoading && !mock) return <LoadingState />;
+  if (error && !mock) {
+    const desc =
+      error instanceof ApiError
+        ? error.status === 401
+          ? "Требуется авторизация"
+          : error.status === 403
+            ? "Нет доступа"
+            : error.problem?.detail ?? `Ошибка сервера (${error.status})`
+        : error instanceof TimeoutError
+          ? "Превышено время ожидания"
+          : error instanceof NetworkError
+            ? "Сервер недоступен"
+            : "Неизвестная ошибка";
     return (
       <ErrorState
         title="Не удалось загрузить устройства"
-        description="Проверьте подключение к серверу"
+        description={desc}
         onRetry={() => refetch()}
       />
     );
   }
+
+  const devices = page?.items ?? [];
 
   return (
     <div>
@@ -75,7 +102,7 @@ export function DevicesPage() {
       ) : (
         <div className={styles.cardGrid}>
           {devices.map((d) => (
-            <DeviceCard key={d.id} device={d} />
+            <DeviceCard key={d.id} device={d} mock={mock} />
           ))}
         </div>
       )}

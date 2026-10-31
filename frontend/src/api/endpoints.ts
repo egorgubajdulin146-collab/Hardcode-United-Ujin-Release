@@ -1,78 +1,107 @@
 import { api } from "./client";
 import type {
+  Command,
   CommandReceipt,
   Device,
   DeviceDependencies,
+  DevicePage,
   DeviceState,
+  DeviceUpdate,
   DeviceWrite,
   EventReceipt,
   Run,
   RunPage,
   Scenario,
+  ScenarioPage,
+  ScenarioUpdate,
   ScenarioWrite,
   Stimulus,
   SystemStatus,
   UjinStatus,
+  UnknownResolutionRequest,
 } from "./types";
+
+interface PageParams {
+  page?: number;
+  size?: number;
+}
+
+function pageQuery(params?: PageParams): string {
+  if (!params) return "";
+  const q = new URLSearchParams();
+  if (params.page !== undefined) q.set("page", String(params.page));
+  if (params.size !== undefined) q.set("size", String(params.size));
+  const s = q.toString();
+  return s ? `?${s}` : "";
+}
 
 export const endpoints = {
   system: {
-    getStatus: () => api.get<SystemStatus>("/api/v1/system"),
+    getStatus: (signal?: AbortSignal) =>
+      api.get<SystemStatus>("/api/v1/system", signal),
   },
   devices: {
-    list: () => api.get<Device[]>("/api/v1/devices"),
-    get: (id: string) => api.get<Device>(`/api/v1/devices/${id}`),
-    create: (data: DeviceWrite) => api.post<Device>("/api/v1/devices", data),
-    update: (id: string, data: DeviceWrite & { expectedVersion: number }) =>
+    list: (params?: PageParams, signal?: AbortSignal) =>
+      api.get<DevicePage>(`/api/v1/devices${pageQuery(params)}`, signal),
+    get: (id: string, signal?: AbortSignal) =>
+      api.get<Device>(`/api/v1/devices/${id}`, signal),
+    create: (data: DeviceWrite) =>
+      api.post<Device>("/api/v1/devices", data),
+    update: (id: string, data: DeviceUpdate) =>
       api.put<Device>(`/api/v1/devices/${id}`, data),
-    remove: (id: string) => api.delete(`/api/v1/devices/${id}`),
-    getState: (id: string, mode: "LOCAL" | "UJIN") =>
-      api.get<DeviceState>(`/api/v1/devices/${id}/state?mode=${mode}`),
-    getDependencies: (id: string) =>
-      api.get<DeviceDependencies>(`/api/v1/devices/${id}/dependencies`),
+    remove: (id: string, expectedVersion: number) =>
+      api.delete(`/api/v1/devices/${id}?expectedVersion=${expectedVersion}`),
+    getState: (id: string, mode: "LOCAL" | "UJIN", signal?: AbortSignal) =>
+      api.get<DeviceState>(`/api/v1/devices/${id}/state?mode=${mode}`, signal),
+    getDependencies: (id: string, signal?: AbortSignal) =>
+      api.get<DeviceDependencies>(`/api/v1/devices/${id}/dependencies`, signal),
   },
   commands: {
-    send: (deviceId: string, signalKey: string, value: number) =>
-      api.post<CommandReceipt>(`/api/v1/devices/${deviceId}/commands`, {
-        signalKey,
-        value,
-      }),
-    get: (commandId: string) =>
-      api.get<CommandReceipt>(`/api/v1/commands/${commandId}`),
-    resolve: (commandId: string, note: string) =>
-      api.post<CommandReceipt>(`/api/v1/commands/${commandId}/resolution`, {
-        note,
-      }),
+    send: (deviceId: string, data: Command) =>
+      api.post<CommandReceipt>(`/api/v1/devices/${deviceId}/commands`, data),
+    get: (commandId: string, signal?: AbortSignal) =>
+      api.get<CommandReceipt>(`/api/v1/commands/${commandId}`, signal),
+    resolve: (commandId: string, data: UnknownResolutionRequest) =>
+      api.post<CommandReceipt>(`/api/v1/commands/${commandId}/resolution`, data),
   },
   stimuli: {
-    send: (deviceId: string, stimulus: Omit<Stimulus, "eventId">) =>
-      api.post<EventReceipt>(`/api/v1/devices/${deviceId}/stimuli`, stimulus),
+    send: (deviceId: string, data: Stimulus) =>
+      api.post<EventReceipt>(`/api/v1/devices/${deviceId}/stimuli`, data),
   },
   events: {
-    get: (eventId: string) =>
-      api.get<EventReceipt>(`/api/v1/events/${eventId}`),
+    get: (eventId: string, signal?: AbortSignal) =>
+      api.get<EventReceipt>(`/api/v1/events/${eventId}`, signal),
   },
   scenarios: {
-    list: () => api.get<Scenario[]>("/api/v1/scenarios"),
-    get: (id: string) => api.get<Scenario>(`/api/v1/scenarios/${id}`),
-    create: (data: ScenarioWrite) => api.post<Scenario>("/api/v1/scenarios", data),
-    update: (id: string, data: ScenarioWrite & { expectedVersion: number }) =>
+    list: (params?: PageParams, signal?: AbortSignal) =>
+      api.get<ScenarioPage>(`/api/v1/scenarios${pageQuery(params)}`, signal),
+    get: (id: string, signal?: AbortSignal) =>
+      api.get<Scenario>(`/api/v1/scenarios/${id}`, signal),
+    create: (data: ScenarioWrite) =>
+      api.post<Scenario>("/api/v1/scenarios", data),
+    update: (id: string, data: ScenarioUpdate) =>
       api.put<Scenario>(`/api/v1/scenarios/${id}`, data),
   },
   runs: {
-    list: (params?: { eventId?: string; scenarioId?: string }) => {
-      const query = params
-        ? "?" +
-          Object.entries(params)
-            .filter(([, v]) => v)
-            .map(([k, v]) => `${k}=${v}`)
-            .join("&")
-        : "";
-      return api.get<RunPage>(`/api/v1/runs${query}`);
+    list: (
+      params?: PageParams & { eventId?: string; scenarioId?: string },
+      signal?: AbortSignal
+    ) => {
+      const q = new URLSearchParams();
+      if (params?.page !== undefined) q.set("page", String(params.page));
+      if (params?.size !== undefined) q.set("size", String(params.size));
+      if (params?.eventId) q.set("eventId", params.eventId);
+      if (params?.scenarioId) q.set("scenarioId", params.scenarioId);
+      const s = q.toString();
+      return api.get<RunPage>(`/api/v1/runs${s ? `?${s}` : ""}`, signal);
     },
-    get: (runId: string) => api.get<Run>(`/api/v1/runs/${runId}`),
+    get: (runId: string, signal?: AbortSignal) =>
+      api.get<Run>(`/api/v1/runs/${runId}`, signal),
+    resolve: (runId: string, data: UnknownResolutionRequest) =>
+      api.post<Run>(`/api/v1/runs/${runId}/resolution`, data),
   },
   ujin: {
-    getStatus: () => api.get<UjinStatus>("/api/v1/integrations/ujin/status"),
+    getStatus: (signal?: AbortSignal) =>
+      api.get<UjinStatus>("/api/v1/integrations/ujin/status", signal),
   },
 };

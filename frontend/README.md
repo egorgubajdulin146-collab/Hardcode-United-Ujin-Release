@@ -1,6 +1,64 @@
-# Frontend
+# Frontend — Ujin Scenario Editor
 
-Реализация не начата. Стек, экраны и API определим по официальному кейсу
-и согласованному пользовательскому сценарию.
+Интерфейс редактора сценариев умных устройств на базе Ujin OS.
 
-Здесь будут исходники интерфейса, зависимости, сборка и инструкция запуска.
+## Стек
+
+React 18, TypeScript, Vite, React Router, TanStack Query, CSS Modules, Lucide React.
+
+## Запуск
+
+```bash
+npm install
+npm run dev        # dev-сервер на http://localhost:5173
+npm run build      # production build (tsc + vite)
+npm run preview    # предпросмотр production build
+npm run lint       # ESLint
+```
+
+## Источник данных
+
+Приложение поддерживает два источника:
+
+- **mock** — синтетические данные из `src/mocks/data.ts` (по умолчанию)
+- **api** — реальные запросы к backend
+
+Переключение:
+
+1. Через переменную окружения: `VITE_DATA_SOURCE=mock|api` в `.env`
+2. Через UI: кнопка «MOCK / API» внизу боковой панели (сохраняется в localStorage)
+
+Базовый URL API задаётся переменной `VITE_API_URL` (по умолчанию `http://localhost:8080`).
+
+## Проверки
+
+```bash
+npx tsc --noEmit    # TypeScript
+npm run lint        # ESLint
+npm run build       # Production build
+```
+
+## Размещение
+
+Приложение — SPA. При размещении на сервере настроить fallback на `index.html`
+для всех маршрутов (`/devices`, `/scenarios`, `/runs`).
+
+Пример для Nginx:
+
+```nginx
+location / {
+  try_files $uri $uri/ /index.html;
+}
+```
+
+## Структура
+
+```
+src/
+  api/        — типы, клиент, endpoints, конфигурация источника
+  app/        — (резерв)
+  pages/      — DevicesPage, ScenariosPage, RunsPage
+  components/ — Layout, состояния (Loading/Empty/Error/MockBadge)
+  styles/     — токены, глобальные стили
+  mocks/      — синтетические данные по контракту
+```

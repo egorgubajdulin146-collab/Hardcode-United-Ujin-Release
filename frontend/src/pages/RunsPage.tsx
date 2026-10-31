@@ -1,12 +1,12 @@
 import { useQuery } from "@tanstack/react-query";
-import { PlayCircle, CheckCircle, XCircle, Clock, HelpCircle } from "lucide-react";
+import { PlayCircle, CheckCircle, XCircle, Clock, HelpCircle, Ban, SkipForward } from "lucide-react";
 import { endpoints } from "../api/endpoints";
-import { mockRuns } from "../mocks/data";
+import { getDataSource, isMock } from "../api/dataSource";
+import { mockRunPage } from "../mocks/data";
 import { LoadingState, EmptyState, ErrorState, MockBadge } from "../components/States";
+import { ApiError, NetworkError, TimeoutError } from "../api/client";
 import type { Run, RunStatus } from "../api/types";
 import styles from "./Pages.module.css";
-
-const USE_MOCK = true;
 
 function StatusIcon({ status }: { status: RunStatus }) {
   switch (status) {
@@ -14,6 +14,10 @@ function StatusIcon({ status }: { status: RunStatus }) {
       return <CheckCircle size={16} className={styles.statusSuccess} aria-label="Успешно" />;
     case "FAILED":
       return <XCircle size={16} className={styles.statusError} aria-label="Ошибка" />;
+    case "BLOCKED":
+      return <Ban size={16} className={styles.statusBlocked} aria-label="Заблокировано" />;
+    case "SKIPPED":
+      return <SkipForward size={16} className={styles.statusSkipped} aria-label="Пропущено" />;
     case "PENDING":
       return <Clock size={16} className={styles.statusPending} aria-label="В ожидании" />;
     case "UNKNOWN":
@@ -23,64 +27,114 @@ function StatusIcon({ status }: { status: RunStatus }) {
   }
 }
 
-function RunCard({ run }: { run: Run }) {
+const STATUS_LABELS: Record<RunStatus, string> = {
+  SUCCEEDED: "Успешно",
+  FAILED: "Ошибка",
+  BLOCKED: "Заблокировано",
+  SKIPPED: "Пропущено",
+  PENDING: "В ожидании",
+  UNKNOWN: "Неизвестно",
+};
+
+const STATUS_BADGE: Record<RunStatus, string> = {
+  SUCCEEDED: styles.badgeSuccess,
+  FAILED: styles.badgeError,
+  BLOCKED: styles.badgeBlocked,
+  SKIPPED: styles.badgeOutline,
+  PENDING: styles.badgeOutline,
+  UNKNOWN: styles.badgeOutline,
+};
+
+function RunCard({ run, mock }: { run: Run; mock: boolean }) {
   return (
     <div className={styles.card}>
       <div className={styles.cardHeader}>
         <StatusIcon status={run.status} />
         <h3 className={styles.cardTitle}>
-          {run.input.signalKey} = {run.input.value} → {run.action.signalKey} = {run.action.value}
+          {run.input
+            ? `${run.input.signalKey} = ${run.input.value}`
+            : `Событие ${run.eventId.slice(0, 8)}`}
+          {run.action
+            ? ` → ${run.action.signalKey} = ${run.action.value}`
+            : ""}
         </h3>
-        {USE_MOCK && <MockBadge />}
+        {mock && <MockBadge />}
       </div>
       <div className={styles.cardMeta}>
         <span className={styles.badge}>{run.executionMode}</span>
-        <span className={`${styles.badge} ${
-          run.status === "SUCCEEDED" ? styles.badgeSuccess :
-          run.status === "FAILED" ? styles.badgeError : styles.badgeOutline
-        }`}>
-          {run.status === "SUCCEEDED" ? "Успешно" :
-           run.status === "FAILED" ? "Ошибка" :
-           run.status === "PENDING" ? "В ожидании" :
-           run.status === "SKIPPED" ? "Пропущен" : "Неизвестно"}
+        <span className={`${styles.badge} ${STATUS_BADGE[run.status]}`}>
+          {STATUS_LABELS[run.status]}
         </span>
         <span className={styles.timestamp}>
           {new Date(run.createdAt).toLocaleString("ru-RU")}
         </span>
       </div>
-      {run.error && (
-        <div className={styles.errorDetail}>
-          <strong>{run.error.code}:</strong> {run.error.detail}
+
+      {run.reason && (
+        <div className={styles.reasonLine}>
+          Причина: {run.reason}
         </div>
       )}
-      {run.skipReason && (
-        <div className={styles.skipReason}>
-          Причина пропуска: {run.skipReason}
+
+      {run.resolution && (
+        <div className={styles.resolutionLine}>
+          <strong>{run.resolution.kind}:</strong> {run.resolution.note}
         </div>
+      )}
+
+      {run.entries.length > 0 && (
+        <details className={styles.entriesDetails}>
+          <summary>Журнал ({run.entries.length})</summary>
+          <ul className={styles.entriesList}>
+            {run.entries.map((e, i) => (
+              <li key={i} className={styles.entryItem}>
+                <span className={styles.entryStage}>{e.stage}</span>
+                <span className={styles.entryMessage}>{e.message}</span>
+              </li>
+            ))}
+          </ul>
+        </details>
       )}
     </div>
   );
 }
 
 export function RunsPage() {
+  const mock = isMock();
+  const source = getDataSource();
+
   const { data, isLoading, error, refetch } = useQuery({
-    queryKey: ["runs"],
-    queryFn: () => endpoints.runs.list(),
-    enabled: !USE_MOCK,
+    queryKey: ["runs", source],
+    queryFn: ({ signal }) => endpoints.runs.list(undefined, signal),
+    enabled: !mock,
   });
 
-  const runs = USE_MOCK ? mockRuns : data?.items ?? [];
+  const page = mock ? mockRunPage : data;
 
-  if (isLoading && !USE_MOCK) return <LoadingState />;
-  if (error && !USE_MOCK) {
+  if (isLoading && !mock) return <LoadingState />;
+  if (error && !mock) {
+    const desc =
+      error instanceof ApiError
+        ? error.status === 401
+          ? "Требуется авторизация"
+          : error.status === 403
+            ? "Нет доступа"
+            : error.problem?.detail ?? `Ошибка сервера (${error.status})`
+        : error instanceof TimeoutError
+          ? "Превышено время ожидания"
+          : error instanceof NetworkError
+            ? "Сервер недоступен"
+            : "Неизвестная ошибка";
     return (
       <ErrorState
         title="Не удалось загрузить журнал"
-        description="Проверьте подключение к серверу"
+        description={desc}
         onRetry={() => refetch()}
       />
     );
   }
+
+  const runs = page?.items ?? [];
 
   return (
     <div>
@@ -99,7 +153,7 @@ export function RunsPage() {
       ) : (
         <div className={styles.cardGrid}>
           {runs.map((r) => (
-            <RunCard key={r.id} run={r} />
+            <RunCard key={r.id} run={r} mock={mock} />
           ))}
         </div>
       )}
