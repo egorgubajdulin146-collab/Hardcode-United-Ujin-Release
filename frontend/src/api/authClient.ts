@@ -1,4 +1,5 @@
 import type { UjinCredentials, UjinAdapterSignalValue } from "./auth";
+import { setCsrfToken } from "./client";
 
 // Работа с cookie-сессией и CSRF по контракту 0.1.2-draft
 // Состояние авторизации определяется сервером (cookie), не локальным флагом
@@ -15,15 +16,18 @@ export class AuthError extends Error {
   }
 }
 
-export async function fetchCsrf(): Promise<string> {
+export async function fetchCsrf(signal?: AbortSignal): Promise<string> {
   const response = await fetch("/api/auth/csrf", {
     credentials: "include",
+    signal,
   });
   if (!response.ok) {
     throw new AuthError("server_error", `CSRF: HTTP ${response.status}`);
   }
   const token = await response.text();
+  signal?.throwIfAborted();
   csrfToken = token;
+  setCsrfToken(token);
   return token;
 }
 
@@ -124,4 +128,5 @@ export async function readSignal(
 
 export function clearCsrf(): void {
   csrfToken = null;
+  setCsrfToken(null);
 }

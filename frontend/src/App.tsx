@@ -1,9 +1,9 @@
-import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { SessionProvider } from "./api/session";
 import { useSession } from "./api/sessionContext";
 import { Layout } from "./components/Layout";
-import { DevicesPage } from "./pages/DevicesPage";
+import { DevicesCrudPage } from "./pages/DevicesCrudPage";
 import { ScenariosPage } from "./pages/ScenariosPage";
 import { RunsPage } from "./pages/RunsPage";
 import { RoomDevicesPage } from "./pages/RoomDevicesPage";
@@ -20,19 +20,35 @@ const queryClient = new QueryClient({
   },
 });
 
-function DevicesRoute() {
-  return isMock() ? <RoomDevicesPage /> : <DevicesPage />;
-}
-
 function AppRoutes() {
-  const { authed } = useSession();
-  const location = useLocation();
+  const { authed, checking, checkFailed, checkSession } = useSession();
 
-  // Без авторизации — только форма входа, без бокового меню
-  if (!authed && location.pathname !== "/login") {
-    return <LoginPage />;
+  // Проверка сессии на сервере — показываем загрузку без бокового меню
+  if (checking) {
+    return (
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "100vh" }}>
+        <p style={{ color: "#6b7280" }}>Проверка сессии…</p>
+      </div>
+    );
   }
 
+  // Ошибка проверки — показываем повтор
+  if (checkFailed && !authed) {
+    return (
+      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", minHeight: "100vh", gap: 16 }}>
+        <p style={{ color: "#6b7280" }}>Не удалось проверить сессию. Сервер недоступен.</p>
+        <button
+          type="button"
+          onClick={() => checkSession()}
+          style={{ padding: "8px 16px", background: "#00b4b4", color: "white", border: "none", borderRadius: 6, cursor: "pointer" }}
+        >
+          Повторить
+        </button>
+      </div>
+    );
+  }
+
+  // Без авторизации — только форма входа, без бокового меню
   if (!authed) {
     return <LoginPage />;
   }
@@ -42,7 +58,7 @@ function AppRoutes() {
     <Layout>
       <Routes>
         <Route index element={<Navigate to="/devices" replace />} />
-        <Route path="devices" element={<DevicesRoute />} />
+        <Route path="devices" element={isMock() ? <RoomDevicesPage /> : <DevicesCrudPage />} />
         <Route path="scenarios" element={<ScenariosPage />} />
         <Route path="runs" element={<RunsPage />} />
         <Route path="login" element={<Navigate to="/devices" replace />} />
