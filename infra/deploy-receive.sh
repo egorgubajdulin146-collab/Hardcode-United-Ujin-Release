@@ -28,6 +28,9 @@ with tarfile.open(sys.argv[1]) as archive:
     archive.extractall(sys.argv[2],filter='data')
 PY
 cd "$release"
+# tarfile's data filter intentionally clears directory modes; umask is private.
+find frontend/dist -type d -exec chmod 755 {} +
+find frontend/dist -type f -exec chmod 644 {} +
 export UJIN_IMAGE_TAG=$revision
 compose=(docker compose --project-directory "$release" --env-file /etc/ujin/local.env
   -f infra/compose.yaml -f infra/compose.runtime.yaml -f infra/compose.catalog.yaml)
@@ -43,7 +46,9 @@ test -s "/var/backups/ujin/before-$revision.dump"
 binding=$("${compose[@]}" port frontend 8080)
 [[ "$binding" =~ ^127\.0\.0\.1:[0-9]+$ ]]
 base_url=http://$binding
-python3 infra/check-static.py "$base_url"
+static_check=/usr/local/lib/ujin/check-static.py
+[[ -f "$static_check" ]] || static_check=infra/check-static.py
+python3 "$static_check" "$base_url"
 curl --connect-timeout 5 --max-time 20 --fail --silent --show-error \
   "$base_url/api/auth/csrf" >/dev/null
 [[ $(curl --connect-timeout 5 --max-time 20 --silent --show-error \

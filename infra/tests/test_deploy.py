@@ -51,6 +51,10 @@ class DeployTests(unittest.TestCase):
             (root / 'app/current').symlink_to('previous')
             archive = io.BytesIO()
             with tarfile.open(fileobj=archive, mode='w:gz') as bundle:
+                member = tarfile.TarInfo('frontend/dist')
+                member.type = tarfile.DIRTYPE
+                member.mode = 0o700
+                bundle.addfile(member)
                 member = tarfile.TarInfo('.dockerignore')
                 member.size = 2
                 bundle.addfile(member, io.BytesIO(b'**'))
