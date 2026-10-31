@@ -1,1 +1,7 @@
-spring.application.name=ujin
+spring:
+  application:
+    name: ujin
+ujin:
+  api:
+    base-url: ${UJIN_API_BASE_URL:https://localhost/api}
+    app: ${UJIN_AUTH_APP:}
