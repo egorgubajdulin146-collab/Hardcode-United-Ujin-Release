@@ -1,9 +1,9 @@
 # Инфраструктура
 
-Подготовлены сборка Java 25 backend, runtime-образ, отдельный PostgreSQL 17,
-backup/restore и CI. Это инфраструктура текущего каркаса: frontend, эмуляторы,
-миграции и HTTP/Actuator ещё нужно реализовать и подключить. Текущий backend
-запускается и завершается, поэтому проверенный полный стенд пока не заявлен.
+Здесь описаны сборка Java25 и backup/restore PostgreSQL17. Для общего стенда
+frontend/backend/БД используйте [корневой README](../README.md) и
+[runtime](RUNTIME.md). Backend работает как HTTP-приложение, применяет Flyway
+и исполняет LOCAL-сценарии. Реальная интеграция Ujin проверяется отдельно.
 
 ## Backend
 
@@ -37,7 +37,8 @@ docker run --rm --network none --read-only --cap-drop ALL \
   ujin-backend:local
 ```
 
-Этот запуск проверяет текущий каркас; HTTP-порт и HTTP-healthcheck пока отсутствуют.
+Изолированный запуск без БД выше проверяет только ограничения контейнера.
+Для HTTP и PostgreSQL используйте общий runtime, а не одиночный docker run.
 Label описывает исходники образа, но сам по себе не подтверждает версию стенда.
 
 ## PostgreSQL
@@ -71,7 +72,7 @@ docker compose --project-directory . --env-file .env -f infra/compose.yaml down
 
 Параметры `POSTGRES_*` используются при инициализации пустого volume.
 Изменение `.env` не меняет автоматически пароль/пользователя уже созданной БД.
-Backend в этой версии ещё не подключён к PostgreSQL.
+Backend подключается к этой БД через runtime overlay и внутреннюю сеть.
 
 ## Backup и проверка восстановления
 
@@ -131,12 +132,13 @@ bash infra/test-postgres.sh
 GitHub Actions выполняет сборку backend, требует ненулевое число выполненных
 тестов, сохраняет JUnit/HTML/JAR и проверяет runtime-образ под непривилегированным
 пользователем. Второй job запускает проверки инфраструктуры. Workflow имеет
-`contents: read`, без ключей сервера и автоматического deploy. Результат
-локальной проверки не подменяет реальный прогон GitHub Actions.
+`contents: read`. Отдельный deploy job после успешного push develop использует
+ограниченный SSH-ключ из GitHub Secrets. PR/main/workflow_dispatch не деплоятся.
+Результат локальной проверки не подменяет прогон GitHub Actions.
 
-Следующий этап: frontend и два эмулятора, datasource/Flyway и HTTP health,
-согласованные local/live конфигурации, TLS, runtime SHA и проверка отката релиза.
-Приватные credentials платформы должны оставаться на стороне backend.
+Frontend, PostgreSQL/Flyway и LOCAL-эмуляторы включены в текущий backend/runtime.
+Для отката соблюдайте [границы совместимости и изоляции](ROLLBACK.md).
+Credentials платформы остаются на стороне backend и вне репозитория.
 
 Официальные справочники: [Compose services](https://docs.docker.com/reference/compose-file/services/),
 [PostgreSQL image](https://hub.docker.com/_/postgres),
