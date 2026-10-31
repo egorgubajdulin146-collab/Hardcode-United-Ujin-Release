@@ -17,6 +17,7 @@ trap cleanup EXIT
 binding=$("${compose[@]}" port frontend 8080)
 [[ "$binding" == 127.0.0.1:* ]]
 base_url="http://$binding"
+python3 "$repo_root/infra/check-static.py" "$base_url"
 for route in / /devices /scenarios /runs; do
   curl --fail --silent --show-error "$base_url$route" | grep -q '<div id="root">'
 done

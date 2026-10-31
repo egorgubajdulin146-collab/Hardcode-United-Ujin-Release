@@ -82,7 +82,7 @@ jobs:
       - name: Package tested release
         if: github.event_name == 'push' && github.ref == 'refs/heads/develop'
         run: |
-          tar -czf release.tar.gz .dockerignore backend/ujin/Dockerfile backend/ujin/build/libs/*.jar frontend/Dockerfile frontend/dist infra/nginx.conf infra/backend-health.sh infra/compose.yaml infra/compose.runtime.yaml infra/compose.catalog.yaml
+          tar -czf release.tar.gz .dockerignore backend/ujin/Dockerfile backend/ujin/build/libs/*.jar frontend/Dockerfile frontend/dist infra/nginx.conf infra/backend-health.sh infra/compose.yaml infra/compose.runtime.yaml infra/compose.catalog.yaml infra/check-static.py
       - name: Save tested release
         if: github.event_name == 'push' && github.ref == 'refs/heads/develop'
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4

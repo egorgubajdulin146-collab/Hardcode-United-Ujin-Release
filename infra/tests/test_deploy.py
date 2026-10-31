@@ -54,6 +54,11 @@ class DeployTests(unittest.TestCase):
                 member = tarfile.TarInfo('.dockerignore')
                 member.size = 2
                 bundle.addfile(member, io.BytesIO(b'**'))
+                # Static guard is tested separately against a real HTTP fixture.
+                member = tarfile.TarInfo('infra/check-static.py')
+                body = b'print("mock static guard")\n'
+                member.size = len(body)
+                bundle.addfile(member, io.BytesIO(body))
             revision = 'b' * 40
             result = subprocess.run(['bash', str(receiver)], input=archive.getvalue(),
                 env={**os.environ, 'PATH': str(root / 'bin') + ':' + os.environ['PATH'],

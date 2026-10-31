@@ -15,7 +15,7 @@ python3 - "$release/artifact.tar.gz" "$release" <<'PY'
 import sys,tarfile,pathlib
 allowed={'.dockerignore','backend/ujin/Dockerfile','frontend/Dockerfile',
  'infra/nginx.conf','infra/backend-health.sh','infra/compose.yaml',
- 'infra/compose.runtime.yaml','infra/compose.catalog.yaml'}
+ 'infra/compose.runtime.yaml','infra/compose.catalog.yaml','infra/check-static.py'}
 with tarfile.open(sys.argv[1]) as archive:
     for item in archive.getmembers():
         path=pathlib.PurePosixPath(item.name)
@@ -43,6 +43,7 @@ test -s "/var/backups/ujin/before-$revision.dump"
 binding=$("${compose[@]}" port frontend 8080)
 [[ "$binding" =~ ^127\.0\.0\.1:[0-9]+$ ]]
 base_url=http://$binding
+python3 infra/check-static.py "$base_url"
 curl --connect-timeout 5 --max-time 20 --fail --silent --show-error \
   "$base_url/api/auth/csrf" >/dev/null
 [[ $(curl --connect-timeout 5 --max-time 20 --silent --show-error \
