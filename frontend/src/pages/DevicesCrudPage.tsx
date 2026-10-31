@@ -6,6 +6,7 @@ import { ApiError, NetworkError, TimeoutError } from "../api/client";
 import { useSession } from "../api/sessionContext";
 import { isMock } from "../api/dataSource";
 import { mockDevicePage } from "../mocks/data";
+import { DeviceRuntimePanel } from "../components/DeviceRuntimePanel";
 import { DeviceForm } from "../components/DeviceForm";
 import { LoadingState, EmptyState, ErrorState, MockBadge } from "../components/States";
 import type { Device, DeviceWrite, DeviceDependencies } from "../api/types";
@@ -14,6 +15,7 @@ import styles from "./DevicesCrudPage.module.css";
 type Mode = "list" | "create" | "edit";
 
 export function DevicesCrudPage() {
+  const [selected, setSelected] = useState<Device | null>(null);
   const [mode, setMode] = useState<Mode>("list");
   const [editing, setEditing] = useState<Device | null>(null);
   const [page, setPage] = useState(0);
@@ -74,6 +76,7 @@ export function DevicesCrudPage() {
     try {
       await endpoints.devices.create(data);
       refresh();
+      setSelected(null);
       setMode("list");
     } catch (err) {
       if (err instanceof ApiError && err.status === 401) {
@@ -98,6 +101,7 @@ export function DevicesCrudPage() {
         expectedVersion: editing.version,
       });
       refresh();
+      setSelected(null);
       setMode("list");
       setEditing(null);
     } catch (err) {
@@ -153,6 +157,7 @@ export function DevicesCrudPage() {
     try {
       await endpoints.devices.remove(deleteTarget.id, deleteTarget.version);
       refresh();
+      setSelected(null);
       // Если удалили последний элемент последней страницы — переходим на предыдущую
       const remaining = (devicePage?.total ?? 1) - 1;
       const maxPage = Math.max(0, Math.ceil(remaining / pageSize) - 1);
@@ -289,6 +294,7 @@ export function DevicesCrudPage() {
                 </span>
               </div>
               <div className={styles.cardActions}>
+                <button type="button" className={styles.iconBtn} disabled={mock} onClick={() => setSelected(device)}>Открыть</button>
                 <button
                   type="button"
                   className={styles.iconBtn}
@@ -312,6 +318,8 @@ export function DevicesCrudPage() {
           ))}
         </div>
       )}
+
+      {selected && <DeviceRuntimePanel key={`${selected.id}:${selected.version}`} device={selected} onClose={() => setSelected(null)} />}
 
       {/* Пагинация */}
       {totalPages > 1 && (

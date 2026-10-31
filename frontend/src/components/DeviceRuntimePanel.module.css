@@ -1,0 +1,11 @@
+.panel { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-lg); padding: var(--space-lg); margin-bottom: var(--space-lg); }
+.panel header, .toolbar { display: flex; gap: var(--space-md); align-items: center; justify-content: space-between; flex-wrap: wrap; margin-bottom: var(--space-md); }
+.panel p, .panel small { color: var(--color-text-secondary); }
+.panel button, .panel input, .panel select { font: inherit; padding: 8px 12px; border: 1px solid var(--color-border); border-radius: var(--radius-sm); background: var(--color-surface); color: var(--color-text); max-width: 100%; }
+.panel button:hover:not(:disabled) { border-color: var(--color-primary); color: var(--color-primary-hover); }
+.panel button:disabled { opacity: .5; cursor: not-allowed; }
+.signals { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr)); gap: var(--space-md); margin-bottom: var(--space-md); }
+.signals article { border: 1px solid var(--color-border); border-radius: var(--radius-md); padding: var(--space-md); }
+.signals form { display: flex; flex-wrap: wrap; gap: var(--space-sm); margin-top: var(--space-sm); }
+.signals small { display: block; width: 100%; overflow-wrap: anywhere; }
+.panel .error { color: var(--color-error); margin-bottom: var(--space-sm); }
