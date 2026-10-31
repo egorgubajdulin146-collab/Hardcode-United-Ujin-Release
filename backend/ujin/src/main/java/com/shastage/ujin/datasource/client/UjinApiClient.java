@@ -130,6 +130,52 @@ public final class UjinApiClient {
     }
 
     // ===== Аутентификация =====
+    public void publishGroup(String ust, String apartmentId, String extGuid,
+                             String publishClass, String signalName, double value) {
+        requireValue(ust, "ust");
+        requireValue(apartmentId, "apartmentId");
+        requireValue(extGuid, "extGuid");
+        requireValue(publishClass, "publishClass");
+        requireValue(signalName, "signalName");
+        if (!Double.isFinite(value)) throw new IllegalArgumentException("Finite value required");
+        HttpURLConnection connection = null;
+        try {
+            URI uri = URI.create(base + "/import_device/group-update-device-signal/?token="
+                    + encode(ust) + "&apartment_id=" + encode(apartmentId)
+                    + "&serialnumber=" + encode(extGuid));
+            connection = (HttpURLConnection) uri.toURL().openConnection();
+            connection.setInstanceFollowRedirects(false);
+            connection.setConnectTimeout(10_000);
+            connection.setReadTimeout(15_000);
+            connection.setRequestMethod("POST");
+            connection.setRequestProperty("Content-Type", "application/json");
+            connection.setRequestProperty("Accept", "application/json");
+            connection.setDoOutput(true);
+            byte[] body = mapper.writeValueAsBytes(java.util.Map.of("data", List.of(
+                    java.util.Map.of("sn", extGuid, "s", signalName, "v", value, "c", publishClass))));
+            // Streaming prevents HttpURLConnection from replaying a buffered POST.
+            connection.setFixedLengthStreamingMode(body.length);
+            try (var output = connection.getOutputStream()) { output.write(body); }
+            int status = connection.getResponseCode();
+            if (status != 200) throw httpError(status);
+            try (var input = connection.getInputStream()) {
+                byte[] bytes = input.readNBytes(1_048_577);
+                if (bytes.length > 1_048_576) throw new UjinApiException(UjinApiException.Kind.BAD_RESPONSE);
+                JsonNode root = mapper.readTree(bytes);
+                if (root == null || !root.path("error").isIntegralNumber())
+                    throw new UjinApiException(UjinApiException.Kind.BAD_RESPONSE);
+                if (root.path("error").asInt() != 0) throw classifyPlatformError(root);
+            }
+        } catch (IOException error) {
+            throw new UjinApiException(UjinApiException.Kind.UNAVAILABLE);
+        } catch (RuntimeException error) {
+            if (error instanceof UjinApiException uae) throw uae;
+            throw new UjinApiException(UjinApiException.Kind.BAD_RESPONSE);
+        } finally {
+            if (connection != null) connection.disconnect();
+        }
+    }
+
     public String authenticate(String login, String password, String app) {
         requireValue(login, "login");
         requireValue(password, "password");

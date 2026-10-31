@@ -10,9 +10,14 @@ const device = { id: 'device', title: 'Device', family: 'leak', platformLink: 'N
   { key: 'wet', title: 'Leak', management: 'r' },
   { key: 'lamp', title: 'Lamp', management: 'rw', min: 0, max: 1 },
 ] };
-function mount({ availability = 'ONLINE', stateError, stimulus, availabilityUpdate, send = async () => ({ status: 'PENDING', commandId: 'command' }) } = {}) {
+function mount({ availability = 'ONLINE', stateError, stimulus, availabilityUpdate, bound = false,
+  receipts = [], publicationSend, publicationCheck,
+  send = async () => ({ status: 'PENDING', commandId: 'command' }) } = {}) {
   const calls = [];
-  const endpoints = { devices: { setAvailability: async (...args) => {
+  const endpoints = { publications: {
+    send: async (id, data) => { calls.push(['publication', id, data]); return publicationSend ? publicationSend(id, data) : { ...data, deviceId: id, status: 'CONFIRMED' }; },
+    readback: async (id, publicationId) => { calls.push(['readback', id, publicationId]); return publicationCheck ? publicationCheck(id, publicationId) : { ...receipts[0], deviceId: id, publicationId, status: 'CONFIRMED' }; },
+  }, devices: { setAvailability: async (...args) => {
     calls.push(['availability', ...args]);
     if (availabilityUpdate) return availabilityUpdate(...args);
     return { availability: args[1], values: [] };
@@ -26,18 +31,51 @@ function mount({ availability = 'ONLINE', stateError, stimulus, availabilityUpda
     '../api/sessionContext': { useSession: () => ({ terminateSession() {} }) },
     'react-router-dom': { Link: props => React.createElement('a', props) },
     '@tanstack/react-query': { useQueryClient: () => ({ invalidateQueries() {}, setQueryData() {} }),
-      useQuery: options => ({ error: options.queryKey[0] === 'device-state' ? stateError : undefined, data: options.queryKey[0] === 'device-state' ? { availability, values: [{ signalKey: 'wet', value: 0, updatedAt: '2026-10-31T12:00:00Z' }] } : undefined, refetch() {} }) },
+      useQuery: options => ({ error: options.queryKey[0] === 'device-state' ? stateError : undefined, data: options.queryKey[0] === 'device-state' ? { availability, values: [{ signalKey: 'wet', value: 0, updatedAt: '2026-10-31T12:00:00Z' }] } : options.queryKey[0] === 'publications' ? receipts : undefined, refetch() {} }) },
   };
   const exports = {};
   new Function('require','exports', outputText)(name => name.endsWith('.css') ? { default: {} } : mocks[name] ?? require(name), exports);
   let root;
-  act(() => { root = create(React.createElement(exports.DeviceRuntimePanel, { device, onClose() {} })); });
+  act(() => { root = create(React.createElement(exports.DeviceRuntimePanel, { device: { ...device, platformLink: bound ? 'BOUND' : device.platformLink }, onClose() {} })); });
   return { root, calls };
 }
 test('read-only signal has no command form and numeric zero is displayed', () => {
   const { root } = mount();
   assert.equal(root.root.findAllByType('form').length, 1);
   assert.ok(root.root.findAllByType('p').some(p => p.children.includes('0')));
+  act(() => root.unmount());
+});
+
+test('publication sends current numeric zero and only confirms after server readback', async () => {
+  const { root, calls } = mount({ bound: true });
+  const publish = root.root.findAllByType('button').find(b => b.children.includes('Опубликовать '));
+  assert.ok(publish); assert.equal(!!publish.props.disabled, false);
+  await act(async () => { publish.props.onClick(); });
+  assert.equal(calls.length, 1); assert.equal(calls[0][0], 'publication');
+  assert.equal(calls[0][2].value, 0); assert.equal(calls[0][2].signalKey, 'wet');
+  assert.ok(root.root.findAllByType('p').some(p => p.children.includes('значение прочитано в Ujin')));
+  act(() => root.unmount());
+});
+
+test('lost publication response retains the ID and blocks a new send', async () => {
+  const { root, calls } = mount({ bound: true, publicationSend: async () => { throw new Error('Lost response'); } });
+  await act(async () => { root.root.findAllByType('button').find(b => b.children.includes('Опубликовать ')).props.onClick(); });
+  assert.equal(calls.length, 1);
+  assert.ok(root.root.findAllByType('button').find(b => b.children.includes('Опубликовать ')).props.disabled);
+  assert.ok(root.root.findAllByType('p').some(p => p.children.includes('результат неизвестен')));
+  const lookup = root.root.findAllByType('button').find(b => b.children.includes('Проверить чтением'));
+  await act(async () => { lookup.props.onClick(); });
+  assert.deepEqual(calls[1], ['readback', 'device', calls[0][2].publicationId]);
+  act(() => root.unmount());
+});
+
+test('persisted UNKNOWN survives remount and readback never sends a new publication', async () => {
+  const receipts = [{ publicationId: 'persisted', deviceId: 'device', signalKey: 'wet', value: 0, status: 'UNKNOWN' }];
+  const { root, calls } = mount({ bound: true, receipts });
+  assert.ok(root.root.findAllByType('button').find(b => b.children.includes('Опубликовать ')).props.disabled);
+  await act(async () => { root.root.findAllByType('button').find(b => b.children.includes('Проверить чтением')).props.onClick(); });
+  assert.deepEqual(calls, [['readback', 'device', 'persisted']]);
+  assert.ok(root.root.findAllByType('p').some(p => p.children.includes('значение прочитано в Ujin')));
   act(() => root.unmount());
 });
 test('offline device cannot receive commands or stimuli', () => {

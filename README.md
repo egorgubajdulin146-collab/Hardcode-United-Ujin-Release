@@ -115,3 +115,8 @@ CI проверяет backend/frontend/инфраструктуру. Push в dev
 DEPLOY_HOST/DEPLOY_USER и secrets DEPLOY_SSH_KEY/DEPLOY_KNOWN_HOSTS.
 PR, main и workflow_dispatch автоматически не деплоятся.
 CI/deploy не заменяют приёмку фактического runtime SHA.
+
+Публикация текущих показаний после привязки устройства: [настройка и квитанции](docs/UJIN_PUBLICATION.md).
+Включается оператором для назначенных устройств; реальный результат проверяется отдельным чтением.
+
+Порядок работы: [CONTRIBUTING.md](CONTRIBUTING.md).

@@ -11,6 +11,7 @@ import type {
   EventReceipt,
   PlatformBinding,
   PlatformBindingWrite,
+  PublicationReceipt,
   Run,
   RunPage,
   Scenario,
@@ -55,14 +56,22 @@ export const endpoints = {
       api.delete(`/api/v1/devices/${id}?expectedVersion=${expectedVersion}`),
     getState: (id: string, mode: "LOCAL" | "UJIN", signal?: AbortSignal) =>
       api.get<DeviceState>(`/api/v1/devices/${id}/state?mode=${mode}`, signal),
+    setAvailability: (id: string, availability: "ONLINE" | "OFFLINE") =>
+      api.put<DeviceState>(`/api/v1/devices/${id}/availability`, { availability, executionMode: "LOCAL" }),
     getBinding: (id: string, signal?: AbortSignal) =>
       api.get<PlatformBinding>(`/api/v1/devices/${id}/platform-binding`, signal),
     putBinding: (id: string, data: PlatformBindingWrite) =>
       api.put<PlatformBinding>(`/api/v1/devices/${id}/platform-binding`, data),
-    setAvailability: (id: string, availability: "ONLINE" | "OFFLINE") =>
-      api.put<DeviceState>(`/api/v1/devices/${id}/availability`, { availability, executionMode: "LOCAL" }),
     getDependencies: (id: string, signal?: AbortSignal) =>
       api.get<DeviceDependencies>(`/api/v1/devices/${id}/dependencies`, signal),
+  },
+  publications: {
+    list: (deviceId: string, signal?: AbortSignal) =>
+      api.get<PublicationReceipt[]>(`/api/v1/devices/${deviceId}/publications`, signal),
+    send: (deviceId: string, data: { publicationId: string; signalKey: string; value: number }) =>
+      api.post<PublicationReceipt>(`/api/v1/devices/${deviceId}/publications`, data),
+    readback: (deviceId: string, publicationId: string) =>
+      api.post<PublicationReceipt>(`/api/v1/devices/${deviceId}/publications/${publicationId}/readback`, {}),
   },
   commands: {
     send: (deviceId: string, data: Command) =>

@@ -31,6 +31,10 @@ public class PlatformBindingService {
     private final CatalogStore catalogStore;
     private final PlatformBindingJpaRepository bindings;
     private final UjinApiClient client;
+    private PublicationProperties publication = new PublicationProperties();
+
+    @org.springframework.beans.factory.annotation.Autowired
+    public void setPublicationProperties(PublicationProperties properties) { publication = properties; }
 
     public PlatformBindingService(
             CatalogService catalogService,
@@ -147,6 +151,7 @@ public class PlatformBindingService {
                 continue;
             }
             Double value = strictNumber(sample);
+            if (value != null) value = decodeConfiguredZero(binding.getSerialNumber(), signalKey, mapping.getPlatformName(), value);
             if (value == null) {
                 issues.add(issue(signalKey, "BAD_SCHEMA", "Value is not a finite number"));
                 continue;
@@ -178,6 +183,15 @@ public class PlatformBindingService {
 
     private Optional<PlatformBindingEntity> load(UUID deviceId, String owner) {
         return bindings.findByDeviceIdAndOwner(deviceId, owner);
+    }
+
+    private double decodeConfiguredZero(String serial, String key, String name, double value) {
+        var targets = publication.getTargets().stream().filter(t -> serial.equals(t.getSerialNumber())).toList();
+        if (targets.size() != 1) return value;
+        var signals = targets.getFirst().getSignals().stream()
+                .filter(s -> key.equals(s.getSignalKey()) && name.equals(s.getPlatformName())).toList();
+        if (signals.size() != 1 || signals.getFirst().getZeroWireValue() == null) return value;
+        return value == signals.getFirst().getZeroWireValue() ? 0 : value;
     }
 
     private static PlatformBinding.View viewOf(PlatformBindingEntity entity) {

@@ -263,3 +263,13 @@ export interface DeviceDependencies {
   scenarioIds: string[];
   pendingOperationIds: string[];
 }
+export interface PublicationReceipt {
+  publicationId: string;
+  deviceId: string;
+  signalKey: string;
+  value: number;
+  status: "PENDING" | "CONFIRMED" | "FAILED" | "UNKNOWN";
+  reason: string;
+  createdAt: string;
+  observedAt?: string | null;
+}
