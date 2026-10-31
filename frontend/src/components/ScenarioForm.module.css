@@ -319,3 +319,11 @@
   font-size: var(--font-size-xs);
   cursor: pointer;
 }
+
+.form { min-width: 0; box-sizing: border-box; }
+.row { flex-wrap: wrap; }
+.row > .field { min-width: 0; flex: 1 1 220px; }
+.input { min-width: 0; }
+.flowFields { flex-wrap: wrap; align-items: flex-end; }
+.flowFields > .field { flex: 1 1 180px; min-width: 0; }
+.flowFields .select { width: 100%; box-sizing: border-box; }

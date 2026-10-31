@@ -26,18 +26,18 @@ export function SignalValueField({ signal, family, label, value, onChange, disab
   if (signal?.enumValues?.length) {
     // Retain an invalid saved value visibly so opening an old rule never silently changes it.
     const missing = value !== "" && !signal.enumValues.includes(Number(value));
-    return <label style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+    return <label style={{ display: "flex", flexDirection: "column", gap: 4, flex: "1 1 180px", minWidth: 0 }}>
       <span>{label}</span>
-      <select className={className} value={value} onChange={event => onChange(event.target.value)} disabled={disabled} required>
+      <select style={{ width: "100%", boxSizing: "border-box" }} className={className} value={value} onChange={event => onChange(event.target.value)} disabled={disabled} required>
         <option value="">Выберите значение</option>
         {missing && <option value={value} disabled>{value} — больше не разрешено</option>}
         {signal.enumValues.map(number => <option key={number} value={String(number)}>{optionLabel(number)}</option>)}
       </select>
     </label>;
   }
-  return <label style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+  return <label style={{ display: "flex", flexDirection: "column", gap: 4, flex: "1 1 180px", minWidth: 0 }}>
     <span>{label}</span>
-    <input className={className} type="number" step="any" value={value}
+    <input style={{ width: "100%", boxSizing: "border-box" }} className={className} type="number" step="any" value={value}
       onChange={event => onChange(event.target.value)} min={signal?.min} max={signal?.max}
       placeholder={signal?.unit ? `Число в ${signal.unit}` : "Введите число"} disabled={disabled} required />
   </label>;
