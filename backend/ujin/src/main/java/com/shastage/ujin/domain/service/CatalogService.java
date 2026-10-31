@@ -74,12 +74,13 @@ public class CatalogService {
         var old = device(id, owner);
         version(data.expectedVersion(), old.version());
         validate(data);
-        if (!dependencies(id, owner).scenarioIds().isEmpty()
+        var activeDependencies = dependencies(id, owner);
+        if ((!activeDependencies.scenarioIds().isEmpty() || !activeDependencies.pendingOperationIds().isEmpty())
                 && (!old.signals().equals(data.signals())
                         || !old.events().equals(data.events())
                         || !old.family().equals(data.family())))
             throw new CatalogException(
-                    409, "DEVICE_IN_USE", "Device declaration is referenced by scenarios");
+                    409, "DEVICE_IN_USE", "Device declaration is referenced by scenarios or unfinished operations");
         var device =
                 new Device(
                         id,

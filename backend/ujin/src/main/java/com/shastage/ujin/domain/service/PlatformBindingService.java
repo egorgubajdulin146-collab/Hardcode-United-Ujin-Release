@@ -66,6 +66,8 @@ public class PlatformBindingService {
         String serialNumber = requireSerial(write.serialNumber());
         List<PlatformBinding.Mapping> mappings = requireMappings(write.signalMappings(), device);
         catalogStore.lock();
+        if (!catalogService.dependencies(deviceId, owner).pendingOperationIds().isEmpty())
+            throw new CatalogException(409, "BINDING_IN_USE", "Привязка занята незавершённой операцией; проверьте её результат перед изменением");
         Optional<PlatformBindingEntity> existing = load(deviceId, owner);
         PlatformBindingEntity entity;
         boolean created;

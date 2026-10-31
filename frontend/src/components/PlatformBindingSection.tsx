@@ -31,6 +31,8 @@ function bindingErrorMessage(error: unknown): string {
         return "Ujin вернул некорректный ответ.";
       case "UJIN_PLATFORM_ERROR":
         return "Платформа вернула ошибку.";
+      case "BINDING_IN_USE":
+        return "Есть незавершённая операция. Проверьте её результат перед изменением привязки.";
       case "VERSION_CONFLICT":
         return "Привязка изменилась на сервере. Перезагрузите и повторите сохранение.";
       case "DEVICE_NOT_FOUND":

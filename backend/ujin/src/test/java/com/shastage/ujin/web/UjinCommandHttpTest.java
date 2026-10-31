@@ -658,4 +658,21 @@ class UjinCommandHttpTest {
         assertNotEquals("CONFIRMED", receipt.path("status").asString(), receipt.toString());
     }
 
+    @Test
+    void pendingCommandPreventsRebindingItsDestination() throws Exception {
+        login(userA, "review-binding-lock");
+        String device = prepareBoundDevice(userA, "Review binding lock");
+        sendCommand(userA, device, UUID.randomUUID().toString(), "1");
+        var response = request(userA, "/api/v1/devices/" + device + "/platform-binding", "PUT",
+                "{\"serialNumber\":\"sn-target\",\"expectedVersion\":1,\"signalMappings\":[{\"signalKey\":\"lamp\",\"platformName\":\"mode\"}]}", csrf(userA));
+        assertEquals(409, response.statusCode(), response.body());
+        assertEquals("BINDING_IN_USE", JSON.readTree(response.body()).path("code").asString());
+        long version = JSON.readTree(request(userA, "/api/v1/devices/" + device, "GET", null, null).body()).path("version").asLong();
+        String declaration = "{\"title\":\"Changed\",\"family\":\"light\",\"expectedVersion\":" + version
+                + ",\"signals\":[{\"key\":\"lamp\",\"title\":\"Lamp\",\"group\":\"capability\",\"management\":\"rw\",\"valueType\":\"NUMBER\",\"control\":\"range\",\"min\":0,\"max\":2}],\"events\":[]}";
+        var edit = request(userA, "/api/v1/devices/" + device, "PUT", declaration, csrf(userA));
+        assertEquals(409, edit.statusCode(), edit.body());
+        assertEquals("DEVICE_IN_USE", JSON.readTree(edit.body()).path("code").asString());
+    }
+
 }
