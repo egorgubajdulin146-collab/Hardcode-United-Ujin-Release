@@ -262,7 +262,7 @@ export function ScenariosCrudPage() {
                     <span className={styles.flowOp}>= {scenario.action.value}</span>
                   </div>
                   <span className={styles.cardMeta}>
-                    {scenario.executionMode} · {scenario.enabled ? "Включён" : "Выключен"} · v{scenario.version}
+                    {scenario.executionMode} · {scenario.executionMode === "UJIN" ? "Исполнение ещё не подключено" : scenario.enabled ? "Включён" : "Выключен"} · v{scenario.version}
                   </span>
                 </div>
                 <div className={styles.cardActions}>

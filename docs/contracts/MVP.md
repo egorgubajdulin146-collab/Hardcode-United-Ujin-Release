@@ -256,3 +256,11 @@ values return 422, UJIN mode returns 503 MODE_UNAVAILABLE without changing state
 This controls the local emulator only. OFFLINE blocks stimuli/direct commands;
 a rule targeting it records BLOCKED/DEVICE_OFFLINE. Returning ONLINE permits
 new operations. Existing values and receipts are retained.
+## Unsupported UJIN scenario execution
+
+Creating or updating an enabled UJIN scenario returns 503 MODE_UNAVAILABLE.
+Disabled UJIN drafts remain editable and retain their executionMode. LOCAL
+rules can be enabled normally. Existing enabled UJIN rows are not rewritten:
+the executor continues to skip them, and the UI labels them as unsupported.
+To save such a row, explicitly disable it or choose LOCAL. No schema/data
+migration or automatic mode conversion is performed.

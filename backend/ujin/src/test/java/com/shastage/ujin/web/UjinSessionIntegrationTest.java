@@ -326,6 +326,10 @@ class UjinSessionIntegrationTest {
                 rule.strip()
                         .replaceFirst("\\{", "{\"expectedVersion\":1,")
                         .replace("\"enabled\":false", "\"enabled\":true");
+        var unavailable = request(path, "PUT", update, csrf());
+        assertEquals(503, unavailable.statusCode());
+        assertTrue(unavailable.body().contains("MODE_UNAVAILABLE"));
+        update = update.replace("UJIN", "LOCAL");
         var updated = request(path, "PUT", update, csrf());
         assertEquals(200, updated.statusCode(), updated.body());
         assertEquals(2, json.readTree(updated.body()).get("version").asLong());

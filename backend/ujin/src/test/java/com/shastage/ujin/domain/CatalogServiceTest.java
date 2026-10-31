@@ -55,7 +55,7 @@ class CatalogServiceTest {
         return new ScenarioWrite(
                 "Rule",
                 enabled,
-                "UJIN",
+                "LOCAL",
                 new Trigger(source.id(), "lamp", "EQ", 1.0, "lamp_changed"),
                 new Action(target.id(), "lamp", 1.0),
                 version);
@@ -131,7 +131,7 @@ class CatalogServiceTest {
                                 new ScenarioWrite(
                                         "Rule",
                                         true,
-                                        "UJIN",
+                                        "LOCAL",
                                         new Trigger(source.id(), "lamp", "EQ", 2.0, "lamp_changed"),
                                         new Action(target.id(), "lamp", 1.0),
                                         null), "owner"));
@@ -216,5 +216,22 @@ class CatalogServiceTest {
                 assertEquals(1, service.dependencies(target.id(), "owner").scenarioIds().size());
             else assertTrue(service.scenarios(0, 20, "owner").items().isEmpty());
         }
+    }
+    @Test
+    void ujinDraftPersistsButCannotBeActivatedOrCreatedEnabled() {
+        var source = service.create(declaration("Source", null), "owner");
+        var target = service.create(declaration("Target", null), "owner");
+        var local = rule(source, target, true, null);
+        var enabled = new ScenarioWrite("Cloud", true, "UJIN", local.trigger(), local.action(), null);
+        var failure = assertThrows(CatalogException.class, () -> service.create(enabled, "owner"));
+        assertEquals(503, failure.status);
+        assertEquals("MODE_UNAVAILABLE", failure.code);
+        var draft = service.create(new ScenarioWrite("Cloud", false, "UJIN", local.trigger(), local.action(), null), "owner");
+        assertFalse(service.scenario(draft.id(), "owner").enabled());
+        assertEquals("UJIN", service.scenario(draft.id(), "owner").executionMode());
+        assertThrows(CatalogException.class, () -> service.update(draft.id(), new ScenarioWrite("Cloud", true, "UJIN", local.trigger(), local.action(), 1L), "owner"));
+        assertEquals(1, service.scenario(draft.id(), "owner").version());
+        assertFalse(service.scenario(draft.id(), "owner").enabled());
+        assertTrue(service.update(draft.id(), new ScenarioWrite("Local", true, "LOCAL", local.trigger(), local.action(), 1L), "owner").enabled());
     }
 }
