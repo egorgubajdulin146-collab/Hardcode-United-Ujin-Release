@@ -55,8 +55,8 @@ export function ErrorState({
 
 export function MockBadge() {
   return (
-    <span className={styles.mockBadge} title="Данные из мока, не реальный API">
-      MOCK
+    <span className={styles.mockBadge} title="Демонстрационные устройства">
+      Демо
     </span>
   );
 }

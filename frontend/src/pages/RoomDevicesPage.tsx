@@ -5,7 +5,6 @@ import {
   Plus,
   Settings,
   X,
-  Construction,
 } from "lucide-react";
 import { MockBadge } from "../components/States";
 import styles from "./RoomDevicesPage.module.css";
@@ -139,10 +138,6 @@ export function RoomDevicesPage() {
         <div className={styles.headerLeft}>
           <h1 className={styles.pageTitle}>Устройства</h1>
           <MockBadge />
-          <span className={styles.protoBadge}>
-            <Construction size={14} aria-hidden="true" />
-            Прототип
-          </span>
         </div>
         <button type="button" className={styles.addButton} disabled title="Пока недоступно">
           <Plus size={18} aria-hidden="true" />
@@ -152,8 +147,7 @@ export function RoomDevicesPage() {
 
       {/* Уведомление о прототипе */}
       <div className={styles.protoNotice}>
-        Этот экран — визуальный прототип. Данные синтетические (MOCK).
-        Действия отключены до реализации. API-режим для этого экрана не подключён.
+        Выберите комнату и устройство, чтобы посмотреть его состояние.
       </div>
 
       {/* Комнаты */}
@@ -186,7 +180,7 @@ export function RoomDevicesPage() {
             <div className={styles.emptyState}>
               <p className={styles.emptyTitle}>В комнате нет устройств</p>
               <p className={styles.emptyDescription}>
-                Добавление устройств будет доступно после реализации конструктора
+                Для добавления устройств переключитесь на подключение
               </p>
             </div>
           ) : (
@@ -248,7 +242,7 @@ export function RoomDevicesPage() {
                 <DisabledAction
                   icon={Droplets}
                   label="Имитировать протечку"
-                  hint="Будет отправлен stimulus WET=1 (не реализовано)"
+                  hint="Доступно после подключения эмулятора"
                 />
               </div>
             )}
@@ -264,7 +258,7 @@ export function RoomDevicesPage() {
                 <DisabledAction
                   icon={Lightbulb}
                   label="Включить свет"
-                  hint="Будет отправлена команда lamp=1 (не реализовано)"
+                  hint="Доступно после подключения устройства"
                 />
               </div>
             )}

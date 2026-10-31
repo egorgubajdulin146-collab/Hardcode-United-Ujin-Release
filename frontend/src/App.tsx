@@ -4,7 +4,7 @@ import { SessionProvider } from "./api/session";
 import { useSession } from "./api/sessionContext";
 import { Layout } from "./components/Layout";
 import { DevicesCrudPage } from "./pages/DevicesCrudPage";
-import { ScenariosPage } from "./pages/ScenariosPage";
+import { ScenariosCrudPage } from "./pages/ScenariosCrudPage";
 import { RunsPage } from "./pages/RunsPage";
 import { RoomDevicesPage } from "./pages/RoomDevicesPage";
 import { LoginPage } from "./pages/LoginPage";
@@ -59,7 +59,7 @@ function AppRoutes() {
       <Routes>
         <Route index element={<Navigate to="/devices" replace />} />
         <Route path="devices" element={isMock() ? <RoomDevicesPage /> : <DevicesCrudPage />} />
-        <Route path="scenarios" element={<ScenariosPage />} />
+        <Route path="scenarios" element={<ScenariosCrudPage />} />
         <Route path="runs" element={<RunsPage />} />
         <Route path="login" element={<Navigate to="/devices" replace />} />
         <Route path="adapter" element={<AdapterPage />} />
