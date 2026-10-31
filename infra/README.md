@@ -141,3 +141,16 @@ GitHub Actions выполняет сборку backend, требует нену�
 Официальные справочники: [Compose services](https://docs.docker.com/reference/compose-file/services/),
 [PostgreSQL image](https://hub.docker.com/_/postgres),
 [setup-java](https://github.com/actions/setup-java).
+
+## Локальный запуск PostgreSQL и Vite
+
+Для разработки из корня репозитория создайте `.env` по `.env.example` и задайте
+`POSTGRES_PASSWORD`. `docker compose up -d --wait` запускает PostgreSQL на
+`127.0.0.1:5432` и Vite на `127.0.0.1:5173`. Backend запускается отдельно
+на хосте через `backend/ujin/gradlew.bat bootRun` на порту 8080.
+Контейнер Vite пересылает `/api` на `host.docker.internal:8080`.
+
+`infra/local.ps1 start|status|logs|restart|stop` и `Makefile` управляют этим
+локальным Compose. `docker compose down` сохраняет данные PostgreSQL.
+Изолированный runtime и его проверки описаны в `infra/RUNTIME.md` и используют
+отдельные Compose-файлы `infra/compose*.yaml`.
