@@ -28,8 +28,9 @@ function bindingErrorMessage(error: unknown): string {
       case "UJIN_UNAVAILABLE":
         return "Платформа Ujin недоступна (сеть или таймаут).";
       case "UJIN_BAD_RESPONSE":
-      case "UJIN_PLATFORM_ERROR":
         return "Ujin вернул некорректный ответ.";
+      case "UJIN_PLATFORM_ERROR":
+        return "Платформа вернула ошибку.";
       case "VERSION_CONFLICT":
         return "Привязка изменилась на сервере. Перезагрузите и повторите сохранение.";
       case "DEVICE_NOT_FOUND":
@@ -112,7 +113,7 @@ export function PlatformBindingSection({ deviceId, signals, platformLink }: Prop
     <section className={styles.section} aria-label="Привязка к Ujin">
       <div className={styles.header}>
         <h3 className={styles.title}>Привязка к Ujin</h3>
-        <span>Статус: {platformLink}</span>
+        <span>Статус: {({ BOUND: "Привязано", NOT_CONFIGURED: "Не настроено" } as Record<string, string>)[platformLink] ?? platformLink}</span>
       </div>
       <p className={styles.status}>
         {binding.isLoading
@@ -128,10 +129,12 @@ export function PlatformBindingSection({ deviceId, signals, platformLink }: Prop
       <form onSubmit={save}>
         <div className={styles.field}>
           <label className={styles.label} htmlFor="binding-sn">
-            SN платформенного устройства (строка)
+            Серийный номер устройства в Ujin (SN)
           </label>
           <input
             id="binding-sn"
+            placeholder="Скопируйте SN назначенного устройства из Ujin"
+            aria-describedby="binding-sn-help"
             className={styles.input}
             value={serialNumber}
             onChange={(e) => setSerialNumber(e.target.value)}
@@ -140,12 +143,14 @@ export function PlatformBindingSection({ deviceId, signals, platformLink }: Prop
             disabled={saving || binding.isLoading}
           />
         </div>
+        <p id="binding-sn-help" className={styles.hint}>Номер берётся из карточки Ujin или выданных доступов. UUID нашего каталога сюда не подходит.</p>
         <div className={styles.field}>
-          <span className={styles.label}>Соответствие сигналов (local → имя сигнала Ujin)</span>
+          <span className={styles.label}>Какие показания читать из Ujin</span>
+          <p className={styles.hint}>Для нужного сигнала укажите его точное техническое имя в Ujin. Остальные поля можно оставить пустыми. Пример: для «Протечка» — leak, только если такое имя есть на платформе.</p>
           {signals.map((signal) => (
             <div className={styles.mappingRow} key={signal.key}>
               <span className={styles.mappingKey} title={signal.key}>
-                {signal.key}
+                {signal.title} ({signal.key})
               </span>
               <input
                 className={styles.input}
@@ -156,7 +161,7 @@ export function PlatformBindingSection({ deviceId, signals, platformLink }: Prop
                 }
                 maxLength={255}
                 disabled={saving || binding.isLoading}
-                placeholder="точное имя signals[].name"
+                placeholder="Точное имя из Ujin, например leak"
               />
             </div>
           ))}

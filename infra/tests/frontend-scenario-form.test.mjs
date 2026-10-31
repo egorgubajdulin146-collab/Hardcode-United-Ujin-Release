@@ -108,3 +108,41 @@ test('choosing UJIN explicitly creates a disabled draft', async () => {
   assert.equal(writes[0].enabled, false);
   await act(async () => root.unmount());
 });
+
+test('human-readable binary choices preserve numeric scenario payload', async () => {
+  const fixture = [
+    { id: 'leak', title: 'Датчик', family: 'leak', signals: [{ key: 'leak', title: 'Протечка', management: 'r', enumValues: [0, 1] }], events: [{ key: 'changed', title: 'Изменение', signalKey: 'leak' }] },
+    { id: 'light', title: 'Лампа', family: 'light', signals: [{ key: 'lamp', title: 'Свет', management: 'rw', enumValues: [0, 1] }], events: [] },
+  ];
+  const writes = [];
+  const { ScenarioForm } = loadComponent(fileURLToPath(new URL('../../frontend/src/components/ScenarioForm.tsx', import.meta.url)), {});
+  let root;
+  act(() => { root = create(React.createElement(ScenarioForm, {
+    initial: { title: 'Протечка', enabled: true, executionMode: 'LOCAL', trigger: { deviceId: 'leak', signalKey: 'leak', eventKey: 'changed', operator: 'EQ', value: 0 }, action: { deviceId: 'light', signalKey: 'lamp', value: 0 } },
+    devices: fixture, onSubmit: async data => writes.push(data), onCancel() {},
+  })); });
+  const choice = text => root.root.findAllByType('select').find(select => select.findAllByType('option').some(option => option.children.includes(text)));
+  assert.ok(choice('1 — Протечка'));
+  assert.ok(choice('0 — Свет выключен'));
+  act(() => choice('1 — Протечка').props.onChange({ target: { value: '1' } }));
+  act(() => choice('1 — Свет включён').props.onChange({ target: { value: '1' } }));
+  await act(async () => { await root.root.findByType('form').props.onSubmit({ preventDefault() {} }); });
+  assert.equal(writes[0].trigger.value, 1);
+  assert.equal(writes[0].action.value, 1);
+  assert.equal(writes[0].trigger.signalKey, 'leak');
+  act(() => root.unmount());
+});
+
+test('numeric value field keeps arbitrary values and ranges without inventing binary meanings', () => {
+  const { SignalValueField } = loadComponent(fileURLToPath(new URL('../../frontend/src/components/SignalValueField.tsx', import.meta.url)), {});
+  let root;
+  act(() => { root = create(React.createElement(SignalValueField, {
+    signal: { key: 'temperature', min: -20, max: 50, unit: '°C' }, family: 'custom', label: 'Температура', value: '2.5', onChange() {},
+  })); });
+  const input = root.root.findByType('input');
+  assert.equal(input.props.value, '2.5');
+  assert.equal(input.props.min, -20);
+  assert.equal(input.props.max, 50);
+  assert.equal(input.props.step, 'any');
+  act(() => root.unmount());
+});
