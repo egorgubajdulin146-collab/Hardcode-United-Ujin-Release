@@ -134,3 +134,39 @@ class UjinApiClientTest {
         }
     }
 }
+
+    @Test
+    void accessDeniedIsClassified() {
+        acceptedAuth.set("{\"error\":0,\"data\":{\"user\":{\"token\":\"tok\"}}}");
+        readQuery.set("{\"error\":1,\"error_code\":\"Access denied\",\"message\":\"Access denied\"}");
+        var error = assertThrows(UjinApiException.class,
+                () -> client.readSignal("tok", "sn-1", "lamp"));
+        assertEquals(UjinApiException.Kind.ACCESS_DENIED, error.kind());
+    }
+
+    @Test
+    void platformErrorIsClassified() {
+        acceptedAuth.set("{\"error\":0,\"data\":{\"user\":{\"token\":\"tok\"}}}");
+        readQuery.set("{\"error\":1,\"error_code\":\"unknown\",\"message\":\"Ошибка\"}");
+        var error = assertThrows(UjinApiException.class,
+                () -> client.readSignal("tok", "sn-1", "lamp"));
+        assertEquals(UjinApiException.Kind.PLATFORM_ERROR, error.kind());
+    }
+
+    @Test
+    void signalNotFound() {
+        acceptedAuth.set("{\"error\":0,\"data\":{\"user\":{\"token\":\"tok\"}}}");
+        readQuery.set("{\"error\":0,\"data\":{\"signals\":[{\"name\":\"other\",\"state\":{\"value\":1}}]}}");
+        var error = assertThrows(UjinApiException.class,
+                () -> client.readSignal("tok", "sn-1", "lamp"));
+        assertEquals(UjinApiException.Kind.SIGNAL_NOT_FOUND, error.kind());
+    }
+
+    @Test
+    void successfulRead() {
+        acceptedAuth.set("{\"error\":0,\"data\":{\"user\":{\"token\":\"tok\"}}}");
+        readQuery.set("{\"error\":0,\"data\":{\"signals\":[{\"name\":\"lamp\",\"state\":{\"value\":\"1\"}}]}}");
+        var value = client.readSignal("tok", "sn-1", "lamp");
+        assertEquals("1", value);
+    }
+}
