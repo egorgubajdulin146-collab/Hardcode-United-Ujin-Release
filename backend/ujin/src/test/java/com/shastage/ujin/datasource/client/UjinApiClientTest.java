@@ -136,7 +136,6 @@ class UjinApiClientTest {
             output.write(bytes);
         }
     }
-}
 
     @Test
     void residentAuthWithoutApp() {
@@ -188,6 +187,4 @@ class UjinApiClientTest {
     void falseValueIsReturned() {
         readResponse.set("{\"error\":0,\"data\":{\"devices\":[{\"id\":\"sn-1\",\"signals\":[{\"name\":\"lamp\",\"value\":false}]}]}}");
         assertEquals("false", client.readSignal("tok", "sn-1", "lamp"));
-    }
-
-}
+}}
