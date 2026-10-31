@@ -40,8 +40,13 @@ compose=(docker compose --project-directory "$release" --env-file /etc/ujin/loca
   > "/var/backups/ujin/before-$revision.dump"
 test -s "/var/backups/ujin/before-$revision.dump"
 "${compose[@]}" up -d --wait --wait-timeout 180
-curl --fail --silent --show-error http://127.0.0.1:8088/api/auth/csrf >/dev/null
-[[ $(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8088/api/v1/devices) == 401 ]]
+binding=$("${compose[@]}" port frontend 8080)
+[[ "$binding" =~ ^127\.0\.0\.1:[0-9]+$ ]]
+base_url=http://$binding
+curl --connect-timeout 5 --max-time 20 --fail --silent --show-error \
+  "$base_url/api/auth/csrf" >/dev/null
+[[ $(curl --connect-timeout 5 --max-time 20 --silent --show-error \
+  --output /dev/null --write-out '%{http_code}' "$base_url/api/v1/devices") == 401 ]]
 for service in backend frontend; do
   container=$("${compose[@]}" ps -q "$service")
   actual=$(docker inspect --format '{{index .Config.Labels "org.opencontainers.image.revision"}}' "$container")
