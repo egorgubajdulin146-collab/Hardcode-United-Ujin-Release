@@ -1,0 +1,55 @@
+# Overlay on compose.yaml: local HTTP only, no automatic live credentials.
+services:
+  backend:
+    image: ujin-backend:${UJIN_IMAGE_TAG:?Set UJIN_IMAGE_TAG to the tested revision}
+    build:
+      context: .
+      dockerfile: backend/ujin/Dockerfile
+      args:
+        VCS_REF: ${UJIN_IMAGE_TAG}
+    environment:
+      UJIN_API_BASE_URL: ${UJIN_API_BASE_URL:-https://localhost/api}
+      UJIN_AUTH_APP: ${UJIN_AUTH_APP:-}
+    networks: [application]
+    healthcheck:
+      test: ["CMD", "bash", "/app/health.sh"]
+      interval: 5s
+      timeout: 4s
+      retries: 18
+      start_period: 20s
+    read_only: true
+    tmpfs: [/tmp:size=128m,mode=1777]
+    mem_limit: 768m
+    pids_limit: 256
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    logging:
+      driver: json-file
+      options: {max-size: "10m", max-file: "3"}
+  frontend:
+    image: ujin-frontend:${UJIN_IMAGE_TAG}
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+      args:
+        VCS_REF: ${UJIN_IMAGE_TAG}
+    depends_on:
+      backend: {condition: service_healthy}
+    ports: ["127.0.0.1:${UJIN_HTTP_PORT:-8088}:8080"]
+    networks: [application]
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8080/healthz"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+    read_only: true
+    tmpfs: [/tmp:size=32m,mode=1777]
+    mem_limit: 128m
+    pids_limit: 128
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    logging:
+      driver: json-file
+      options: {max-size: "10m", max-file: "3"}
+networks:
+  application:

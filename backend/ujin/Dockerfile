@@ -5,6 +5,7 @@ LABEL org.opencontainers.image.revision="${VCS_REF}"
 
 WORKDIR /app
 COPY --chown=10001:10001 backend/ujin/build/libs/*.jar /app/app.jar
+COPY --chown=10001:10001 infra/backend-health.sh /app/health.sh
 USER 10001:10001
 
 ENTRYPOINT ["java", "-jar", "/app/app.jar"]

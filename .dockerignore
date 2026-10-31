@@ -5,3 +5,10 @@
 !backend/ujin/build/
 !backend/ujin/build/libs/
 !backend/ujin/build/libs/*.jar
+!frontend/
+!frontend/Dockerfile
+!frontend/dist/
+!frontend/dist/**
+!infra/
+!infra/backend-health.sh
+!infra/nginx.conf
