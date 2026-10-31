@@ -68,7 +68,19 @@ public class LocalRuntimeService {
         return availabilityRepo.findById(deviceId).map(LocalAvailabilityEntity::getAvailability).orElse("ONLINE");
     }
 
-    // Internal emulator control; no public endpoint is added outside the contract.
+    public Map<String, Object> updateAvailability(UUID deviceId, String status, String mode, String owner) {
+        if (!"LOCAL".equals(mode)) {
+            if ("UJIN".equals(mode))
+                throw new CatalogException(503, "MODE_UNAVAILABLE", "Only local emulator availability can be changed");
+            throw new CatalogException(422, "VALIDATION_ERROR", "executionMode must be LOCAL");
+        }
+        if (!"ONLINE".equals(status) && !"OFFLINE".equals(status))
+            throw new CatalogException(422, "VALIDATION_ERROR", "availability must be ONLINE or OFFLINE");
+        setAvailability(deviceId, status, owner);
+        return getDeviceState(deviceId, "LOCAL", owner);
+    }
+
+    // Internal emulator state also permits UNKNOWN for runtime diagnostics.
     public void setAvailability(UUID deviceId, String status, String owner) {
         catalogStore.lock();
         catalogService.device(deviceId, owner);
@@ -148,11 +160,14 @@ public class LocalRuntimeService {
         event.setOwner(owner);
         eventRepo.save(event);
 
-        // Обновляем состояние сигнала leak
-        updateSignalState(deviceId, "leak", value, owner);
+        // Compare persisted owner-scoped state under the catalog lock before updating it.
+        boolean changed = stateRepo.findByDeviceIdAndSignalKeyAndOwner(deviceId, "leak", owner)
+                .map(previous -> previous.getValue() != value.doubleValue())
+                .orElse(true);
+        if (changed) updateSignalState(deviceId, "leak", value, owner);
 
         // Запускаем подходящие LOCAL-сценарии
-        var runIds = processScenarios(deviceId, "leak", value, eventId, owner);
+        var runIds = processScenarios(deviceId, "leak", value, eventId, owner, changed);
 
         event.setStatus("PROCESSED");
         event.setProcessedAt(java.time.Instant.now().toString());
@@ -239,7 +254,7 @@ public class LocalRuntimeService {
     }
 
     // ===== Обработка сценариев =====
-    private List<UUID> processScenarios(UUID sourceDeviceId, String signalKey, double value, UUID eventId, String owner) {
+    private List<UUID> processScenarios(UUID sourceDeviceId, String signalKey, double value, UUID eventId, String owner, boolean changed) {
         var scenarios = loadAllScenarios(owner);
         var runIds = new ArrayList<UUID>();
         var now = java.time.Instant.now().toString();
@@ -254,6 +269,11 @@ public class LocalRuntimeService {
 
             // Только LOCAL-сценарии
             if (!"LOCAL".equals(scenario.executionMode())) {
+                continue;
+            }
+
+            if (!changed) {
+                createSkippedRun(scenario, eventId, "NO_STATE_CHANGE", signalKey, value, now, owner);
                 continue;
             }
 

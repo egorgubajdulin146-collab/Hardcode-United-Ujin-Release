@@ -245,3 +245,41 @@ HTTP 401/403 upstream распознаются как явные отказы; �
 и некорректный ответ дают 502, ошибки соединения/таймаут — 503.
 Коды авторизации внутри JSON Ujin не подтверждены и не угадываются.
 Ошибки не содержат upstream body, credentials или URL с токеном.
+
+
+## Local emulator availability
+
+PUT /api/v1/devices/{deviceId}/availability accepts availability ONLINE/OFFLINE
+and executionMode LOCAL, returns DeviceState. Requires the device owner session
+and CSRF. Unknown devices (including another owner's UUID) return 404; invalid
+values return 422, UJIN mode returns 503 MODE_UNAVAILABLE without changing state.
+This controls the local emulator only. OFFLINE blocks stimuli/direct commands;
+a rule targeting it records BLOCKED/DEVICE_OFFLINE. Returning ONLINE permits
+new operations. Existing values and receipts are retained.
+## Unsupported UJIN scenario execution
+
+Creating or updating an enabled UJIN scenario returns 503 MODE_UNAVAILABLE.
+Disabled UJIN drafts remain editable and retain their executionMode. LOCAL
+rules can be enabled normally. Existing enabled UJIN rows are not rewritten:
+the executor continues to skip them, and the UI labels them as unsupported.
+To save such a row, explicitly disable it or choose LOCAL. No schema/data
+migration or automatic mode conversion is performed.
+## CHANGE semantics for LOCAL WET
+
+The first valid observation initializes the signal and evaluates matching LOCAL
+rules. Later observations evaluate actions only when the numeric value changes.
+A new eventId with the same value is still persisted as PROCESSED; matching LOCAL
+rules get SKIPPED / NO_STATE_CHANGE without executing actions. This reason takes
+precedence over enabled/condition checks for an unchanged observation. A changed
+value still yields SCENARIO_DISABLED or CONDITION_FALSE when appropriate.
+An unchanged observation does not rewrite the signal's updatedAt. Event receipt
+records when the observation was accepted. Replaying an existing eventId returns
+its original receipt even if the current state has since changed; a conflicting
+payload with the same ID still returns 409. The prior signal value is persisted
+in the existing state table, so restart does not reset CHANGE detection. A retry
+after restoring an offline target requires a new source transition, not the same
+value under another ID. No cascaded events are emitted by actions.
+
+Example: first WET=0 -> CONDITION_FALSE; WET=1 -> SUCCEEDED;
+new eventId/WET=1 -> NO_STATE_CHANGE; WET=0 -> CONDITION_FALSE;
+WET=1 -> SUCCEEDED. A replay creates no additional run.

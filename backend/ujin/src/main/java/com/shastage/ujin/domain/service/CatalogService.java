@@ -211,6 +211,8 @@ public class CatalogService {
                         && Set.of("LOCAL", "UJIN")
                                 .contains(Objects.toString(data.executionMode(), "")),
                 "Invalid enabled or executionMode");
+        if (data.enabled() && "UJIN".equals(data.executionMode()))
+            throw new CatalogException(503, "MODE_UNAVAILABLE", "Ujin scenario execution is not connected; save a disabled draft or use LOCAL");
         require(data.trigger() != null && data.action() != null, "trigger and action are required");
         var t = data.trigger();
         var a = data.action();

@@ -59,6 +59,8 @@ export const endpoints = {
       api.get<PlatformBinding>(`/api/v1/devices/${id}/platform-binding`, signal),
     putBinding: (id: string, data: PlatformBindingWrite) =>
       api.put<PlatformBinding>(`/api/v1/devices/${id}/platform-binding`, data),
+    setAvailability: (id: string, availability: "ONLINE" | "OFFLINE") =>
+      api.put<DeviceState>(`/api/v1/devices/${id}/availability`, { availability, executionMode: "LOCAL" }),
     getDependencies: (id: string, signal?: AbortSignal) =>
       api.get<DeviceDependencies>(`/api/v1/devices/${id}/dependencies`, signal),
   },

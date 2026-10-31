@@ -40,6 +40,13 @@ public class RuntimeController {
         return service.getDeviceState(deviceId, mode, currentOwner());
     }
 
+    @PutMapping("/devices/{deviceId}/availability")
+    public Map<String, Object> availability(@PathVariable UUID deviceId, @RequestBody AvailabilityRequest request) {
+        if (request == null)
+            throw new com.shastage.ujin.domain.exception.CatalogException(400, "INVALID_REQUEST", "Request body is required");
+        return service.updateAvailability(deviceId, request.availability(), request.executionMode(), currentOwner());
+    }
+
     @PostMapping("/devices/{deviceId}/stimuli")
     public ResponseEntity<Map<String, Object>> stimulus(
             @PathVariable UUID deviceId,
