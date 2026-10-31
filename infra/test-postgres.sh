@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
+# Supported host: Linux with Bash, GNU coreutils and OpenSSL.
 
 repo_root=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)
 export COMPOSE_PROJECT_NAME="ujin-p0-test-$$-$RANDOM"
@@ -14,7 +15,7 @@ tmp_dir=$(mktemp -d)
 
 cleanup() {
   "${compose[@]}" down --volumes --remove-orphans > /dev/null
-  rm -f -- "$tmp_dir/probe.dump"
+  rm -f -- "$tmp_dir/probe.dump" "$tmp_dir/race.dump"
   rmdir -- "$tmp_dir"
 }
 trap cleanup EXIT
@@ -56,10 +57,12 @@ check_data ujin
 check_data ujin
 bash "$repo_root/infra/backup-db.sh" "$tmp_dir/probe.dump"
 [[ $(stat -c '%a' "$tmp_dir/probe.dump") == 600 ]]
+backup_checksum=$(sha256sum "$tmp_dir/probe.dump")
 if bash "$repo_root/infra/backup-db.sh" "$tmp_dir/probe.dump" > /dev/null 2>&1; then
   echo "An existing backup was unexpectedly overwritten" >&2
   exit 1
 fi
+[[ $(sha256sum "$tmp_dir/probe.dump") == "$backup_checksum" ]]
 bash "$repo_root/infra/restore-db.sh" "$tmp_dir/probe.dump" ujin_restore_check
 check_data ujin_restore_check
 if bash "$repo_root/infra/restore-db.sh" "$tmp_dir/probe.dump" ujin > /dev/null 2>&1; then
@@ -71,4 +74,17 @@ if bash "$repo_root/infra/restore-db.sh" "$tmp_dir/probe.dump" bad-name > /dev/n
   echo "An invalid database name was unexpectedly accepted" >&2
   exit 1
 fi
-echo "PostgreSQL: health, private ports, restart, backup/restore and negative checks PASS"
+# Both writers target the same new path. Publication must be no-clobber even
+# if both pass backup-db.sh's initial existence check before either finishes.
+bash "$repo_root/infra/backup-db.sh" "$tmp_dir/race.dump" > /dev/null 2>&1 &
+first_writer=$!
+bash "$repo_root/infra/backup-db.sh" "$tmp_dir/race.dump" > /dev/null 2>&1 &
+second_writer=$!
+successes=0
+if wait "$first_writer"; then successes=$((successes + 1)); fi
+if wait "$second_writer"; then successes=$((successes + 1)); fi
+[[ "$successes" == 1 ]]
+[[ $(stat -c '%a' "$tmp_dir/race.dump") == 600 ]]
+bash "$repo_root/infra/restore-db.sh" "$tmp_dir/race.dump" ujin_race_check
+check_data ujin_race_check
+echo "PostgreSQL: health, private ports, restart, backup/restore, concurrent backup and negative checks PASS"

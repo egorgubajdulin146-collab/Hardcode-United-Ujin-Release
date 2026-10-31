@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 umask 077
+# Supported host: Linux with Bash and GNU coreutils; see infra/README.md.
 
 if [[ $# != 1 ]]; then
   echo "Usage: bash infra/backup-db.sh /private/path/backup.dump" >&2
