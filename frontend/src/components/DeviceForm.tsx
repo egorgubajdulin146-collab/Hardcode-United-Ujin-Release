@@ -37,6 +37,26 @@ const GROUP_MGMT: Record<string, string[]> = {
 
 const READABLE_MGMT = ["r", "rw"];
 
+const STARTER_TEMPLATES: DeviceWrite[] = [
+  {
+    title: "Датчик протечки", family: "leak",
+    signals: [
+      { key: "leak", title: "Протечка", group: "property", management: "r", valueType: "NUMBER", control: "switch", min: 0, max: 1, enumValues: [0, 1] },
+      { key: "battery", title: "Батарея", group: "property", management: "r", valueType: "NUMBER", control: "counter", min: 0, max: 100 },
+    ],
+    events: [{ key: "leak_changed", title: "Изменение протечки", signalKey: "leak", emission: "CHANGE" }],
+  },
+  {
+    title: "Сигнальная лампа", family: "light",
+    signals: [
+      { key: "lamp", title: "Свет", group: "capability", management: "rw", valueType: "NUMBER", control: "switch", min: 0, max: 1, enumValues: [0, 1] },
+      { key: "brightness", title: "Яркость", group: "capability", management: "rw", valueType: "NUMBER", control: "range", min: 1, max: 100 },
+      { key: "offline_timeout", title: "Таймер авто-выключения", group: "setting", management: "rw", valueType: "NUMBER", control: "counter", min: 0, max: 3600 },
+    ],
+    events: [],
+  },
+];
+
 export function DeviceForm({ initial, onSubmit, onCancel, loading, error, conflictType, onReloadFresh }: Props) {
   const [title, setTitle] = useState(initial?.title ?? "");
   const [family, setFamily] = useState(initial?.family ?? "");
@@ -47,6 +67,17 @@ export function DeviceForm({ initial, onSubmit, onCancel, loading, error, confli
     (initial?.signals ?? []).map((s) => s.enumValues?.join(", ") ?? "")
   );
   const [enumErrors, setEnumErrors] = useState<string[]>([]);
+
+  const templateAvailable = !loading && !title && !family && signals.length === 0 && events.length === 0;
+  const applyTemplate = (template: DeviceWrite) => {
+    if (!templateAvailable) return;
+    setTitle(template.title);
+    setFamily(template.family);
+    setSignals(template.signals.map((signal) => ({ ...signal, enumValues: signal.enumValues?.slice() })));
+    setEvents(template.events.map((event) => ({ ...event })));
+    setEnumTexts(template.signals.map((signal) => signal.enumValues?.join(", ") ?? ""));
+    setEnumErrors([]);
+  };
 
   // Парсинг enumValues при сохранении
   const parseEnumValues = (text: string): { values?: number[]; error?: string } => {
@@ -135,6 +166,24 @@ export function DeviceForm({ initial, onSubmit, onCancel, loading, error, confli
           <X size={16} />
         </button>
       </div>
+
+      {!initial && (
+        <div className={styles.section}>
+          <span className={styles.label}>Начать с шаблона</span>
+          <div className={styles.signalRow}>
+            {STARTER_TEMPLATES.map((template) => (
+              <button key={template.family} type="button" className={styles.addBtn}
+                disabled={!templateAvailable} onClick={() => applyTemplate(template)}>
+                {template.title}
+              </button>
+            ))}
+          </div>
+          <p className={styles.label}>
+            Шаблон заполняет только пустую форму. Устройство появится в вашем каталоге после сохранения.
+            Привязка к Ujin настраивается отдельно и не создаёт устройство на платформе.
+          </p>
+        </div>
+      )}
 
       <div className={styles.field}>
         <label className={styles.label}>Название</label>
