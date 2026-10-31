@@ -40,11 +40,12 @@ public class UjinSignalController {
             throw new ResponseStatusException(
                     switch (error.kind()) {
                         case UNAUTHORIZED -> HttpStatus.UNAUTHORIZED;
-                        case FORBIDDEN -> HttpStatus.FORBIDDEN;
+                        case FORBIDDEN, ACCESS_DENIED -> HttpStatus.FORBIDDEN;
                         case UNAVAILABLE -> HttpStatus.SERVICE_UNAVAILABLE;
                         case SIGNAL_NOT_FOUND -> HttpStatus.NOT_FOUND;
-                        case BAD_RESPONSE -> HttpStatus.BAD_GATEWAY;
-                    });
+                        case BAD_RESPONSE, PLATFORM_ERROR -> HttpStatus.BAD_GATEWAY;
+                    },
+                    error.detail());
         }
     }
 
