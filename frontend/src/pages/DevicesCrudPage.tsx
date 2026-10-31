@@ -8,6 +8,7 @@ import { isMock } from "../api/dataSource";
 import { mockDevicePage } from "../mocks/data";
 import { DeviceRuntimePanel } from "../components/DeviceRuntimePanel";
 import { DeviceForm } from "../components/DeviceForm";
+import { PlatformBindingSection } from "../components/PlatformBindingSection";
 import { LoadingState, EmptyState, ErrorState, MockBadge } from "../components/States";
 import type { Device, DeviceWrite, DeviceDependencies } from "../api/types";
 import styles from "./DevicesCrudPage.module.css";
@@ -238,6 +239,13 @@ export function DevicesCrudPage() {
           conflictType={conflictType}
           onReloadFresh={handleReloadFresh}
         />
+        {mode === "edit" && editing && (
+          <PlatformBindingSection
+            deviceId={editing.id}
+            signals={editing.signals}
+            platformLink={editing.platformLink}
+          />
+        )}
       </div>
     );
   }

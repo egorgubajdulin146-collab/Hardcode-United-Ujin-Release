@@ -76,6 +76,19 @@ export interface SignalValue {
   signalKey: string;
   value: number;
   updatedAt: string;
+  measuredAt?: string;
+}
+
+export type SignalIssueStatus =
+  | "MISSING_SIGNAL"
+  | "MISSING_VALUE"
+  | "BAD_SCHEMA"
+  | "OUT_OF_RANGE";
+
+export interface SignalReadIssue {
+  signalKey: string;
+  status: SignalIssueStatus;
+  detail: string;
 }
 
 export interface DeviceState {
@@ -83,6 +96,26 @@ export interface DeviceState {
   executionMode: ExecutionMode;
   values: SignalValue[];
   availability: string;
+  observedAt?: string;
+  signalIssues?: SignalReadIssue[];
+}
+
+export interface PlatformBindingMapping {
+  signalKey: string;
+  platformName: string;
+}
+
+export interface PlatformBinding {
+  deviceId: string;
+  serialNumber: string;
+  signalMappings: PlatformBindingMapping[];
+  version: number;
+}
+
+export interface PlatformBindingWrite {
+  serialNumber: string;
+  signalMappings: PlatformBindingMapping[];
+  expectedVersion?: number;
 }
 
 export interface Trigger {
@@ -229,4 +262,14 @@ export interface DeviceDependencies {
   deviceId: string;
   scenarioIds: string[];
   pendingOperationIds: string[];
+}
+export interface PublicationReceipt {
+  publicationId: string;
+  deviceId: string;
+  signalKey: string;
+  value: number;
+  status: "PENDING" | "CONFIRMED" | "FAILED" | "UNKNOWN";
+  reason: string;
+  createdAt: string;
+  observedAt?: string | null;
 }

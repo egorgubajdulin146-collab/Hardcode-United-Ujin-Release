@@ -283,3 +283,12 @@ value under another ID. No cascaded events are emitted by actions.
 Example: first WET=0 -> CONDITION_FALSE; WET=1 -> SUCCEEDED;
 new eventId/WET=1 -> NO_STATE_CHANGE; WET=0 -> CONDITION_FALSE;
 WET=1 -> SUCCEEDED. A replay creates no additional run.
+
+## State publication
+
+The device publication endpoints in openapi.json persist a receipt before sending
+a reading, and confirm only after a separate Ujin read. Server-assigned destinations,
+two-phase dictionary/value publication, UNKNOWN recovery, account isolation and
+per-signal zero encoding are described in [UJIN_PUBLICATION](../UJIN_PUBLICATION.md).
+Publication is disabled by default; BOUND alone does not enable external writes.
+Live availability remains distinct from a successful synthetic test.

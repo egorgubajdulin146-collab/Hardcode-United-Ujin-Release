@@ -9,8 +9,35 @@ import styles from "./DeviceRuntimePanel.module.css";
 
 const COMMAND_STATUS = { PENDING: "Ожидает подтверждения", CONFIRMED: "Выполнено", FAILED: "Ошибка выполнения", UNKNOWN: "Результат неизвестен" };
 const EVENT_STATUS = { ACCEPTED: "Событие принято", PROCESSED: "Событие обработано", FAILED: "Ошибка обработки" };
+const ISSUE_LABEL: Record<string, string> = {
+  MISSING_SIGNAL: "Сигнал отсутствует на платформе",
+  MISSING_VALUE: "Платформа не передала значение",
+  BAD_SCHEMA: "Некорректное значение",
+  OUT_OF_RANGE: "Значение вне диапазона",
+};
 function errorMessage(error: unknown): string {
   if (error instanceof ApiError) {
+    switch (error.problem?.code) {
+      case "PUBLICATION_NOT_CONFIGURED":
+        return "Публикация для этого устройства ещё не настроена на сервере.";
+      case "LOCAL_STATE_CHANGED":
+        return "Показание изменилось. Обновите состояние перед публикацией.";
+      case "PUBLICATION_UNRESOLVED":
+        return "Сначала проверьте чтением предыдущую публикацию этого сигнала.";
+      case "PLATFORM_NOT_BOUND":
+        return "Устройство не привязано к платформенному SN. Добавьте привязку в карточке устройства.";
+      case "UJIN_DEVICE_NOT_VISIBLE":
+        return "Привязанный SN сейчас не виден в Ujin.";
+      case "UJIN_AUTH_REQUIRED":
+        return "Нужен вход в Ujin для чтения состояния.";
+      case "UJIN_ACCESS_DENIED":
+        return "Ujin запретил доступ к данным устройства.";
+      case "UJIN_UNAVAILABLE":
+        return "Платформа Ujin недоступна (сеть или таймаут).";
+      case "UJIN_BAD_RESPONSE":
+      case "UJIN_PLATFORM_ERROR":
+        return "Ujin вернул некорректный ответ.";
+    }
     if (error.status === 404 || error.status === 501) return "Управление этим устройством пока недоступно на сервере.";
     if (error.status === 403) return "Нет разрешения на эту операцию.";
     return error.problem?.detail ?? `Ошибка сервера (${error.status})`;
@@ -37,6 +64,7 @@ export function DeviceRuntimePanel({ device, onClose }: { device: Device; onClos
   const [command, setCommand] = useState<CommandReceipt | null>(null);
   const [eventLookupId, setEventLookupId] = useState<string | null>(null);
   const [event, setEvent] = useState<EventReceipt | null>(null);
+  const [publication, setPublication] = useState<PublicationReceipt | null>(null);
   const { terminateSession } = useSession();
   const active = useRef(true);
   const queryClient = useQueryClient();
@@ -50,6 +78,46 @@ export function DeviceRuntimePanel({ device, onClose }: { device: Device; onClos
   const integration = useQuery({
     queryKey: ["ujin-status"], queryFn: ({ signal }) => endpoints.ujin.getStatus(signal), enabled: mode === "UJIN", retry: false,
   });
+  const publications = useQuery({
+    queryKey: ["publications", device.id],
+    queryFn: ({ signal }) => endpoints.publications.list(device.id, signal),
+    enabled: device.platformLink === "BOUND", retry: false,
+  });
+  const receipts = Array.isArray(publications.data) ? publications.data : [];
+  const publicationReceipts = publication
+    ? [publication, ...receipts.filter(p => p.publicationId !== publication.publicationId)] : receipts;
+  const publishReading = async (signalKey: string, value: number) => {
+    if (busy) return;
+    const pending: PublicationReceipt = { publicationId: crypto.randomUUID(), deviceId: device.id,
+      signalKey, value, status: "PENDING", reason: "DISPATCHING", createdAt: new Date().toISOString() };
+    setPublication(pending); setBusy(true); setError(null);
+    try {
+      const saved = await endpoints.publications.send(device.id, { publicationId: pending.publicationId, signalKey, value });
+      if (active.current) setPublication(saved);
+    } catch (err) {
+      if (!active.current) return;
+      if (err instanceof ApiError && err.status === 401) terminateSession();
+      const preflightFailure = err instanceof ApiError && ["PUBLICATION_NOT_CONFIGURED", "UJIN_UNAVAILABLE", "UJIN_BAD_RESPONSE",
+        "UJIN_PLATFORM_ERROR"].includes(err.problem?.code ?? "");
+      const uncertain = !(err instanceof ApiError) || (!preflightFailure && err.status >= 500) || err.status === 408;
+      setPublication(uncertain ? { ...pending, status: "UNKNOWN", reason: "RESPONSE_NOT_RECEIVED" } : null);
+      setError(errorMessage(err));
+    } finally {
+      if (active.current) { setBusy(false); void publications.refetch(); }
+    }
+  };
+  const checkPublication = async (receipt: PublicationReceipt) => {
+    setBusy(true); setError(null);
+    try {
+      const checked = await endpoints.publications.readback(device.id, receipt.publicationId);
+      if (active.current) setPublication(checked);
+    } catch (err) {
+      if (active.current) {
+        if (err instanceof ApiError && err.status === 401) terminateSession();
+        setError(errorMessage(err));
+      }
+    } finally { if (active.current) { setBusy(false); void publications.refetch(); } }
+  };
   const commandStatus = useQuery({
     queryKey: ["command", command?.commandId],
     queryFn: ({ signal }) => endpoints.commands.get(command!.commandId, signal),
@@ -68,7 +136,7 @@ export function DeviceRuntimePanel({ device, onClose }: { device: Device; onClos
   const unresolved = currentCommand?.status === "PENDING" || currentCommand?.status === "UNKNOWN" || currentEvent?.status === "ACCEPTED" || (eventLookupId !== null && !currentEvent);
   const online = !state.error && state.data?.availability === "ONLINE";
   const canCommand = online && (mode === "LOCAL" || (device.platformLink === "BOUND" && !integration.error && integration.data?.downlink.status === "AVAILABLE"));
-  const requestError = state.error ?? integration.error ?? commandStatus.error ?? eventStatus.error;
+  const requestError = state.error ?? integration.error ?? commandStatus.error ?? eventStatus.error ?? publications.error;
   useEffect(() => {
     if (requestError instanceof ApiError && requestError.status === 401) terminateSession();
   }, [requestError, terminateSession]);
@@ -145,12 +213,22 @@ export function DeviceRuntimePanel({ device, onClose }: { device: Device; onClos
       Эмулятор онлайн
     </label>}
     {requestError && <p role="alert" className={styles.error}>{errorMessage(requestError)}</p>}
+    {mode === "UJIN" && state.data?.observedAt && (
+      <p>Наблюдение: {new Date(state.data.observedAt).toLocaleString("ru-RU")} (время чтения backend, не время измерения устройством)</p>
+    )}
     {mode === "UJIN" && !canCommand && <p>Управление доступно после привязки устройства и подтверждения командного канала Ujin.</p>}
     <div className={styles.signals}>{device.signals.map(signal => {
       const value = state.data?.values.find(v => v.signalKey === signal.key);
+      const issue = state.data?.signalIssues?.find(i => i.signalKey === signal.key);
       return <article key={signal.key}>
         <h3>{signal.title}</h3><p>{signal.management === "w" ? "Команда" : value ? `${value.value}${signal.unit ? ` ${signal.unit}` : ""}` : "Нет данных"}</p>
         {value && <small>Обновлено: {new Date(value.updatedAt).toLocaleString("ru-RU")}</small>}
+        {value?.measuredAt && <small>Измерено устройством: {new Date(value.measuredAt).toLocaleString("ru-RU")}</small>}
+        {!value && issue && <small role="status">{ISSUE_LABEL[issue.status] ?? issue.detail}</small>}
+        {mode === "LOCAL" && signal.management !== "w" && device.platformLink === "BOUND" && value &&
+          <button type="button" disabled={busy || !online || publications.isPending || !!publications.error ||
+            publicationReceipts.some(p => p.signalKey === signal.key && (p.status === "PENDING" || p.status === "UNKNOWN"))}
+            onClick={() => void publishReading(signal.key, value.value)}>Опубликовать {signal.title} в Ujin</button>}
         {signal.management !== "r" && <form onSubmit={e => { e.preventDefault(); void sendCommand(signal); }}>
           <ValueInput signal={signal} value={values[signal.key] ?? ""} disabled={busy || !!unresolved || !canCommand}
             onChange={value => setValues(v => ({ ...v, [signal.key]: value }))} />
@@ -164,6 +242,12 @@ export function DeviceRuntimePanel({ device, onClose }: { device: Device; onClos
       <button type="button" disabled={busy || !!unresolved || !online} onClick={() => void stimulate(0)}>Вода отсутствует</button>
     </div>}
     <div aria-live="polite">
+      {publicationReceipts.map(receipt => <div key={receipt.publicationId}>
+        <p>Публикация {receipt.signalKey} = {receipt.value}: {{ PENDING: "ожидает проверки", CONFIRMED: "значение прочитано в Ujin",
+          FAILED: "отклонена", UNKNOWN: "результат неизвестен" }[receipt.status]} <small>{receipt.publicationId}</small></p>
+        {(receipt.status === "UNKNOWN" || receipt.status === "PENDING") &&
+          <button type="button" disabled={busy} onClick={() => void checkPublication(receipt)}>Проверить чтением</button>}
+      </div>)}
       {busy && <p>Отправка…</p>}{error && <p role="alert" className={styles.error}>{error}</p>}
       {currentCommand && <p>Команда: {COMMAND_STATUS[currentCommand.status]} <small>{currentCommand.commandId}</small></p>}
       {eventLookupId && !currentEvent && <p>Приём события не подтверждён. Проверяем результат. <small>{eventLookupId}</small></p>}
@@ -172,3 +256,4 @@ export function DeviceRuntimePanel({ device, onClose }: { device: Device; onClos
     </div>
   </section>;
 }
+import type { PublicationReceipt } from "../api/types";

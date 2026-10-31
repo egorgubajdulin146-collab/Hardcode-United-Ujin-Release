@@ -28,4 +28,6 @@ public interface CatalogStore {
     Scenario update(Scenario scenario, String owner);
 
     void deleteDevice(UUID id, String owner);
+
+    void setPlatformLink(UUID id, String platformLink, String owner);
 }

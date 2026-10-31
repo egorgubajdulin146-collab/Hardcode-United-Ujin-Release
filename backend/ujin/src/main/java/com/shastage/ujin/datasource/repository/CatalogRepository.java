@@ -105,4 +105,10 @@ public class CatalogRepository implements com.shastage.ujin.domain.repository.Ca
         devices.delete(entity);
         devices.flush();
     }
+
+    public void setPlatformLink(UUID id, String platformLink, String owner) {
+        var entity = devices.findByIdAndOwner(id, owner).orElseThrow();
+        entity.setPlatformLink(platformLink);
+        devices.saveAndFlush(entity);
+    }
 }
