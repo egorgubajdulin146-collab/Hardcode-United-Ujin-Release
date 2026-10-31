@@ -247,6 +247,7 @@ class LocalRuntimeServiceTest {
         var blockedId = ((List<?>) blocked.get("runIds")).get(0).toString();
         assertEquals("DEVICE_OFFLINE", runtimeService.getRun(UUID.fromString(blockedId), "owner").get("reason"));
         assertEquals("ONLINE", runtimeService.updateAvailability(lightDeviceId, "ONLINE", "LOCAL", "owner").get("availability"));
+        runtimeService.processStimulus(leakDeviceId, UUID.randomUUID(), "WET", 0, "owner");
         var restored = runtimeService.processStimulus(leakDeviceId, UUID.randomUUID(), "WET", 1, "owner");
         var restoredId = ((List<?>) restored.get("runIds")).get(0).toString();
         assertEquals("SUCCEEDED", runtimeService.getRun(UUID.fromString(restoredId), "owner").get("status"));
