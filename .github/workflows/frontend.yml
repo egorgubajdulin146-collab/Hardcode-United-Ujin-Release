@@ -39,6 +39,8 @@ jobs:
         run: node --test infra/tests/frontend-auth.test.mjs
       - name: Check scenario form scenarios
         run: node --test infra/tests/frontend-scenario-form.test.mjs
+      - name: Check device runtime panel
+        run: node --test infra/tests/frontend-runtime-panel.test.mjs
       - name: Build frontend
         working-directory: frontend
         run: npm run build
