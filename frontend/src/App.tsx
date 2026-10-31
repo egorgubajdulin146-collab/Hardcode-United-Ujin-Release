@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { SessionProvider } from "./api/session";
 import { useSession } from "./api/sessionContext";
@@ -21,14 +21,18 @@ const queryClient = new QueryClient({
 });
 
 function AppRoutes() {
-  const { authed } = useSession();
-  const location = useLocation();
+  const { authed, checking } = useSession();
 
-  // Без авторизации — только форма входа, без бокового меню
-  if (!authed && location.pathname !== "/login") {
-    return <LoginPage />;
+  // Проверка сессии на сервере — показываем загрузку без бокового меню
+  if (checking) {
+    return (
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "100vh" }}>
+        <p style={{ color: "#6b7280" }}>Проверка сессии…</p>
+      </div>
+    );
   }
 
+  // Без авторизации — только форма входа, без бокового меню
   if (!authed) {
     return <LoginPage />;
   }

@@ -1,10 +1,11 @@
-import { useState, useCallback, useRef, type ReactNode } from "react";
+import { useState, useCallback, useRef, useEffect, type ReactNode } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { SessionContext } from "./sessionContext";
-import { clearCsrf } from "./authClient";
+import { clearCsrf, fetchCsrf } from "./authClient";
 
 export function SessionProvider({ children }: { children: ReactNode }) {
   const [authed, setAuthed] = useState(false);
+  const [checking, setChecking] = useState(true);
   const queryClient = useQueryClient();
   const epochRef = useRef(0);
   const [sessionEpoch, setSessionEpoch] = useState(0);
@@ -32,9 +33,39 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     queryClient.clear();
   }, [bumpEpoch, queryClient]);
 
+  // Проверка сессии на сервере при загрузке
+  useEffect(() => {
+    let cancelled = false;
+
+    async function checkSession() {
+      try {
+        // Получаем CSRF — если сервер отвечает, проверяем защищённый endpoint
+        await fetchCsrf();
+        const resp = await fetch("/api/v1/devices?size=1", {
+          credentials: "include",
+        });
+        if (!cancelled) {
+          if (resp.status === 200) {
+            setAuthed(true);
+          }
+          // 401 — не авторизован, остаёмся на false
+        }
+      } catch {
+        // Сервер недоступен — не авторизован
+      } finally {
+        if (!cancelled) {
+          setChecking(false);
+        }
+      }
+    }
+
+    checkSession();
+    return () => { cancelled = true; };
+  }, []);
+
   return (
     <SessionContext.Provider
-      value={{ authed, sessionEpoch, setAuthed, terminateSession, onLogout, onLogin }}
+      value={{ authed, checking, sessionEpoch, setAuthed, terminateSession, onLogout, onLogin }}
     >
       {children}
     </SessionContext.Provider>

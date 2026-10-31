@@ -209,3 +209,127 @@ test('signal read success does not set authenticated', async () => {
   assert.deepEqual(result, { name: 'lamp', value: '1' });
   // В компоненте: setResult(data) без setAuthed(true)
 });
+
+// Тесты записи с CSRF
+
+test('POST request includes X-XSRF-TOKEN header', async () => {
+  let capturedHeaders = null;
+  globalThis.fetch = async (url, opts) => {
+    if (url.includes('/auth/csrf')) {
+      return new Response('test-csrf-token', { status: 200 });
+    }
+    if (opts.method === 'POST') {
+      capturedHeaders = opts.headers;
+      return Response.json({ id: 'test-id', version: 1 });
+    }
+    return new Response(null, { status: 404 });
+  };
+
+  // Импортируем api из client.ts
+  const clientUrl = transpile('../../frontend/src/api/client.ts');
+  const { api, setCsrfToken } = await import(clientUrl);
+  setCsrfToken('test-csrf-token');
+
+  await api.post('/api/v1/devices', { title: 'Test', family: 'test', signals: [], events: [] });
+  assert.equal(capturedHeaders['X-XSRF-TOKEN'], 'test-csrf-token');
+  assert.equal(capturedHeaders['Content-Type'], 'application/json');
+});
+
+test('PUT request includes X-XSRF-TOKEN header', async () => {
+  let capturedHeaders = null;
+  globalThis.fetch = async (url, opts) => {
+    if (opts.method === 'PUT') {
+      capturedHeaders = opts.headers;
+      return Response.json({ id: 'test-id', version: 2 });
+    }
+    return new Response(null, { status: 404 });
+  };
+
+  const clientUrl = transpile('../../frontend/src/api/client.ts');
+  const { api, setCsrfToken } = await import(clientUrl);
+  setCsrfToken('put-csrf-token');
+
+  await api.put('/api/v1/devices/test-id', { title: 'Test', family: 'test', signals: [], events: [], expectedVersion: 1 });
+  assert.equal(capturedHeaders['X-XSRF-TOKEN'], 'put-csrf-token');
+});
+
+test('DELETE request includes X-XSRF-TOKEN header', async () => {
+  let capturedHeaders = null;
+  globalThis.fetch = async (url, opts) => {
+    if (opts.method === 'DELETE') {
+      capturedHeaders = opts.headers;
+      return new Response(null, { status: 204 });
+    }
+    return new Response(null, { status: 404 });
+  };
+
+  const clientUrl = transpile('../../frontend/src/api/client.ts');
+  const { api, setCsrfToken } = await import(clientUrl);
+  setCsrfToken('delete-csrf-token');
+
+  await api.delete('/api/v1/devices/test-id?expectedVersion=1');
+  assert.equal(capturedHeaders['X-XSRF-TOKEN'], 'delete-csrf-token');
+});
+
+test('GET request does NOT include X-XSRF-TOKEN header', async () => {
+  let capturedHeaders = null;
+  globalThis.fetch = async (url, opts) => {
+    if (opts.method === 'GET') {
+      capturedHeaders = opts.headers;
+      return Response.json({ items: [], total: 0 });
+    }
+    return new Response(null, { status: 404 });
+  };
+
+  const clientUrl = transpile('../../frontend/src/api/client.ts');
+  const { api, setCsrfToken } = await import(clientUrl);
+  setCsrfToken('get-should-not-send');
+
+  await api.get('/api/v1/devices');
+  assert.equal(capturedHeaders?.['X-XSRF-TOKEN'], undefined);
+});
+
+test('403 on write returns ApiError with status 403', async () => {
+  globalThis.fetch = async () => {
+    return Response.json(
+      { type: 'about:blank', title: 'Forbidden', status: 403, code: 'CSRF_ERROR', detail: 'CSRF token invalid' },
+      { status: 403 }
+    );
+  };
+
+  const clientUrl = transpile('../../frontend/src/api/client.ts');
+  const { api, setCsrfToken, ApiError } = await import(clientUrl);
+  setCsrfToken('stale-token');
+
+  try {
+    await api.post('/api/v1/devices', {});
+    assert.fail('Должен быть 403');
+  } catch (err) {
+    assert.ok(err instanceof ApiError);
+    assert.equal(err.status, 403);
+    assert.equal(err.problem?.code, 'CSRF_ERROR');
+  }
+});
+
+test('no automatic retry on write failure', async () => {
+  let fetchCount = 0;
+  globalThis.fetch = async () => {
+    fetchCount++;
+    return Response.json(
+      { type: 'about:blank', title: 'Server Error', status: 500, code: 'INTERNAL', detail: 'Server error' },
+      { status: 500 }
+    );
+  };
+
+  const clientUrl = transpile('../../frontend/src/api/client.ts');
+  const { api, setCsrfToken } = await import(clientUrl);
+  setCsrfToken('token');
+
+  try {
+    await api.post('/api/v1/devices', {});
+    assert.fail('Должен быть error');
+  } catch {
+    // Ошибка — это нормально
+  }
+  assert.equal(fetchCount, 1, 'Не должно быть автоматического повтора');
+});

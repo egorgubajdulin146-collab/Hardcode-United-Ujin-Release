@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from "react";
-import { Plus, Trash2, AlertCircle, Loader2, X } from "lucide-react";
+import { Plus, Trash2, AlertCircle, Loader2, X, Download } from "lucide-react";
 import type { DeviceWrite, SignalDefinition, EventDefinition } from "../api/types";
 import styles from "./DeviceForm.module.css";
 
@@ -9,6 +9,8 @@ interface Props {
   onCancel: () => void;
   loading?: boolean;
   error?: string | null;
+  conflictType?: "version" | "in_use" | null;
+  onReloadFresh?: () => void;
 }
 
 const EMPTY_SIGNAL: SignalDefinition = {
@@ -27,7 +29,17 @@ const EMPTY_EVENT: EventDefinition = {
   emission: "CHANGE",
 };
 
-export function DeviceForm({ initial, onSubmit, onCancel, loading, error }: Props) {
+// Разрешённые сочетания group/management
+const GROUP_MGMT: Record<string, string[]> = {
+  property: ["r"],
+  capability: ["rw", "w"],
+  setting: ["rw"],
+};
+
+// Допустимые management для событий (только читаемые)
+const READABLE_MGMT = ["r", "rw"];
+
+export function DeviceForm({ initial, onSubmit, onCancel, loading, error, conflictType, onReloadFresh }: Props) {
   const [title, setTitle] = useState(initial?.title ?? "");
   const [family, setFamily] = useState(initial?.family ?? "");
   const [signals, setSignals] = useState<SignalDefinition[]>(initial?.signals ?? []);
@@ -45,7 +57,12 @@ export function DeviceForm({ initial, onSubmit, onCancel, loading, error }: Prop
   };
 
   const addSignal = () => setSignals([...signals, { ...EMPTY_SIGNAL }]);
-  const removeSignal = (i: number) => setSignals(signals.filter((_, idx) => idx !== i));
+  const removeSignal = (i: number) => {
+    const removed = signals[i];
+    setSignals(signals.filter((_, idx) => idx !== i));
+    // Удаляем события, ссылающиеся на удалённый сигнал
+    setEvents(events.filter((e) => e.signalKey !== removed.key));
+  };
   const updateSignal = (i: number, patch: Partial<SignalDefinition>) => {
     setSignals(signals.map((s, idx) => (idx === i ? { ...s, ...patch } : s)));
   };
@@ -55,6 +72,9 @@ export function DeviceForm({ initial, onSubmit, onCancel, loading, error }: Prop
   const updateEvent = (i: number, patch: Partial<EventDefinition>) => {
     setEvents(events.map((e, idx) => (idx === i ? { ...e, ...patch } : e)));
   };
+
+  // Читаемые сигналы для событий
+  const readableSignals = signals.filter((s) => READABLE_MGMT.includes(s.management));
 
   return (
     <form onSubmit={handleSubmit} className={styles.form}>
@@ -139,8 +159,8 @@ export function DeviceForm({ initial, onSubmit, onCancel, loading, error }: Prop
                 value={s.group}
                 onChange={(e) => {
                   const group = e.target.value as SignalDefinition["group"];
-                  const mgmt = group === "property" ? "r" : group === "setting" ? "rw" : s.management;
-                  updateSignal(i, { group, management: mgmt as SignalDefinition["management"] });
+                  const allowed = GROUP_MGMT[group] ?? ["r"];
+                  updateSignal(i, { group, management: allowed[0] as SignalDefinition["management"] });
                 }}
                 disabled={loading}
               >
@@ -154,9 +174,9 @@ export function DeviceForm({ initial, onSubmit, onCancel, loading, error }: Prop
                 onChange={(e) => updateSignal(i, { management: e.target.value as SignalDefinition["management"] })}
                 disabled={loading}
               >
-                <option value="r">r</option>
-                <option value="rw">rw</option>
-                <option value="w">w</option>
+                {(GROUP_MGMT[s.group] ?? ["r"]).map((m) => (
+                  <option key={m} value={m}>{m}</option>
+                ))}
               </select>
               <input
                 className={styles.inputSmall}
@@ -181,6 +201,7 @@ export function DeviceForm({ initial, onSubmit, onCancel, loading, error }: Prop
                 className={styles.inputSmall}
                 placeholder="min"
                 type="number"
+                step="any"
                 value={s.min ?? ""}
                 onChange={(e) => updateSignal(i, { min: e.target.value ? Number(e.target.value) : undefined })}
                 disabled={loading}
@@ -189,8 +210,27 @@ export function DeviceForm({ initial, onSubmit, onCancel, loading, error }: Prop
                 className={styles.inputSmall}
                 placeholder="max"
                 type="number"
+                step="any"
                 value={s.max ?? ""}
                 onChange={(e) => updateSignal(i, { max: e.target.value ? Number(e.target.value) : undefined })}
+                disabled={loading}
+              />
+            </div>
+            {/* enumValues */}
+            <div className={styles.signalRow}>
+              <input
+                className={styles.inputSmall}
+                placeholder="enumValues (через запятую)"
+                value={s.enumValues?.join(", ") ?? ""}
+                onChange={(e) => {
+                  const raw = e.target.value.trim();
+                  if (!raw) {
+                    updateSignal(i, { enumValues: undefined });
+                  } else {
+                    const vals = raw.split(",").map((v) => Number(v.trim())).filter((v) => !isNaN(v));
+                    updateSignal(i, { enumValues: vals.length > 0 ? vals : undefined });
+                  }
+                }}
                 disabled={loading}
               />
             </div>
@@ -244,9 +284,10 @@ export function DeviceForm({ initial, onSubmit, onCancel, loading, error }: Prop
                 value={e.signalKey}
                 onChange={(ev) => updateEvent(i, { signalKey: ev.target.value })}
                 disabled={loading}
+                required
               >
-                <option value="">— сигнал —</option>
-                {signals.map((s) => (
+                <option value="">— читаемый сигнал —</option>
+                {readableSignals.map((s) => (
                   <option key={s.key} value={s.key}>{s.key}</option>
                 ))}
               </select>
@@ -255,10 +296,23 @@ export function DeviceForm({ initial, onSubmit, onCancel, loading, error }: Prop
         ))}
       </div>
 
+      {/* Ошибка и конфликт */}
       {error && (
         <div className={styles.error} role="alert">
           <AlertCircle size={16} />
-          <span>{error}</span>
+          <div className={styles.errorContent}>
+            <span>{error}</span>
+            {conflictType === "version" && onReloadFresh && (
+              <button
+                type="button"
+                className={styles.reloadBtn}
+                onClick={onReloadFresh}
+                disabled={loading}
+              >
+                <Download size={14} /> Загрузить актуальную версию
+              </button>
+            )}
+          </div>
         </div>
       )}
 

@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Cpu, Plus, Pencil, Trash2, AlertCircle, Loader2, ChevronLeft, ChevronRight, RefreshCw } from "lucide-react";
 import { endpoints } from "../api/endpoints";
@@ -19,9 +19,12 @@ export function DevicesCrudPage() {
   const [page, setPage] = useState(0);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [conflictType, setConflictType] = useState<"version" | "in_use" | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Device | null>(null);
   const [deleteDeps, setDeleteDeps] = useState<DeviceDependencies | null>(null);
+  const [deleteDepsLoading, setDeleteDepsLoading] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
+  const deleteEpochRef = useRef(0);
 
   const mock = isMock();
   const { terminateSession } = useSession();
@@ -40,10 +43,33 @@ export function DevicesCrudPage() {
     queryClient.invalidateQueries({ queryKey: ["devices"] });
   }, [queryClient]);
 
+  // Загрузка свежей версии устройства при конфликте
+  const handleReloadFresh = async () => {
+    if (!editing) return;
+    setSaving(true);
+    try {
+      const fresh = await endpoints.devices.get(editing.id);
+      setEditing(fresh);
+      setSaveError(null);
+      setConflictType(null);
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 404) {
+        setSaveError("Устройство удалено другим пользователем.");
+        setMode("list");
+        setEditing(null);
+        return;
+      }
+      setSaveError("Не удалось загрузить актуальную версию.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
   // Создание
   const handleCreate = async (data: DeviceWrite) => {
     setSaving(true);
     setSaveError(null);
+    setConflictType(null);
     try {
       await endpoints.devices.create(data);
       refresh();
@@ -64,6 +90,7 @@ export function DevicesCrudPage() {
     if (!editing) return;
     setSaving(true);
     setSaveError(null);
+    setConflictType(null);
     try {
       await endpoints.devices.update(editing.id, {
         ...data,
@@ -79,7 +106,14 @@ export function DevicesCrudPage() {
           return;
         }
         if (err.status === 409) {
-          setSaveError("Конфликт версии: устройство изменено другим пользователем. Загрузите актуальную версию.");
+          const code = err.problem?.code;
+          if (code === "DEVICE_IN_USE") {
+            setConflictType("in_use");
+            setSaveError("Устройство используется в сценариях. Изменение декларации заблокировано.");
+          } else {
+            setConflictType("version");
+            setSaveError("Конфликт версии: устройство изменено другим пользователем.");
+          }
           return;
         }
       }
@@ -89,15 +123,25 @@ export function DevicesCrudPage() {
     }
   };
 
-  // Удаление
+  // Удаление — безопасное с защитой от устаревших ответов
   const handleDeleteClick = async (device: Device) => {
+    const epoch = ++deleteEpochRef.current;
     setDeleteTarget(device);
+    setDeleteDeps(null);
     setDeleteError(null);
+    setDeleteDepsLoading(true);
     try {
       const deps = await endpoints.devices.getDependencies(device.id);
+      // Проверяем, что диалог всё ещё для этого устройства
+      if (epoch !== deleteEpochRef.current) return;
       setDeleteDeps(deps);
-    } catch {
-      setDeleteDeps(null);
+    } catch (err) {
+      if (epoch !== deleteEpochRef.current) return;
+      setDeleteError(err instanceof Error ? err.message : "Не удалось загрузить зависимости.");
+    } finally {
+      if (epoch === deleteEpochRef.current) {
+        setDeleteDepsLoading(false);
+      }
     }
   };
 
@@ -108,6 +152,10 @@ export function DevicesCrudPage() {
     try {
       await endpoints.devices.remove(deleteTarget.id, deleteTarget.version);
       refresh();
+      // Если удалили последний элемент последней страницы — переходим на предыдущую
+      const remaining = (devicePage?.total ?? 1) - 1;
+      const maxPage = Math.max(0, Math.ceil(remaining / pageSize) - 1);
+      if (page > maxPage) setPage(maxPage);
       setDeleteTarget(null);
       setDeleteDeps(null);
     } catch (err) {
@@ -117,7 +165,12 @@ export function DevicesCrudPage() {
           return;
         }
         if (err.status === 409) {
-          setDeleteError("Устройство используется в сценариях или изменено. Обновите страницу.");
+          const code = err.problem?.code;
+          setDeleteError(
+            code === "DEVICE_IN_USE"
+              ? "Устройство используется в сценариях. Удаление невозможно."
+              : "Устройство изменено. Обновите страницу."
+          );
           return;
         }
       }
@@ -126,6 +179,19 @@ export function DevicesCrudPage() {
       setSaving(false);
     }
   };
+
+  const handleDeleteCancel = () => {
+    deleteEpochRef.current++;
+    setDeleteTarget(null);
+    setDeleteDeps(null);
+    setDeleteError(null);
+    setDeleteDepsLoading(false);
+  };
+
+  // Проверка возможности удаления
+  const canDelete = deleteDeps
+    ? deleteDeps.scenarioIds.length === 0 && deleteDeps.pendingOperationIds.length === 0
+    : !deleteDepsLoading;
 
   // Рендер
   if (isLoading && !mock) return <LoadingState />;
@@ -156,9 +222,11 @@ export function DevicesCrudPage() {
             expectedVersion: editing.version,
           } : undefined}
           onSubmit={mode === "edit" ? handleUpdate : handleCreate}
-          onCancel={() => { setMode("list"); setEditing(null); setSaveError(null); }}
+          onCancel={() => { setMode("list"); setEditing(null); setSaveError(null); setConflictType(null); }}
           loading={saving}
           error={saveError}
+          conflictType={conflictType}
+          onReloadFresh={handleReloadFresh}
         />
       </div>
     );
@@ -182,7 +250,7 @@ export function DevicesCrudPage() {
           <button
             type="button"
             className={styles.primaryBtn}
-            onClick={() => { setMode("create"); setSaveError(null); }}
+            onClick={() => { setMode("create"); setSaveError(null); setConflictType(null); }}
             disabled={mock}
           >
             <Plus size={16} /> Добавить устройство
@@ -219,7 +287,7 @@ export function DevicesCrudPage() {
                 <button
                   type="button"
                   className={styles.iconBtn}
-                  onClick={() => { setEditing(device); setMode("edit"); setSaveError(null); }}
+                  onClick={() => { setEditing(device); setMode("edit"); setSaveError(null); setConflictType(null); }}
                   disabled={mock}
                   title="Редактировать"
                 >
@@ -273,26 +341,38 @@ export function DevicesCrudPage() {
             <p className={styles.dialogText}>
               «{deleteTarget.title}» будет удалено безвозвратно.
             </p>
-            {deleteDeps && deleteDeps.scenarioIds.length > 0 && (
+
+            {deleteDepsLoading && (
+              <div className={styles.dialogLoading}>
+                <Loader2 size={16} className={styles.spinner} />
+                <span>Проверка зависимостей…</span>
+              </div>
+            )}
+
+            {deleteDeps && (deleteDeps.scenarioIds.length > 0 || deleteDeps.pendingOperationIds.length > 0) && (
               <div className={styles.dialogWarning}>
                 <AlertCircle size={16} />
                 <span>
-                  Устройство используется в {deleteDeps.scenarioIds.length} сценариях.
-                  Удаление отклонено сервером.
+                  Устройство используется:
+                  {deleteDeps.scenarioIds.length > 0 && ` ${deleteDeps.scenarioIds.length} сценариях`}
+                  {deleteDeps.pendingOperationIds.length > 0 && ` ${deleteDeps.pendingOperationIds.length} незавершённых операциях`}
+                  . Удаление невозможно.
                 </span>
               </div>
             )}
+
             {deleteError && (
               <div className={styles.dialogError} role="alert">
                 <AlertCircle size={16} />
                 <span>{deleteError}</span>
               </div>
             )}
+
             <div className={styles.dialogActions}>
               <button
                 type="button"
                 className={styles.cancelBtn}
-                onClick={() => { setDeleteTarget(null); setDeleteDeps(null); setDeleteError(null); }}
+                onClick={handleDeleteCancel}
                 disabled={saving}
               >
                 Отмена
@@ -301,7 +381,7 @@ export function DevicesCrudPage() {
                 type="button"
                 className={styles.dangerBtn}
                 onClick={handleDeleteConfirm}
-                disabled={saving || (deleteDeps !== null && deleteDeps.scenarioIds.length > 0)}
+                disabled={saving || !canDelete}
               >
                 {saving ? <Loader2 size={16} className={styles.spinner} /> : null}
                 Удалить
