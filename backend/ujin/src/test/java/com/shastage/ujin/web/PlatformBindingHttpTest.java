@@ -189,6 +189,26 @@ class PlatformBindingHttpTest {
     }
 
     @Test
+    void reviewDuplicateSerialMustNotBeBound() throws Exception {
+        login(userA, "review-duplicate");
+        String id=createDevice(userA,"Duplicate",deviceJson("Duplicate"));
+        snapshotBody="{\"error\":0,\"data\":{\"devices\":[{\"id\":\"same\",\"signals\":[]},{\"id\":\"same\",\"signals\":[]}]}}";
+        var result=putBinding(userA,id,bindingJson("same",MAPPINGS,null));
+        assertTrue(result.statusCode()>=400,"Ambiguous SN must not become BOUND: "+result.body());
+    }
+    @Test
+    void reviewBinaryEnumMustRejectFractionalPlatformValue() throws Exception {
+        login(userA, "review-enum");
+        String declaration="{\"title\":\"Binary\",\"family\":\"leak\",\"signals\":[{\"key\":\"leak\",\"title\":\"Leak\",\"group\":\"property\",\"management\":\"r\",\"valueType\":\"NUMBER\",\"control\":\"switch\",\"min\":0,\"max\":1,\"enumValues\":[0,1]}],\"events\":[]}";
+        String id=createDevice(userA,"Binary",declaration);
+        assertEquals(201,putBinding(userA,id,bindingJson("sn-target","[{\"signalKey\":\"leak\",\"platformName\":\"leak\"}]",null)).statusCode());
+        snapshotBody="{\"error\":0,\"data\":{\"devices\":[{\"id\":\"sn-target\",\"signals\":[{\"name\":\"leak\",\"value\":0.5}]}]}}";
+        var state=request(userA,"/api/v1/devices/"+id+"/state?mode=UJIN","GET",null,null);
+        assertEquals(200,state.statusCode());
+        assertTrue(JSON.readTree(state.body()).path("values").isEmpty(),"Out-of-enum value must not be returned as valid: "+state.body());
+    }
+
+    @Test
     void twoAccountsCannotSeeEachOtherBindingOrState() throws Exception {
         login(userA, "userA");
         login(userB, "userB");
