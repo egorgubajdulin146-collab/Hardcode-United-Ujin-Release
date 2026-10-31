@@ -20,6 +20,8 @@ services:
 
   frontend:
     image: node:22-alpine
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     working_dir: /app
     volumes:
       - ./frontend:/app
