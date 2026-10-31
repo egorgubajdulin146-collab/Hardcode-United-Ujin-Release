@@ -32,6 +32,18 @@ public class CommandEntity {
     @Column(name = "confirmed_at")
     private String confirmedAt;
 
+    @Column(name = "updated_at")
+    private String updatedAt;
+
+    @Column(length = 80)
+    private String reason;
+
+    @Column(name = "resolution_note", length = 1000)
+    private String resolutionNote;
+
+    @Column(name = "resolved_at")
+    private String resolvedAt;
+
     @Column(name = "owner", length = 120)
     private String owner;
 
@@ -53,4 +65,12 @@ public class CommandEntity {
     public String getOwner() { return owner; }
     public void setOwner(String owner) { this.owner = owner; }
     public void setConfirmedAt(String confirmedAt) { this.confirmedAt = confirmedAt; }
+    public String getUpdatedAt() { return updatedAt; }
+    public void setUpdatedAt(String updatedAt) { this.updatedAt = updatedAt; }
+    public String getReason() { return reason; }
+    public void setReason(String reason) { this.reason = reason; }
+    public String getResolutionNote() { return resolutionNote; }
+    public void setResolutionNote(String resolutionNote) { this.resolutionNote = resolutionNote; }
+    public String getResolvedAt() { return resolvedAt; }
+    public void setResolvedAt(String resolvedAt) { this.resolvedAt = resolvedAt; }
 }
