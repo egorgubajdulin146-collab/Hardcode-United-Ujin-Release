@@ -148,9 +148,11 @@ GitHub Actions выполняет сборку backend, требует нену�
 `POSTGRES_PASSWORD`. `docker compose up -d --wait` запускает PostgreSQL на
 `127.0.0.1:5432` и Vite на `127.0.0.1:5173`. Backend запускается отдельно
 на хосте на порту 8080. Compose не передаёт ему переменные из `.env`.
-Перед запуском задайте адрес API платформы в `UJIN_API_BASE_URL` (или адрес
-локального эмулятора). Не используйте значение по умолчанию `https://localhost/api`
-для проверки входа. Пароль и адрес платформы не записывайте в Git или логи.
+По умолчанию backend использует API стенда тест-ОАЭ:
+`https://api-uae-test.ujin.tech/api` (адрес из справочника хакатона `api-methods.md`).
+Для другого стенда или локального эмулятора задайте `UJIN_API_BASE_URL`
+перед запуском backend. После изменения настройки перезапустите backend.
+Пароли и токены не записывайте в Git или логи.
 
 PowerShell, из корня репозитория:
 
@@ -163,7 +165,7 @@ $user = if ($config['POSTGRES_USER']) { $config['POSTGRES_USER'] } else { 'ujin'
 $env:UJIN_DB_URL = "jdbc:postgresql://localhost:5432/$database"
 $env:UJIN_DB_USER = $user
 $env:UJIN_DB_PASSWORD = $config['POSTGRES_PASSWORD']
-$env:UJIN_API_BASE_URL = '<адрес API платформы или эмулятора>'
+$env:UJIN_API_BASE_URL = 'https://api-uae-test.ujin.tech/api'
 Set-Location backend/ujin
 .\gradlew.bat bootRun
 ```
@@ -178,7 +180,7 @@ set +a
 export UJIN_DB_URL="jdbc:postgresql://localhost:5432/${POSTGRES_DB:-ujin}"
 export UJIN_DB_USER="${POSTGRES_USER:-ujin}"
 export UJIN_DB_PASSWORD="$POSTGRES_PASSWORD"
-export UJIN_API_BASE_URL='<адрес API платформы или эмулятора>'
+export UJIN_API_BASE_URL='https://api-uae-test.ujin.tech/api'
 cd backend/ujin
 ./gradlew bootRun
 ```

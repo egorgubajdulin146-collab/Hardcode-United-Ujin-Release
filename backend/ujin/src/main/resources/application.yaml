@@ -12,10 +12,10 @@ spring:
   datasource:
     url: ${UJIN_DB_URL:jdbc:postgresql://localhost:5432/ujin}
     username: ${UJIN_DB_USER:ujin}
-    password: ${UJIN_DB_PASSWORD:}
+    password: ${UJIN_DB_PASSWORD:ujin}
   application:
     name: ujin
 ujin:
   api:
-    base-url: ${UJIN_API_BASE_URL:https://localhost/api}
+    base-url: ${UJIN_API_BASE_URL:https://api-uae-test.ujin.tech/api}
     app: ${UJIN_AUTH_APP:}
