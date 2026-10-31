@@ -11,7 +11,7 @@ PostgreSQL, Spring Data JPA, Flyway, Actuator.
 Сборка через Wrapper из этого каталога с JDK 25:
 
 ```sh
-bash gradlew --no-daemon --max-workers=2 --console=plain clean bootJar
+bash gradlew --no-daemon --max-workers=2 --console=plain clean test bootJar
 ```
 
 Альтернатива без установки JDK на хост — `bash infra/build-backend.sh` из
