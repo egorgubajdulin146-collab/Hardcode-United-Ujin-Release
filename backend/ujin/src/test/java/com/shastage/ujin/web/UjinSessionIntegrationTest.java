@@ -122,6 +122,8 @@ class UjinSessionIntegrationTest {
         assertEquals(502, failure.statusCode());
         assertSafe(failure);
         upstreamStatus = 200;
+        upstreamBody = "{\"error\":1,\"data\":{}}";
+        assertEquals(401, login(csrf).statusCode());
         for (String body : new String[]{"not json", "{\"error\":0,\"data\":{}}", "{\"error\":99}", "x".repeat(1_048_577)}) {
             upstreamBody = body;
             var response = login(csrf);
@@ -156,4 +158,75 @@ class UjinSessionIntegrationTest {
         assertEquals(503, timedOut.statusCode());
         assertSafe(timedOut);
     }
+    @Test
+    void catalogHttpUsesSessionCsrfAndTypedDtos() throws Exception {
+        var path="/api/v1/devices";
+        assertEquals(401,request(path,"GET",null,null).statusCode());
+        assertEquals(204,login(csrf()).statusCode());
+        String declaration="""
+                {"title":"HTTP lamp","family":"light","signals":[{"key":"lamp","title":"Lamp","group":"capability","management":"rw","valueType":"NUMBER","control":"switch","min":0,"max":1}],"events":[]}
+                """;
+        assertEquals(403,request(path,"POST",declaration,null).statusCode());
+        var created=request(path,"POST",declaration,csrf());
+        assertEquals(201,created.statusCode(),created.body());
+        assertTrue(created.headers().firstValue("Location").orElseThrow().startsWith(path+"/"));
+        var json=new tools.jackson.databind.ObjectMapper();
+        var device=json.readTree(created.body());
+        String item=path+"/"+device.get("id").asText();
+        assertEquals(1,device.get("version").asLong());
+        assertEquals("NOT_CONFIGURED",device.get("platformLink").asText());
+        assertFalse(created.body().contains("device_id"));
+        assertEquals(200,request(item,"GET",null,null).statusCode());
+        assertEquals(400,request(path+"/invalid-uuid","GET",null,null).statusCode());
+        assertEquals(400,request(path,"POST","{",csrf()).statusCode());
+        var invalid=request(path,"POST",declaration.replace("\"max\":1","\"max\":-1"),csrf());
+        assertEquals(422,invalid.statusCode());
+        assertTrue(invalid.headers().firstValue("Content-Type").orElseThrow().contains("application/problem+json"));
+        assertEquals("VALIDATION_ERROR",json.readTree(invalid.body()).get("code").asText());
+        assertEquals(400,request(path,"POST",declaration.replace("\"min\":0","\"min\":\"zero\""),csrf()).statusCode());
+        assertEquals(400,request(path,"POST",declaration.replace("\"family\":", "\"unexpected\":1,\"family\":"),csrf()).statusCode());
+        String update=declaration.strip().replaceFirst("\\{","{\"expectedVersion\":1,");
+        assertEquals(200,request(item,"PUT",update,csrf()).statusCode());
+        assertEquals(409,request(item,"PUT",update,csrf()).statusCode());
+        assertEquals(204,request(item+"?expectedVersion=2","DELETE",null,csrf()).statusCode());
+        assertEquals(404,request(item,"GET",null,null).statusCode());
+    }
+
+    @Test
+    void scenarioHttpMapsRulesAndProtectsReferencedDevices() throws Exception {
+        assertEquals(204,login(csrf()).statusCode());
+        var json=new tools.jackson.databind.ObjectMapper();
+        String declaration="""
+                {"title":"Rule device","family":"light","signals":[{"key":"lamp","title":"Lamp","group":"capability","management":"rw","valueType":"NUMBER","control":"switch","min":0,"max":1}],"events":[{"key":"changed","title":"Changed","signalKey":"lamp","emission":"CHANGE"}]}
+                """;
+        var first=request("/api/v1/devices","POST",declaration,csrf());
+        var second=request("/api/v1/devices","POST",declaration,csrf());
+        assertEquals(201,first.statusCode()); assertEquals(201,second.statusCode());
+        String source=json.readTree(first.body()).get("id").asText();
+        String target=json.readTree(second.body()).get("id").asText();
+        String rule="""
+                {"title":"HTTP rule","enabled":false,"executionMode":"UJIN","trigger":{"deviceId":"%s","signalKey":"lamp","operator":"EQ","value":1,"eventKey":"changed"},"action":{"deviceId":"%s","signalKey":"lamp","value":1}}
+                """.formatted(source,target);
+        var created=request("/api/v1/scenarios","POST",rule,csrf());
+        assertEquals(201,created.statusCode(),created.body());
+        var scenario=json.readTree(created.body());
+        String path="/api/v1/scenarios/"+scenario.get("id").asText();
+        assertEquals(source,scenario.get("trigger").get("deviceId").asText());
+        assertEquals(target,scenario.get("action").get("deviceId").asText());
+        assertFalse(scenario.get("enabled").asBoolean());
+        assertEquals(created.body(),request(path,"GET",null,null).body());
+        assertEquals(200,request("/api/v1/scenarios?page=0&size=1","GET",null,null).statusCode());
+        String update=rule.strip().replaceFirst("\\{","{\"expectedVersion\":1,").replace("\"enabled\":false","\"enabled\":true");
+        var updated=request(path,"PUT",update,csrf());
+        assertEquals(200,updated.statusCode(),updated.body());
+        assertEquals(2,json.readTree(updated.body()).get("version").asLong());
+        assertEquals(409,request(path,"PUT",update,csrf()).statusCode());
+        var dependencies=request("/api/v1/devices/"+target+"/dependencies","GET",null,null);
+        assertEquals(200,dependencies.statusCode());
+        assertTrue(dependencies.body().contains(scenario.get("id").asText()));
+        var deletion=request("/api/v1/devices/"+target+"?expectedVersion=1","DELETE",null,csrf());
+        assertEquals(409,deletion.statusCode());
+        assertEquals("DEVICE_IN_USE",json.readTree(deletion.body()).get("code").asText());
+    }
+
 }

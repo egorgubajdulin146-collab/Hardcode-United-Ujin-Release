@@ -79,7 +79,16 @@ public final class UjinApiClient {
     public String authenticate(String login, String password, String app) {
         requireValue(login, "login");
         requireValue(password, "password");
-        requireValue(app, "app");
+        if (app == null || app.isBlank()) return authenticateRequest(login, password, null);
+        try {
+            return authenticateRequest(login, password, app);
+        } catch (UjinApiException error) {
+            if (error.kind() != UjinApiException.Kind.UNAUTHORIZED) throw error;
+            return authenticateRequest(login, password, null);
+        }
+    }
+
+    private String authenticateRequest(String login, String password, String app) {
         HttpURLConnection connection = null;
         try {
             URI uri = URI.create(base + "/auth/authenticate/");
@@ -92,7 +101,7 @@ public final class UjinApiClient {
             connection.setRequestProperty("Accept", "application/json");
             connection.setDoOutput(true);
             byte[] body = ("login=" + encode(login) + "&password=" + encode(password)
-                    + "&app=" + encode(app)).getBytes(StandardCharsets.UTF_8);
+                    + (app == null ? "" : "&app=" + encode(app))).getBytes(StandardCharsets.UTF_8);
             try (OutputStream output = connection.getOutputStream()) {
                 output.write(body);
             }
@@ -109,6 +118,9 @@ public final class UjinApiClient {
                 } catch (RuntimeException error) {
                     throw new UjinApiException(UjinApiException.Kind.BAD_RESPONSE);
                 }
+            }
+            if (root != null && root.path("error").isIntegralNumber() && root.path("error").asInt() == 1) {
+                throw new UjinApiException(UjinApiException.Kind.UNAUTHORIZED);
             }
             if (root == null || !root.path("error").isIntegralNumber() || root.path("error").asInt() != 0) {
                 throw new UjinApiException(UjinApiException.Kind.BAD_RESPONSE);
