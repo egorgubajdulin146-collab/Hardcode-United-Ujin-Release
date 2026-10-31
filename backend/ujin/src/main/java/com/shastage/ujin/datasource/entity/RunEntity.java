@@ -56,6 +56,9 @@ public class RunEntity {
     @OrderBy("at ASC")
     private List<RunEntryEntity> entries = new ArrayList<>();
 
+    @Column(name = "owner", length = 120)
+    private String owner;
+
     public UUID getId() { return id; }
     public void setId(UUID id) { this.id = id; }
     public UUID getEventId() { return eventId; }
@@ -85,6 +88,8 @@ public class RunEntity {
     public Double getActionValue() { return actionValue; }
     public void setActionValue(Double actionValue) { this.actionValue = actionValue; }
     public List<RunEntryEntity> getEntries() { return entries; }
+    public String getOwner() { return owner; }
+    public void setOwner(String owner) { this.owner = owner; }
     public void setEntries(List<RunEntryEntity> entries) { this.entries = entries; }
 
     public void addEntry(String stage, String message, String at) {

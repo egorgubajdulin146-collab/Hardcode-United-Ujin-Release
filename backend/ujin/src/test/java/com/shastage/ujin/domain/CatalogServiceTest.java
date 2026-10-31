@@ -63,31 +63,31 @@ class CatalogServiceTest {
 
     @Test
     void storesAndReloadsDeviceAndScenarioFromDatabase() {
-        var source = service.create(declaration("Source", null));
-        var target = service.create(declaration("Target", null));
-        var scenario = service.create(rule(source, target, false, null));
+        var source = service.create(declaration("Source", null), "owner");
+        var target = service.create(declaration("Target", null), "owner");
+        var scenario = service.create(rule(source, target, false, null), "owner");
         new TransactionTemplate(transactions)
                 .executeWithoutResult(status -> {
-                    assertEquals(source, repository.device(source.id()).orElseThrow());
-                    assertEquals(scenario, repository.scenario(scenario.id()).orElseThrow());
+                    assertEquals(source, repository.device(source.id(), "owner").orElseThrow());
+                    assertEquals(scenario, repository.scenario(scenario.id(), "owner").orElseThrow());
                 });
-        assertEquals(2, service.devices(0, 1).total());
-        assertEquals(1, service.devices(0, 1).items().size());
-        assertThrows(CatalogException.class, () -> service.devices(Integer.MAX_VALUE, 100));
+        assertEquals(2, service.devices(0, 1, "owner").total());
+        assertEquals(1, service.devices(0, 1, "owner").items().size());
+        assertThrows(CatalogException.class, () -> service.devices(Integer.MAX_VALUE, 100, "owner"));
         assertEquals(
-                422, assertThrows(CatalogException.class, () -> service.devices(-1, 20)).status);
-        assertEquals(2, service.update(source.id(), declaration("Renamed", 1L)).version());
+                422, assertThrows(CatalogException.class, () -> service.devices(-1, 20, "owner")).status);
+        assertEquals(2, service.update(source.id(), declaration("Renamed", 1L), "owner").version());
         assertEquals(
                 "VERSION_CONFLICT",
                 assertThrows(
                                 CatalogException.class,
-                                () -> service.update(source.id(), declaration("Stale", 1L)))
+                                () -> service.update(source.id(), declaration("Stale", 1L), "owner"))
                         .code);
-        assertEquals(2, service.update(scenario.id(), rule(source, target, true, 1L)).version());
+        assertEquals(2, service.update(scenario.id(), rule(source, target, true, 1L), "owner").version());
         assertEquals(
                 "DEVICE_IN_USE",
-                assertThrows(CatalogException.class, () -> service.delete(target.id(), 1)).code);
-        assertEquals(List.of(scenario.id()), service.dependencies(source.id()).scenarioIds());
+                assertThrows(CatalogException.class, () -> service.delete(target.id(), 1, "owner")).code);
+        assertEquals(List.of(scenario.id()), service.dependencies(source.id(), "owner").scenarioIds());
     }
 
     @Test
@@ -98,7 +98,7 @@ class CatalogServiceTest {
                 () ->
                         service.create(
                                 new DeviceWrite(
-                                        " ", "light", valid.signals(), valid.events(), null)));
+                                        " ", "light", valid.signals(), valid.events(), null), "owner"));
         assertThrows(
                 CatalogException.class,
                 () ->
@@ -110,7 +110,7 @@ class CatalogServiceTest {
                                                 valid.signals().getFirst(),
                                                 valid.signals().getFirst()),
                                         valid.events(),
-                                        null)));
+                                        null), "owner"));
         assertThrows(
                 CatalogException.class,
                 () ->
@@ -120,10 +120,10 @@ class CatalogServiceTest {
                                         "light",
                                         valid.signals(),
                                         List.of(new Event("change", "Change", "absent", "CHANGE")),
-                                        null)));
-        assertEquals(0, service.devices(0, 20).total());
-        var source = service.create(valid);
-        var target = service.create(declaration("Target", null));
+                                        null), "owner"));
+        assertEquals(0, service.devices(0, 20, "owner").total());
+        var source = service.create(valid, "owner");
+        var target = service.create(declaration("Target", null), "owner");
         assertThrows(
                 CatalogException.class,
                 () ->
@@ -134,13 +134,13 @@ class CatalogServiceTest {
                                         "UJIN",
                                         new Trigger(source.id(), "lamp", "EQ", 2.0, "lamp_changed"),
                                         new Action(target.id(), "lamp", 1.0),
-                                        null)));
-        service.create(rule(source, target, false, null));
+                                        null), "owner"));
+        service.create(rule(source, target, false, null), "owner");
         assertEquals(
                 "SCENARIO_CYCLE",
                 assertThrows(
                                 CatalogException.class,
-                                () -> service.create(rule(target, source, true, null)))
+                                () -> service.create(rule(target, source, true, null), "owner"))
                         .code);
         assertThrows(
                 CatalogException.class,
@@ -148,19 +148,20 @@ class CatalogServiceTest {
                         service.update(
                                 source.id(),
                                 new DeviceWrite(
-                                        "Test", "changed", valid.signals(), valid.events(), 1L)));
+                                        "Test", "changed", valid.signals(), valid.events(), 1L),
+                                "owner"));
     }
 
     @Test
     void competingUpdatesHaveOnlyOneWinner() throws Exception {
-        var device = service.create(declaration("Test", null));
+        var device = service.create(declaration("Test", null), "owner");
         try (var executor = Executors.newFixedThreadPool(2)) {
             var start = new CountDownLatch(1);
             Callable<Boolean> update =
                     () -> {
                         start.await();
                         try {
-                            service.update(device.id(), declaration("Changed", 1L));
+                            service.update(device.id(), declaration("Changed", 1L), "owner");
                             return true;
                         } catch (CatalogException error) {
                             assertEquals("VERSION_CONFLICT", error.code);
@@ -172,24 +173,24 @@ class CatalogServiceTest {
             start.countDown();
             assertNotEquals(first.get(10, TimeUnit.SECONDS), second.get(10, TimeUnit.SECONDS));
         }
-        assertEquals(2, service.device(device.id()).version());
-        service.delete(device.id(), 2);
+        assertEquals(2, service.device(device.id(), "owner").version());
+        service.delete(device.id(), 2, "owner");
         assertEquals(
                 404,
-                assertThrows(CatalogException.class, () -> service.device(device.id())).status);
+                assertThrows(CatalogException.class, () -> service.device(device.id(), "owner")).status);
     }
 
     @Test
     void deletionRacingScenarioCreationCannotLeaveDanglingReferences() throws Exception {
-        var source = service.create(declaration("Source", null));
-        var target = service.create(declaration("Target", null));
+        var source = service.create(declaration("Source", null), "owner");
+        var target = service.create(declaration("Target", null), "owner");
         try (var executor = Executors.newFixedThreadPool(2)) {
             var start = new CountDownLatch(1);
             var created =
                     executor.submit(() -> {
                         start.await();
                         try {
-                            service.create(rule(source, target, false, null));
+                            service.create(rule(source, target, false, null), "owner");
                             return 201;
                         } catch (CatalogException error) {
                             return error.status;
@@ -199,7 +200,7 @@ class CatalogServiceTest {
                     executor.submit(() -> {
                         start.await();
                         try {
-                            service.delete(target.id(), 1);
+                            service.delete(target.id(), 1, "owner");
                             return 204;
                         } catch (CatalogException error) {
                             return error.status;
@@ -212,8 +213,8 @@ class CatalogServiceTest {
                     (createStatus == 201 && deleteStatus == 409)
                             || (createStatus == 404 && deleteStatus == 204));
             if (createStatus == 201)
-                assertEquals(1, service.dependencies(target.id()).scenarioIds().size());
-            else assertTrue(service.scenarios(0, 20).items().isEmpty());
+                assertEquals(1, service.dependencies(target.id(), "owner").scenarioIds().size());
+            else assertTrue(service.scenarios(0, 20, "owner").items().isEmpty());
         }
     }
 }

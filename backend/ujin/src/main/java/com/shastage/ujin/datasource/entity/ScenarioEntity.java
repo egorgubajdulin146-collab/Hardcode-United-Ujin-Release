@@ -22,6 +22,12 @@ public class ScenarioEntity {
     @Column(name = "execution_mode", nullable = false, length = 16)
     private String executionMode;
 
+    @Column(name = "owner", length = 120)
+    private String owner;
+
+    public String getOwner() { return owner; }
+    public void setOwner(String owner) { this.owner = owner; }
+
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "trigger_device_id", nullable = false)
     private DeviceEntity triggerDevice;

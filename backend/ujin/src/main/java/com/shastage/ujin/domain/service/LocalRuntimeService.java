@@ -41,12 +41,12 @@ public class LocalRuntimeService {
 
     // ===== GET /devices/{id}/state =====
     @Transactional(readOnly = true)
-    public Map<String, Object> getDeviceState(UUID deviceId, String mode) {
+    public Map<String, Object> getDeviceState(UUID deviceId, String mode, String owner) {
         if (!"LOCAL".equals(mode)) {
             throw new CatalogException(503, "MODE_UNAVAILABLE", "Mode " + mode + " is not available in this runtime");
         }
-        var device = catalogService.device(deviceId);
-        var states = stateRepo.findByDeviceId(deviceId);
+        var device = catalogService.device(deviceId, owner);
+        var states = stateRepo.findByDeviceIdAndOwner(deviceId, owner);
 
         var values = states.stream().map(s -> {
             Map<String, Object> v = new LinkedHashMap<>();
@@ -69,9 +69,9 @@ public class LocalRuntimeService {
     }
 
     // Internal emulator control; no public endpoint is added outside the contract.
-    public void setAvailability(UUID deviceId, String status) {
+    public void setAvailability(UUID deviceId, String status, String owner) {
         catalogStore.lock();
-        catalogService.device(deviceId);
+        catalogService.device(deviceId, owner);
         if (status == null || !Set.of("ONLINE", "OFFLINE", "UNKNOWN").contains(status))
             throw new CatalogException(422, "VALIDATION_ERROR", "Invalid availability");
         availabilityRepo.save(new LocalAvailabilityEntity(deviceId, status));
@@ -83,17 +83,17 @@ public class LocalRuntimeService {
     }
 
     // ===== POST /devices/{id}/stimuli =====
-    public Map<String, Object> processStimulus(UUID deviceId, UUID eventId, String kind, Integer value) {
+    public Map<String, Object> processStimulus(UUID deviceId, UUID eventId, String kind, Integer value, String owner) {
         catalogStore.lock();
         // Валидация обязательных полей
         if (eventId == null) throw new CatalogException(422, "VALIDATION_ERROR", "eventId is required");
         if (kind == null) throw new CatalogException(422, "VALIDATION_ERROR", "kind is required");
         if (value == null) throw new CatalogException(422, "VALIDATION_ERROR", "value is required");
 
-        var device = catalogService.device(deviceId);
+        var device = catalogService.device(deviceId, owner);
 
         // Идемпотентность: существующий event
-        var existing = eventRepo.findById(eventId);
+        var existing = eventRepo.findByEventIdAndOwner(eventId, owner);
         if (existing.isPresent()) {
             var ex = existing.get();
             // Проверяем совпадение параметров
@@ -142,23 +142,25 @@ public class LocalRuntimeService {
         event.setValue(value);
         event.setStatus("ACCEPTED");
         event.setCreatedAt(java.time.Instant.now().toString());
+        event.setOwner(owner);
         eventRepo.save(event);
 
         // Обновляем состояние сигнала leak
-        updateSignalState(deviceId, "leak", value);
+        updateSignalState(deviceId, "leak", value, owner);
 
         // Запускаем подходящие LOCAL-сценарии
-        var runIds = processScenarios(deviceId, "leak", value, eventId);
+        var runIds = processScenarios(deviceId, "leak", value, eventId, owner);
 
         event.setStatus("PROCESSED");
         event.setProcessedAt(java.time.Instant.now().toString());
+        event.setOwner(owner);
         eventRepo.save(event);
 
         return buildEventReceipt(event);
     }
 
     // ===== POST /devices/{id}/commands =====
-    public Map<String, Object> processCommand(UUID deviceId, UUID commandId, String signalKey, Double value, String mode) {
+    public Map<String, Object> processCommand(UUID deviceId, UUID commandId, String signalKey, Double value, String mode, String owner) {
         catalogStore.lock();
         // Валидация обязательных полей
         if (commandId == null) throw new CatalogException(422, "VALIDATION_ERROR", "commandId is required");
@@ -174,10 +176,10 @@ public class LocalRuntimeService {
             throw new CatalogException(422, "VALIDATION_ERROR", "Unknown executionMode: " + mode);
         }
 
-        var device = catalogService.device(deviceId);
+        var device = catalogService.device(deviceId, owner);
 
         // Идемпотентность
-        var existing = commandRepo.findById(commandId);
+        var existing = commandRepo.findByCommandIdAndOwner(commandId, owner);
         if (existing.isPresent()) {
             var ex = existing.get();
             if (!ex.getDeviceId().equals(deviceId) || !ex.getSignalKey().equals(signalKey) || ex.getValue() != value || !ex.getExecutionMode().equals(mode)) {
@@ -220,17 +222,18 @@ public class LocalRuntimeService {
         command.setStatus("CONFIRMED");
         command.setCreatedAt(java.time.Instant.now().toString());
         command.setConfirmedAt(java.time.Instant.now().toString());
+        command.setOwner(owner);
         commandRepo.save(command);
 
         // Обновляем состояние
-        updateSignalState(deviceId, signalKey, value);
+        updateSignalState(deviceId, signalKey, value, owner);
 
         return buildCommandReceipt(command);
     }
 
     // ===== Обработка сценариев =====
-    private List<UUID> processScenarios(UUID sourceDeviceId, String signalKey, double value, UUID eventId) {
-        var scenarios = loadAllScenarios();
+    private List<UUID> processScenarios(UUID sourceDeviceId, String signalKey, double value, UUID eventId, String owner) {
+        var scenarios = loadAllScenarios(owner);
         var runIds = new ArrayList<UUID>();
         var now = java.time.Instant.now().toString();
 
@@ -249,29 +252,29 @@ public class LocalRuntimeService {
 
             // Выключенные — SKIPPED
             if (!scenario.enabled()) {
-                createSkippedRun(scenario, eventId, "SCENARIO_DISABLED", signalKey, value, now);
+                createSkippedRun(scenario, eventId, "SCENARIO_DISABLED", signalKey, value, now, owner);
                 continue;
             }
 
             // Проверяем событие (eventKey)
-            var sourceDevice = catalogService.device(sourceDeviceId);
+            var sourceDevice = catalogService.device(sourceDeviceId, owner);
             boolean eventMatches = sourceDevice.events().stream()
                     .anyMatch(e -> e.key().equals(trigger.eventKey()) && e.signalKey().equals(trigger.signalKey()));
             if (!eventMatches) {
-                createSkippedRun(scenario, eventId, "EVENT_MISMATCH", signalKey, value, now);
+                createSkippedRun(scenario, eventId, "EVENT_MISMATCH", signalKey, value, now, owner);
                 continue;
             }
 
             // Проверяем условие EQ — точное равенство
             if ("EQ".equals(trigger.operator())) {
                 if (value != trigger.value()) {
-                    createSkippedRun(scenario, eventId, "CONDITION_FALSE", signalKey, value, now);
+                    createSkippedRun(scenario, eventId, "CONDITION_FALSE", signalKey, value, now, owner);
                     continue;
                 }
             }
 
             // Выполняем действие
-            var run = executeAction(scenario, eventId, signalKey, value, now);
+            var run = executeAction(scenario, eventId, signalKey, value, now, owner);
             runIds.add(run.getId());
         }
 
@@ -279,12 +282,12 @@ public class LocalRuntimeService {
     }
 
     // Загрузка всех сценариев с пагинацией
-    private List<Catalog.Scenario> loadAllScenarios() {
+    private List<Catalog.Scenario> loadAllScenarios(String owner) {
         var all = new ArrayList<Catalog.Scenario>();
         int page = 0;
         int size = 100;
         for (;;) {
-            var resp = catalogService.scenarios(page, size);
+            var resp = catalogService.scenarios(page, size, owner);
             all.addAll(resp.items());
             if (all.size() >= resp.total() || resp.items().isEmpty()) break;
             page++;
@@ -294,7 +297,7 @@ public class LocalRuntimeService {
     }
 
     // Выполнение действия
-    private RunEntity executeAction(Catalog.Scenario scenario, UUID eventId, String inputSignalKey, double inputValue, String now) {
+    private RunEntity executeAction(Catalog.Scenario scenario, UUID eventId, String inputSignalKey, double inputValue, String now, String owner) {
         var run = new RunEntity();
         run.setId(UUID.randomUUID());
         run.setEventId(eventId);
@@ -316,7 +319,7 @@ public class LocalRuntimeService {
 
         try {
             requireOnline(action.deviceId());
-            var targetDevice = catalogService.device(action.deviceId());
+            var targetDevice = catalogService.device(action.deviceId(), owner);
             var targetSignal = targetDevice.signals().stream()
                     .filter(s -> s.key().equals(action.signalKey()))
                     .findFirst()
@@ -328,7 +331,7 @@ public class LocalRuntimeService {
                 run.setReason("SIGNAL_READ_ONLY");
             } else {
                 run.addEntry("ACTION", "Команда " + action.signalKey() + "=" + action.value(), now);
-                updateSignalState(action.deviceId(), action.signalKey(), action.value());
+                updateSignalState(action.deviceId(), action.signalKey(), action.value(), owner);
                 run.addEntry("RESULT", "Состояние " + action.signalKey() + "=" + action.value() + " подтверждено", now);
                 run.setStatus("SUCCEEDED");
             }
@@ -338,12 +341,13 @@ public class LocalRuntimeService {
             run.setReason(e.code);
         }
 
+        run.setOwner(owner);
         runRepo.save(run);
         return run;
     }
 
     // Пропущенный запуск
-    private void createSkippedRun(Catalog.Scenario scenario, UUID eventId, String reason, String signalKey, double value, String now) {
+    private void createSkippedRun(Catalog.Scenario scenario, UUID eventId, String reason, String signalKey, double value, String now, String owner) {
         var run = new RunEntity();
         run.setId(UUID.randomUUID());
         run.setEventId(eventId);
@@ -358,12 +362,13 @@ public class LocalRuntimeService {
         run.setReason(reason);
         run.addEntry("EVENT", "Событие " + signalKey + "=" + value, now);
         run.addEntry("CONDITION", "Причина: " + reason, now);
+        run.setOwner(owner);
         runRepo.save(run);
     }
 
     // Обновление состояния
-    private void updateSignalState(UUID deviceId, String signalKey, double value) {
-        var state = stateRepo.findByDeviceIdAndSignalKey(deviceId, signalKey)
+    private void updateSignalState(UUID deviceId, String signalKey, double value, String owner) {
+        var state = stateRepo.findByDeviceIdAndSignalKeyAndOwner(deviceId, signalKey, owner)
                 .orElseGet(() -> {
                     var s = new LocalSignalStateEntity();
                     s.setDeviceId(deviceId);
@@ -372,28 +377,29 @@ public class LocalRuntimeService {
                 });
         state.setValue(value);
         state.setUpdatedAt(java.time.Instant.now().toString());
+        state.setOwner(owner);
         stateRepo.save(state);
     }
 
     // ===== GET /events/{eventId} =====
     @Transactional(readOnly = true)
-    public Map<String, Object> getEvent(UUID eventId) {
-        var event = eventRepo.findById(eventId)
+    public Map<String, Object> getEvent(UUID eventId, String owner) {
+        var event = eventRepo.findByEventIdAndOwner(eventId, owner)
                 .orElseThrow(() -> new CatalogException(404, "EVENT_NOT_FOUND", "Event not found"));
         return buildEventReceipt(event);
     }
 
     // ===== GET /commands/{commandId} =====
     @Transactional(readOnly = true)
-    public Map<String, Object> getCommand(UUID commandId) {
-        var command = commandRepo.findById(commandId)
+    public Map<String, Object> getCommand(UUID commandId, String owner) {
+        var command = commandRepo.findByCommandIdAndOwner(commandId, owner)
                 .orElseThrow(() -> new CatalogException(404, "COMMAND_NOT_FOUND", "Command not found"));
         return buildCommandReceipt(command);
     }
 
     // ===== GET /runs =====
     @Transactional(readOnly = true)
-    public Map<String, Object> getRuns(int page, int size, UUID eventId, UUID scenarioId) {
+    public Map<String, Object> getRuns(int page, int size, UUID eventId, UUID scenarioId, String owner) {
         if (page < 0) throw new CatalogException(400, "INVALID_REQUEST", "page must be >= 0");
         if ((long) page * size > Integer.MAX_VALUE) throw new CatalogException(400, "INVALID_REQUEST", "Page offset exceeds maximum");
         if (size < 1 || size > 100) throw new CatalogException(400, "INVALID_REQUEST", "size must be 1-100");
@@ -402,13 +408,13 @@ public class LocalRuntimeService {
         org.springframework.data.domain.Page<RunEntity> runPage;
 
         if (eventId != null && scenarioId != null) {
-            runPage = runRepo.findByEventIdAndScenarioId(eventId, scenarioId, pageable);
+            runPage = runRepo.findByOwnerAndEventIdAndScenarioId(owner, eventId, scenarioId, pageable);
         } else if (eventId != null) {
-            runPage = runRepo.findByEventId(eventId, pageable);
+            runPage = runRepo.findByOwnerAndEventId(owner, eventId, pageable);
         } else if (scenarioId != null) {
-            runPage = runRepo.findByScenarioId(scenarioId, pageable);
+            runPage = runRepo.findByOwnerAndScenarioId(owner, scenarioId, pageable);
         } else {
-            runPage = runRepo.findAll(pageable);
+            runPage = runRepo.findByOwner(owner, pageable);
         }
 
         var items = runPage.getContent().stream().map(this::buildRunResponse).toList();
@@ -422,8 +428,8 @@ public class LocalRuntimeService {
 
     // ===== GET /runs/{runId} =====
     @Transactional(readOnly = true)
-    public Map<String, Object> getRun(UUID runId) {
-        var run = runRepo.findById(runId)
+    public Map<String, Object> getRun(UUID runId, String owner) {
+        var run = runRepo.findByIdAndOwner(runId, owner)
                 .orElseThrow(() -> new CatalogException(404, "RUN_NOT_FOUND", "Run not found"));
         return buildRunResponse(run);
     }

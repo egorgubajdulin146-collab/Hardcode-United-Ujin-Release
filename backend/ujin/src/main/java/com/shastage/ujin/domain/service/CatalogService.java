@@ -21,31 +21,31 @@ public class CatalogService {
         this.stateRepo = stateRepo;
     }
 
-    public Page<Device> devices(int page, int size) {
+    public Page<Device> devices(int page, int size, String owner) {
         validatePage(page, size);
-        return repository.devices(page, size);
+        return repository.devices(page, size, owner);
     }
 
-    public Page<Scenario> scenarios(int page, int size) {
+    public Page<Scenario> scenarios(int page, int size, String owner) {
         validatePage(page, size);
-        return repository.scenarios(page, size);
+        return repository.scenarios(page, size, owner);
     }
 
-    public Device device(UUID id) {
+    public Device device(UUID id, String owner) {
         return repository
-                .device(id)
+                .device(id, owner)
                 .orElseThrow(
                         () -> new CatalogException(404, "DEVICE_NOT_FOUND", "Device not found"));
     }
 
-    public Scenario scenario(UUID id) {
+    public Scenario scenario(UUID id, String owner) {
         return repository
-                .scenario(id)
+                .scenario(id, owner)
                 .orElseThrow(() ->
                         new CatalogException(404, "SCENARIO_NOT_FOUND", "Scenario not found"));
     }
 
-    public Device create(DeviceWrite data) {
+    public Device create(DeviceWrite data, String owner) {
         repository.lock();
         validate(data);
         var device =
@@ -57,15 +57,15 @@ public class CatalogService {
                         data.signals(),
                         data.events(),
                         "NOT_CONFIGURED");
-        return repository.insert(device);
+        return repository.insert(device, owner);
     }
 
-    public Device update(UUID id, DeviceWrite data) {
+    public Device update(UUID id, DeviceWrite data, String owner) {
         repository.lock();
-        var old = device(id);
+        var old = device(id, owner);
         version(data.expectedVersion(), old.version());
         validate(data);
-        if (!dependencies(id).scenarioIds().isEmpty()
+        if (!dependencies(id, owner).scenarioIds().isEmpty()
                 && (!old.signals().equals(data.signals())
                         || !old.events().equals(data.events())
                         || !old.family().equals(data.family())))
@@ -80,29 +80,29 @@ public class CatalogService {
                         data.signals(),
                         data.events(),
                         old.platformLink());
-        return repository.update(device);
+        return repository.update(device, owner);
     }
 
-    public Dependencies dependencies(UUID id) {
-        device(id);
-        var ids = repository.dependencies(id);
+    public Dependencies dependencies(UUID id, String owner) {
+        device(id, owner);
+        var ids = repository.dependencies(id, owner);
         return new Dependencies(id, ids, List.of());
     }
 
-    public void delete(UUID id, long expectedVersion) {
+    public void delete(UUID id, long expectedVersion, String owner) {
         repository.lock();
-        var old = device(id);
+        var old = device(id, owner);
         version(expectedVersion, old.version());
-        if (!dependencies(id).scenarioIds().isEmpty())
+        if (!dependencies(id, owner).scenarioIds().isEmpty())
             throw new CatalogException(409, "DEVICE_IN_USE", "Device is referenced by scenarios");
         // Очищаем локальное состояние сигналов
-        stateRepo.deleteByDeviceId(id);
-        repository.deleteDevice(id);
+        stateRepo.deleteByDeviceIdAndOwner(id, owner);
+        repository.deleteDevice(id, owner);
     }
 
-    public Scenario create(ScenarioWrite data) {
+    public Scenario create(ScenarioWrite data, String owner) {
         repository.lock();
-        validate(data, null);
+        validate(data, null, owner);
         var scenario =
                 new Scenario(
                         UUID.randomUUID(),
@@ -112,14 +112,14 @@ public class CatalogService {
                         data.executionMode(),
                         data.trigger(),
                         data.action());
-        return repository.insert(scenario);
+        return repository.insert(scenario, owner);
     }
 
-    public Scenario update(UUID id, ScenarioWrite data) {
+    public Scenario update(UUID id, ScenarioWrite data, String owner) {
         repository.lock();
-        var old = scenario(id);
+        var old = scenario(id, owner);
         version(data.expectedVersion(), old.version());
-        validate(data, id);
+        validate(data, id, owner);
         var scenario =
                 new Scenario(
                         id,
@@ -129,7 +129,7 @@ public class CatalogService {
                         data.executionMode(),
                         data.trigger(),
                         data.action());
-        return repository.update(scenario);
+        return repository.update(scenario, owner);
     }
 
     private static void validatePage(int page, int size) {
@@ -204,7 +204,7 @@ public class CatalogService {
         }
     }
 
-    private void validate(ScenarioWrite data, UUID excludedId) {
+    private void validate(ScenarioWrite data, UUID excludedId, String owner) {
         text(data.title(), 120);
         require(
                 data.enabled() != null
@@ -215,8 +215,8 @@ public class CatalogService {
         var t = data.trigger();
         var a = data.action();
         require(t.deviceId() != null && a.deviceId() != null, "Device IDs are required");
-        var source = device(t.deviceId());
-        var target = device(a.deviceId());
+        var source = device(t.deviceId(), owner);
+        var target = device(a.deviceId(), owner);
         var input = signal(source, t.signalKey());
         var output = signal(target, a.signalKey());
         require("EQ".equals(t.operator()) && !"w".equals(input.management()), "Invalid trigger");
@@ -233,7 +233,7 @@ public class CatalogService {
         if (t.deviceId().equals(a.deviceId()) && t.signalKey().equals(a.signalKey()))
             throw new CatalogException(422, "SCENARIO_CYCLE", "A signal cannot trigger itself");
         var adjacency = new HashMap<String, Set<String>>();
-        for (var s : repository.scenarios()) {
+        for (var s : repository.scenarios(owner)) {
             if (s.id().equals(excludedId)) continue;
             adjacency
                     .computeIfAbsent(
