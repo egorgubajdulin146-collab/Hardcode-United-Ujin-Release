@@ -5,12 +5,12 @@
 export type DataSource = "mock" | "api";
 
 const ENV_SOURCE = import.meta.env.VITE_DATA_SOURCE as DataSource | undefined;
-const STORAGE_KEY = "ujin-data-source";
+const STORAGE_KEY = "ujin-data-source-v2";
 
 function resolveSource(): DataSource {
   const stored = localStorage.getItem(STORAGE_KEY) as DataSource | null;
   if (stored === "mock" || stored === "api") return stored;
-  return ENV_SOURCE ?? "mock";
+  return ENV_SOURCE === "mock" ? "mock" : "api";
 }
 
 let currentSource: DataSource = resolveSource();

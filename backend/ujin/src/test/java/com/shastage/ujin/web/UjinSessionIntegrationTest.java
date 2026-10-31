@@ -295,4 +295,17 @@ class UjinSessionIntegrationTest {
         assertEquals(409, deletion.statusCode());
         assertEquals("DEVICE_IN_USE", json.readTree(deletion.body()).get("code").asText());
     }
+    @Test
+    void runtimeErrorsPreserveProblemDetailStatus() throws Exception {
+        assertEquals(204, login(csrf()).statusCode());
+        String device = "/api/v1/devices/" + java.util.UUID.randomUUID();
+        var missing = request(device + "/state?mode=LOCAL", "GET", null, null);
+        assertEquals(404, missing.statusCode());
+        assertTrue(missing.headers().firstValue("Content-Type").orElseThrow().contains("application/problem+json"));
+        var invalid = request(device + "/stimuli", "POST", "{}", csrf());
+        assertEquals(422, invalid.statusCode());
+        assertTrue(invalid.body().contains("VALIDATION_ERROR"));
+        assertEquals(400, request("/api/v1/runs?page=-1", "GET", null, null).statusCode());
+        assertEquals(503, request(device + "/state?mode=UJIN", "GET", null, null).statusCode());
+    }
 }

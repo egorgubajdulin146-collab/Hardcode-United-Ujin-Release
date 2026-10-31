@@ -1,0 +1,86 @@
+import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import { createRequire } from 'node:module';
+import { test } from 'node:test';
+const require = createRequire(new URL('../../frontend/package.json', import.meta.url));
+const React = require('react');
+const { create, act } = require('react-test-renderer');
+const ts = require('typescript');
+const device = { id: 'device', title: 'Device', family: 'leak', platformLink: 'NOT_CONFIGURED', signals: [
+  { key: 'wet', title: 'Leak', management: 'r' },
+  { key: 'lamp', title: 'Lamp', management: 'rw', min: 0, max: 1 },
+] };
+function mount({ availability = 'ONLINE', stateError, stimulus, send = async () => ({ status: 'PENDING', commandId: 'command' }) } = {}) {
+  const calls = [];
+  const endpoints = { commands: { send: async (...args) => { calls.push(['command', ...args]); return send(...args); } },
+    stimuli: { send: async (...args) => { calls.push(['stimulus', ...args]); if (stimulus) return stimulus(...args); return { status: 'PROCESSED', eventId: 'event', runIds: [] }; } } };
+  class ApiError extends Error {}
+  const source = readFileSync(new URL('../../frontend/src/components/DeviceRuntimePanel.tsx', import.meta.url), 'utf8');
+  const { outputText } = ts.transpileModule(source, { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.ReactJSX } });
+  const mocks = {
+    '../api/endpoints': { endpoints }, '../api/client': { ApiError },
+    '../api/sessionContext': { useSession: () => ({ terminateSession() {} }) },
+    'react-router-dom': { Link: props => React.createElement('a', props) },
+    '@tanstack/react-query': { useQueryClient: () => ({ invalidateQueries() {} }),
+      useQuery: options => ({ error: options.queryKey[0] === 'device-state' ? stateError : undefined, data: options.queryKey[0] === 'device-state' ? { availability, values: [{ signalKey: 'wet', value: 0, updatedAt: '2026-10-31T12:00:00Z' }] } : undefined, refetch() {} }) },
+  };
+  const exports = {};
+  new Function('require','exports', outputText)(name => name.endsWith('.css') ? { default: {} } : mocks[name] ?? require(name), exports);
+  let root;
+  act(() => { root = create(React.createElement(exports.DeviceRuntimePanel, { device, onClose() {} })); });
+  return { root, calls };
+}
+test('read-only signal has no command form and numeric zero is displayed', () => {
+  const { root } = mount();
+  assert.equal(root.root.findAllByType('form').length, 1);
+  assert.ok(root.root.findAllByType('p').some(p => p.children.includes('0')));
+  act(() => root.unmount());
+});
+test('offline device cannot receive commands or stimuli', () => {
+  const { root } = mount({ availability: 'OFFLINE' });
+  const buttons = root.root.findAllByType('button').filter(b => ['Отправить','Обнаружить воду','Вода отсутствует'].some(t => b.children.includes(t)));
+  assert.equal(buttons.length, 3);
+  assert.ok(buttons.every(b => b.props.disabled));
+  act(() => root.unmount());
+});
+test('pending command is not presented as executed and blocks duplicate sending', async () => {
+  const { root, calls } = mount();
+  await act(async () => { root.root.findByType('input').props.onChange({ target: { value: '1' } }); });
+  await act(async () => { root.root.findByType('form').props.onSubmit({ preventDefault() {} }); });
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0][2].executionMode, 'LOCAL');
+  assert.ok(root.root.findAllByType('p').some(p => p.children.includes('Ожидает подтверждения')));
+  assert.ok(root.root.findAllByType('button').find(b => b.children.includes('Отправить')).props.disabled);
+  act(() => root.unmount());
+});
+test('lost command response keeps UNKNOWN and prevents a new command id', async () => {
+  const { root, calls } = mount({ send: async () => { throw new Error('Network failure'); } });
+  await act(async () => { root.root.findByType('input').props.onChange({ target: { value: '1' } }); });
+  await act(async () => { root.root.findByType('form').props.onSubmit({ preventDefault() {} }); });
+  assert.equal(calls.length, 1);
+  assert.ok(root.root.findAllByType('p').some(p => p.children.includes('Результат неизвестен')));
+  assert.ok(root.root.findAllByType('button').find(b => b.children.includes('Отправить')).props.disabled);
+  act(() => root.unmount());
+});
+test('dry stimulus preserves numeric zero', async () => {
+  const { root, calls } = mount();
+  await act(async () => { root.root.findAllByType('button').find(b => b.children.includes('Вода отсутствует')).props.onClick(); });
+  assert.equal(calls[0][2].value, 0);
+  assert.equal(calls[0][2].kind, 'WET');
+  act(() => root.unmount());
+});
+
+test('failed state refresh disables control despite cached ONLINE state', () => {
+  const { root } = mount({ stateError: new Error('State unavailable') });
+  assert.ok(root.root.findAllByType('button').find(b => b.children.includes('Отправить')).props.disabled);
+  act(() => root.unmount());
+});
+test('lost stimulus response does not fabricate ACCEPTED', async () => {
+  const { root, calls } = mount({ stimulus: async () => { throw new Error('Lost response'); } });
+  await act(async () => { root.root.findAllByType('button').find(b => b.children.includes('Вода отсутствует')).props.onClick(); });
+  assert.equal(calls.length, 1);
+  assert.ok(root.root.findAllByType('p').some(p => p.children.includes('Приём события не подтверждён. Проверяем результат. ')));
+  assert.ok(!root.root.findAllByType('p').some(p => p.children.includes('Событие принято')));
+  assert.ok(root.root.findAllByType('button').find(b => b.children.includes('Вода отсутствует')).props.disabled);
+  act(() => root.unmount());
+});
