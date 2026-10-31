@@ -122,6 +122,8 @@ class UjinSessionIntegrationTest {
         assertEquals(502, failure.statusCode());
         assertSafe(failure);
         upstreamStatus = 200;
+        upstreamBody = "{\"error\":1,\"data\":{}}";
+        assertEquals(401, login(csrf).statusCode());
         for (String body : new String[]{"not json", "{\"error\":0,\"data\":{}}", "{\"error\":99}", "x".repeat(1_048_577)}) {
             upstreamBody = body;
             var response = login(csrf);

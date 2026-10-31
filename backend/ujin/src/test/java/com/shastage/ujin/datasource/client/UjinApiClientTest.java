@@ -18,13 +18,18 @@ class UjinApiClientTest {
     private UjinApiClient client;
     private final AtomicReference<String> authBody = new AtomicReference<>();
     private final AtomicReference<String> readQuery = new AtomicReference<>();
+    private final AtomicReference<String> rejectedAuth = new AtomicReference<>();
+    private final AtomicReference<String> acceptedAuth = new AtomicReference<>("{\"error\":0,\"data\":{\"user\":{\"token\":\"session-token\"}}}");
+    private final java.util.List<String> authRequests = new java.util.concurrent.CopyOnWriteArrayList<>();
 
     @BeforeEach
     void startServer() throws Exception {
         server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
         server.createContext("/api/auth/authenticate/", exchange -> {
             authBody.set(new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8));
-            respond(exchange, "{\"error\":0,\"data\":{\"user\":{\"token\":\"session-token\"}}}");
+            authRequests.add(authBody.get());
+            respond(exchange, authBody.get().contains("&app=") && rejectedAuth.get() != null
+                    ? rejectedAuth.get() : acceptedAuth.get());
         });
         server.createContext("/api/bmsdevice/get-device-info/", exchange -> {
             readQuery.set(exchange.getRequestURI().getRawQuery());
@@ -47,6 +52,36 @@ class UjinApiClientTest {
         assertEquals("1", client.readSignal(token, "device-1", "lamp"));
         assertTrue(readQuery.get().contains("token=session-token"));
         assertTrue(readQuery.get().contains("serialnumber=device-1"));
+    }
+
+    @Test
+    void residentRetriesWithoutEmployeeApp() {
+        rejectedAuth.set("{\"error\":1,\"data\":{}}");
+        assertEquals("session-token", client.authenticate("resident", "pass word", "staff-app"));
+        assertEquals(java.util.List.of("login=resident&password=pass+word&app=staff-app",
+                "login=resident&password=pass+word"), authRequests);
+    }
+
+    @Test
+    void residentCanAuthenticateWithoutConfiguredApp() {
+        assertEquals("session-token", client.authenticate("resident", "password", ""));
+        assertEquals(java.util.List.of("login=resident&password=password"), authRequests);
+    }
+
+    @Test
+    void invalidCredentialsStayUnauthorized() {
+        acceptedAuth.set("{\"error\":1,\"data\":{}}");
+        assertEquals(UjinApiException.Kind.UNAUTHORIZED, assertThrows(UjinApiException.class,
+                () -> client.authenticate("resident", "wrong", "staff-app")).kind());
+        assertEquals(2, authRequests.size());
+    }
+
+    @Test
+    void malformedUpstreamDoesNotTriggerAnotherLogin() {
+        acceptedAuth.set("not json");
+        assertEquals(UjinApiException.Kind.BAD_RESPONSE, assertThrows(UjinApiException.class,
+                () -> client.authenticate("resident", "password", "staff-app")).kind());
+        assertEquals(1, authRequests.size());
     }
 
     @Test
