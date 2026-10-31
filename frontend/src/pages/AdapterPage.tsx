@@ -95,7 +95,7 @@ export function AdapterPage() {
       <form onSubmit={handleSubmit} className={styles.form}>
         <div className={styles.field}>
           <label htmlFor="serialnumber" className={styles.label}>
-            Serialnumber устройства
+            Серийный номер устройства в Ujin (SN)
           </label>
           <input
             id="serialnumber"
@@ -103,15 +103,18 @@ export function AdapterPage() {
             className={styles.input}
             value={serialnumber}
             onChange={(e) => setSerialnumber(e.target.value)}
-            placeholder="Например, test-device"
+            placeholder="Скопируйте SN из Ujin или выданных доступов"
+            aria-describedby="adapter-sn-help"
             required
             disabled={loading}
           />
         </div>
 
+        <p id="adapter-sn-help" className={styles.description}>Нужен номер назначенного вам устройства Ujin. UUID устройства из нашего каталога сюда не подходит.</p>
+
         <div className={styles.field}>
           <label htmlFor="signalName" className={styles.label}>
-            Имя сигнала
+            Техническое имя сигнала
           </label>
           <input
             id="signalName"
@@ -119,11 +122,14 @@ export function AdapterPage() {
             className={styles.input}
             value={signalName}
             onChange={(e) => setSignalName(e.target.value)}
-            placeholder="Например, lamp"
+            placeholder="Например: leak или lamp, если они есть в Ujin"
+            aria-describedby="adapter-signal-help"
             required
             disabled={loading}
           />
         </div>
+
+        <p id="adapter-signal-help" className={styles.description}>Скопируйте точное имя сигнала из Ujin. Название «Свет» и код lamp — разные вещи. Если сигнал ещё не создан на платформе, чтение вернёт «Сигнал не найден».</p>
 
         <button
           type="submit"

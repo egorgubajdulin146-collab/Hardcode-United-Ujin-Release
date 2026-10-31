@@ -2,6 +2,7 @@ import { useState, useMemo, useRef, type FormEvent } from "react";
 import { X, AlertCircle, Loader2, ArrowRight, Download, RefreshCw } from "lucide-react";
 import type { ScenarioWrite, Device, Trigger, Action, SignalDefinition } from "../api/types";
 import styles from "./ScenarioForm.module.css";
+import { SignalValueField } from "./SignalValueField";
 
 interface Props {
   initial?: ScenarioWrite & { expectedVersion?: number };
@@ -229,8 +230,10 @@ export function ScenarioForm({
       )}
 
       <div className={styles.field}>
-        <label className={styles.label}>Название</label>
+        <label className={styles.label} htmlFor="scenario-title">Название сценария</label>
         <input
+          id="scenario-title"
+          placeholder="Например: При протечке включить свет"
           className={styles.input}
           value={title}
           onChange={(e) => setTitle(e.target.value)}
@@ -242,8 +245,10 @@ export function ScenarioForm({
 
       <div className={styles.row}>
         <div className={styles.field}>
-          <label className={styles.label}>Режим</label>
+          <label className={styles.label} htmlFor="scenario-mode">Где выполнять сценарий</label>
           <select
+            id="scenario-mode"
+            aria-describedby="scenario-mode-help"
             className={styles.select}
             value={executionMode}
             onChange={(e) => {
@@ -252,12 +257,12 @@ export function ScenarioForm({
             }}
             disabled={loading}
           >
-            <option value="LOCAL">LOCAL</option>
-            <option value="UJIN">UJIN (только черновик)</option>
+            <option value="LOCAL">Локально — на эмуляторах</option>
+            <option value="UJIN">Через Ujin — пока только черновик</option>
           </select>
         </div>
         <div className={styles.field}>
-          <label className={styles.label}>Состояние</label>
+          <span className={styles.label}>Сценарий включён</span>
           <label className={styles.toggle}>
             <input
               type="checkbox"
@@ -265,15 +270,19 @@ export function ScenarioForm({
               onChange={(e) => setEnabled(e.target.checked)}
               disabled={loading || (executionMode === "UJIN" && !enabled)}
             />
-            <span>{enabled ? "Включён" : "Выключен"}</span>
+            <span>{enabled ? "Да — реагировать на события" : "Нет — сохранить без запуска"}</span>
           </label>
         </div>
       </div>
+
+      <p id="scenario-mode-help" className={styles.enumHint}>Локальный режим изменяет эмуляторы в приложении. Он не отправляет команды реальному оборудованию.</p>
+      <p className={styles.enumHint}>Пример: когда изменится «Протечка», если значение — «1 — Протечка», включить свет на лампе.</p>
 
       {executionMode === "UJIN" && <p role="status">
         Исполнение Ujin ещё не подключено. Сохраните выключенный черновик или выберите LOCAL.
         {enabled && " Ранее включённый сценарий не исполняется; выключите его перед сохранением."}
       </p>}
+      {devices.length === 0 && <p role="status">Сначала добавьте устройства в разделе «Устройства». Для первого сценария подойдут шаблоны датчика протечки и лампы.</p>}
       {/* Когда → Если → Тогда */}
       <div className={styles.flowSection}>
         <h3 className={styles.flowTitle}>Условие срабатывания</h3>
@@ -281,8 +290,9 @@ export function ScenarioForm({
         <div className={styles.flowBlock}>
           <span className={styles.flowLabel}>Когда</span>
           <div className={styles.flowFields}>
-            <select
+            <label className={styles.field}><span className={styles.label}>Устройство-источник</span><select
               className={styles.select}
+              aria-label="Устройство-источник"
               value={triggerDeviceId}
               onChange={(e) => handleTriggerDeviceChange(e.target.value)}
               disabled={loading}
@@ -292,9 +302,10 @@ export function ScenarioForm({
               {devices.map((d) => (
                 <option key={d.id} value={d.id}>{d.title}</option>
               ))}
-            </select>
-            <select
+            </select></label>
+            <label className={styles.field}><span className={styles.label}>Какое показание отслеживать</span><select
               className={styles.select}
+              aria-label="Какое показание отслеживать"
               value={triggerSignalKey}
               onChange={(e) => handleTriggerSignalChange(e.target.value)}
               disabled={loading || !triggerDevice}
@@ -302,41 +313,35 @@ export function ScenarioForm({
             >
               <option value="">— сигнал —</option>
               {triggerSignals.map((s) => (
-                <option key={s.key} value={s.key}>{s.key} ({s.title})</option>
+                <option key={s.key} value={s.key}>{s.title} ({s.key})</option>
               ))}
-            </select>
-            <select
+            </select></label>
+            <label className={styles.field}><span className={styles.label}>Какое событие отслеживать</span><select
               className={styles.select}
+              aria-label="Какое событие отслеживать"
               value={triggerEventKey}
               onChange={(e) => setTriggerEventKey(e.target.value)}
-              disabled={loading || !triggerDevice}
+              disabled={loading || !triggerSignalKey || triggerEvents.length === 0}
               required
             >
-              <option value="">— событие —</option>
+              <option value="">— выберите событие изменения —</option>
               {triggerEvents.map((e) => (
-                <option key={e.key} value={e.key}>{e.key} ({e.title})</option>
+                <option key={e.key} value={e.key}>{e.title} ({e.key})</option>
               ))}
-            </select>
+            </select></label>
           </div>
         </div>
 
+        {triggerDevice && !triggerSignalKey && <p className={styles.enumHint}>Сначала выберите показание этого устройства.</p>}
+        {triggerSignalKey && triggerEvents.length === 0 && <p className={styles.enumHint}>Для этого показания нет события изменения. Добавьте его при редактировании устройства или выберите другой сигнал.</p>}
         <ArrowRight size={16} className={styles.flowArrow} />
 
         <div className={styles.flowBlock}>
           <span className={styles.flowLabel}>Если</span>
           <div className={styles.flowFields}>
-            <span className={styles.flowStatic}>{triggerSignalKey || "сигнал"}</span>
-            <span className={styles.flowStatic}>=</span>
-            <input
-              className={styles.inputSmall}
-              type="number"
-              step="any"
-              value={triggerValue}
-              onChange={(e) => setTriggerValue(e.target.value)}
-              placeholder="значение"
-              disabled={loading}
-              required
-            />
+            <span className={styles.flowStatic}>{triggerSignal?.title || "Выбранное показание"}</span>
+            <span className={styles.flowStatic}>равно</span>
+            <SignalValueField className={styles.inputSmall} signal={triggerSignal} family={triggerDevice?.family} label="Значение для срабатывания" value={triggerValue} onChange={setTriggerValue} disabled={loading || !triggerSignal} />
           </div>
           {rangeHint(triggerSignal) && (
             <div className={styles.enumHint}>{rangeHint(triggerSignal)}</div>
@@ -348,8 +353,9 @@ export function ScenarioForm({
         <div className={styles.flowBlock}>
           <span className={styles.flowLabel}>Тогда</span>
           <div className={styles.flowFields}>
-            <select
+            <label className={styles.field}><span className={styles.label}>Устройство для действия</span><select
               className={styles.select}
+              aria-label="Устройство для действия"
               value={actionDeviceId}
               onChange={(e) => handleActionDeviceChange(e.target.value)}
               disabled={loading}
@@ -359,9 +365,10 @@ export function ScenarioForm({
               {devices.map((d) => (
                 <option key={d.id} value={d.id}>{d.title}</option>
               ))}
-            </select>
-            <select
+            </select></label>
+            <label className={styles.field}><span className={styles.label}>Что изменить</span><select
               className={styles.select}
+              aria-label="Что изменить"
               value={actionSignalKey}
               onChange={(e) => handleActionSignalChange(e.target.value)}
               disabled={loading || !actionDevice}
@@ -369,19 +376,10 @@ export function ScenarioForm({
             >
               <option value="">— сигнал для записи —</option>
               {actionSignals.map((s) => (
-                <option key={s.key} value={s.key}>{s.key} ({s.title})</option>
+                <option key={s.key} value={s.key}>{s.title} ({s.key})</option>
               ))}
-            </select>
-            <input
-              className={styles.inputSmall}
-              type="number"
-              step="any"
-              value={actionValue}
-              onChange={(e) => setActionValue(e.target.value)}
-              placeholder="значение"
-              disabled={loading}
-              required
-            />
+            </select></label>
+            <SignalValueField className={styles.inputSmall} signal={actionSignal} family={actionDevice?.family} label="Установить значение" value={actionValue} onChange={setActionValue} disabled={loading || !actionSignal} />
           </div>
           {rangeHint(actionSignal) && (
             <div className={styles.enumHint}>{rangeHint(actionSignal)}</div>

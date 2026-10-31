@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from "react";
+import { useState, type FormEvent, type ReactNode } from "react";
 import { Plus, Trash2, AlertCircle, Loader2, X, Download } from "lucide-react";
 import type { DeviceWrite, SignalDefinition, EventDefinition } from "../api/types";
 import styles from "./DeviceForm.module.css";
@@ -36,6 +36,7 @@ const GROUP_MGMT: Record<string, string[]> = {
 };
 
 const READABLE_MGMT = ["r", "rw"];
+const CONTROL_LABELS: Record<string, string> = { switch: "Переключатель", range: "Регулятор", counter: "Счётчик", input: "Числовое поле", button: "Кнопка" };
 
 const STARTER_TEMPLATES: DeviceWrite[] = [
   {
@@ -56,6 +57,10 @@ const STARTER_TEMPLATES: DeviceWrite[] = [
     events: [],
   },
 ];
+
+function Field({ label, hint, children }: { label: string; hint?: string; children: ReactNode }) {
+  return <label className={styles.controlField}><span>{label}</span>{children}{hint && <small>{hint}</small>}</label>;
+}
 
 export function DeviceForm({ initial, onSubmit, onCancel, loading, error, conflictType, onReloadFresh }: Props) {
   const [title, setTitle] = useState(initial?.title ?? "");
@@ -86,7 +91,7 @@ export function DeviceForm({ initial, onSubmit, onCancel, loading, error, confli
     const parts = trimmed.split(",").map((s) => s.trim());
     const numbers: number[] = [];
     for (const part of parts) {
-      if (part === "") return { error: "Пустой элемент в enumValues" };
+      if (part === "") return { error: "Между запятыми должно быть число. Например: 0, 1" };
       const num = Number(part);
       if (!Number.isFinite(num)) return { error: `«${part}» — не число` };
       numbers.push(num);
@@ -186,8 +191,10 @@ export function DeviceForm({ initial, onSubmit, onCancel, loading, error, confli
       )}
 
       <div className={styles.field}>
-        <label className={styles.label}>Название</label>
+        <label className={styles.label} htmlFor="device-title">Название устройства</label>
         <input
+          id="device-title"
+          placeholder="Например: Датчик протечки на кухне"
           className={styles.input}
           value={title}
           onChange={(e) => setTitle(e.target.value)}
@@ -198,12 +205,15 @@ export function DeviceForm({ initial, onSubmit, onCancel, loading, error, confli
       </div>
 
       <div className={styles.field}>
-        <label className={styles.label}>Семейство</label>
+        <label className={styles.label} htmlFor="device-family">Тип устройства</label>
         <input
+          id="device-family"
+          list="device-families"
+          aria-describedby="family-help"
           className={styles.input}
           value={family}
           onChange={(e) => setFamily(e.target.value)}
-          placeholder="leak, light…"
+          placeholder="Выберите leak или light либо введите свой код"
           pattern="^[a-z][a-z0-9_]*$"
           maxLength={64}
           required
@@ -211,8 +221,12 @@ export function DeviceForm({ initial, onSubmit, onCancel, loading, error, confli
         />
       </div>
 
+      <datalist id="device-families"><option value="leak">Датчик протечки</option><option value="light">Свет / лампа</option></datalist>
+      <p id="family-help" className={styles.label}>Тип задаётся латиницей: leak — протечка, light — свет. Для первого запуска проще выбрать шаблон выше. Свой тип описывает устройство, но не добавляет ему автоматическую физику.</p>
+
       {/* Сигналы */}
       <div className={styles.section}>
+        <p className={styles.label}>Сигналы — показания, команды и настройки устройства. Например, «Протечка» принимает 0 (сухо) или 1 (протечка).</p>
         <div className={styles.sectionHeader}>
           <h3 className={styles.sectionTitle}>Сигналы ({signals.length})</h3>
           <button type="button" className={styles.addBtn} onClick={addSignal} disabled={loading}>
@@ -222,17 +236,17 @@ export function DeviceForm({ initial, onSubmit, onCancel, loading, error, confli
         {signals.map((s, i) => (
           <div key={i} className={styles.signalCard}>
             <div className={styles.signalRow}>
-              <input
+              <Field label="Код сигнала" hint="Латиницей без пробелов, например leak или lamp. Код используется в сценариях."><input
                 className={styles.inputSmall}
-                placeholder="key"
+                placeholder="Латиницей, без пробелов"
                 value={s.key}
                 onChange={(e) => updateSignal(i, { key: e.target.value })}
                 pattern="^[a-z][a-z0-9_]*$"
                 maxLength={64}
                 required
                 disabled={loading}
-              />
-              <input
+              /></Field>
+              <Field label="Название сигнала" hint="Например: Протечка или Свет."><input
                 className={styles.inputSmall}
                 placeholder="Название"
                 value={s.title}
@@ -240,7 +254,7 @@ export function DeviceForm({ initial, onSubmit, onCancel, loading, error, confli
                 maxLength={120}
                 required
                 disabled={loading}
-              />
+              /></Field>
               <button
                 type="button"
                 className={styles.removeBtn}
@@ -252,7 +266,7 @@ export function DeviceForm({ initial, onSubmit, onCancel, loading, error, confli
               </button>
             </div>
             <div className={styles.signalRow}>
-              <select
+              <Field label="Назначение сигнала"><select
                 className={styles.select}
                 value={s.group}
                 onChange={(e) => {
@@ -262,63 +276,64 @@ export function DeviceForm({ initial, onSubmit, onCancel, loading, error, confli
                 }}
                 disabled={loading}
               >
-                <option value="property">property</option>
-                <option value="capability">capability</option>
-                <option value="setting">setting</option>
-              </select>
-              <select
+                <option value="property">Показание датчика</option>
+                <option value="capability">Управление устройством</option>
+                <option value="setting">Настройка</option>
+              </select></Field>
+              <Field label="Что разрешено"><select
                 className={styles.select}
                 value={s.management}
                 onChange={(e) => updateSignal(i, { management: e.target.value as SignalDefinition["management"] })}
                 disabled={loading}
               >
                 {(GROUP_MGMT[s.group] ?? ["r"]).map((m) => (
-                  <option key={m} value={m}>{m}</option>
+                  <option key={m} value={m}>{{ r: "Только чтение", rw: "Чтение и изменение", w: "Только команда" }[m]}</option>
                 ))}
-              </select>
-              <input
-                className={styles.inputSmall}
-                placeholder="control"
-                value={s.control}
-                onChange={(e) => updateSignal(i, { control: e.target.value })}
-                maxLength={40}
-                required
+              </select></Field>
+              <Field label="Вид элемента"><select
+                className={styles.select}
+                value={Object.keys(CONTROL_LABELS).includes(s.control) ? s.control : "__custom__"}
+                onChange={(e) => updateSignal(i, { control: e.target.value === "__custom__" ? "" : e.target.value })}
                 disabled={loading}
-              />
+              >
+                {Object.entries(CONTROL_LABELS).map(([code, label]) => <option key={code} value={code}>{label}</option>)}
+                <option value="__custom__">Свой вариант…</option>
+              </select></Field>
+              {!Object.keys(CONTROL_LABELS).includes(s.control) && <Field label="Код своего элемента" hint="Технический код, согласованный для вашего устройства."><input className={styles.inputSmall} value={s.control} onChange={e => updateSignal(i, { control: e.target.value })} maxLength={40} required disabled={loading} /></Field>}
             </div>
             <div className={styles.signalRow}>
-              <input
+              <Field label="Единица измерения" hint="Необязательно. Например: °C, %, кВт·ч."><input
                 className={styles.inputSmall}
                 placeholder="Единицы"
                 value={s.unit ?? ""}
                 onChange={(e) => updateSignal(i, { unit: e.target.value || undefined })}
                 maxLength={24}
                 disabled={loading}
-              />
-              <input
+              /></Field>
+              <Field label="Минимум" hint="Необязательно. Для переключателя — 0."><input
                 className={styles.inputSmall}
-                placeholder="min"
+                placeholder="Без ограничения"
                 type="number"
                 step="any"
                 value={s.min ?? ""}
                 onChange={(e) => updateSignal(i, { min: e.target.value ? Number(e.target.value) : undefined })}
                 disabled={loading}
-              />
-              <input
+              /></Field>
+              <Field label="Максимум" hint="Необязательно. Для переключателя — 1."><input
                 className={styles.inputSmall}
-                placeholder="max"
+                placeholder="Без ограничения"
                 type="number"
                 step="any"
                 value={s.max ?? ""}
                 onChange={(e) => updateSignal(i, { max: e.target.value ? Number(e.target.value) : undefined })}
                 disabled={loading}
-              />
+              /></Field>
             </div>
             {/* enumValues — сырой текст */}
             <div className={styles.signalRow}>
-              <input
+              <Field label="Разрешённые значения" hint="Необязательно. Числа через запятую: 0, 1. Пусто — любое число в диапазоне."><input
                 className={`${styles.inputSmall} ${enumErrors[i] ? styles.inputError : ""}`}
-                placeholder="enumValues (через запятую, напр. 0, 1, 2.5)"
+                placeholder="Например: 0, 1"
                 value={enumTexts[i] ?? ""}
                 onChange={(e) => {
                   const newEnumTexts = [...enumTexts];
@@ -330,7 +345,7 @@ export function DeviceForm({ initial, onSubmit, onCancel, loading, error, confli
                   setEnumErrors(newErrors);
                 }}
                 disabled={loading}
-              />
+              /></Field>
             </div>
             {enumErrors[i] && (
               <div className={styles.signalError}>{enumErrors[i]}</div>
@@ -353,17 +368,17 @@ export function DeviceForm({ initial, onSubmit, onCancel, loading, error, confli
           return (
             <div key={i} className={styles.signalCard}>
               <div className={styles.signalRow}>
-                <input
+                <Field label="Код события" hint="Например: leak_changed. Латиницей без пробелов."><input
                   className={styles.inputSmall}
-                  placeholder="key"
+                  placeholder="Латиницей, без пробелов"
                   value={e.key}
                   onChange={(ev) => updateEvent(i, { key: ev.target.value })}
                   pattern="^[a-z][a-z0-9_]*$"
                   maxLength={64}
                   required
                   disabled={loading}
-                />
-                <input
+                /></Field>
+                <Field label="Название события" hint="Например: Изменение протечки."><input
                   className={styles.inputSmall}
                   placeholder="Название"
                   value={e.title}
@@ -371,7 +386,7 @@ export function DeviceForm({ initial, onSubmit, onCancel, loading, error, confli
                   maxLength={120}
                   required
                   disabled={loading}
-                />
+                /></Field>
                 <button
                   type="button"
                   className={styles.removeBtn}
@@ -383,7 +398,7 @@ export function DeviceForm({ initial, onSubmit, onCancel, loading, error, confli
                 </button>
               </div>
               <div className={styles.signalRow}>
-                <select
+                <Field label="При изменении какого сигнала" hint="Событие возникает, когда значение выбранного сигнала меняется."><select
                   className={`${styles.select} ${invalidLink ? styles.selectError : ""}`}
                   value={e.signalKey}
                   onChange={(ev) => updateEvent(i, { signalKey: ev.target.value })}
@@ -392,9 +407,9 @@ export function DeviceForm({ initial, onSubmit, onCancel, loading, error, confli
                 >
                   <option value="">— читаемый сигнал —</option>
                   {readableSignals.map((s) => (
-                    <option key={s.key} value={s.key}>{s.key}</option>
+                    <option key={s.key} value={s.key}>{s.title} ({s.key})</option>
                   ))}
-                </select>
+                </select></Field>
               </div>
               {invalidLink && (
                 <div className={styles.signalError}>
