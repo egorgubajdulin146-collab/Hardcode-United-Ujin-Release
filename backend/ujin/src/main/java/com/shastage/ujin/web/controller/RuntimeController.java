@@ -1,31 +1,42 @@
 package com.shastage.ujin.web.controller;
 
 import com.shastage.ujin.domain.service.LocalRuntimeService;
+import com.shastage.ujin.domain.service.PlatformBindingService;
 import com.shastage.ujin.web.dto.request.*;
 import java.util.*;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
+import jakarta.servlet.http.HttpSession;
+
 @RestController
 @RequestMapping("/api/v1")
 public class RuntimeController {
     private final LocalRuntimeService service;
+    private final PlatformBindingService bindingService;
 
     private String currentOwner() {
         var auth = SecurityContextHolder.getContext().getAuthentication();
         return auth != null ? auth.getName() : "";
     }
 
-    public RuntimeController(LocalRuntimeService service) {
+    public RuntimeController(LocalRuntimeService service, PlatformBindingService bindingService) {
         this.service = service;
+        this.bindingService = bindingService;
     }
 
     @GetMapping("/devices/{deviceId}/state")
     public Map<String, Object> deviceState(
             @PathVariable UUID deviceId,
-            @RequestParam(defaultValue = "LOCAL") String mode
+            @RequestParam(defaultValue = "LOCAL") String mode,
+            HttpSession session
     ) {
+        if ("UJIN".equals(mode)) {
+            Object token = session.getAttribute("UJIN_TOKEN");
+            return bindingService.readUjinState(
+                    deviceId, currentOwner(), token instanceof String value ? value : null);
+        }
         return service.getDeviceState(deviceId, mode, currentOwner());
     }
 
