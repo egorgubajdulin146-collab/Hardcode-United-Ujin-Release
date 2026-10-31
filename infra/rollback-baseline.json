@@ -1,0 +1,12 @@
+{
+  "accepted_at": "2026-11-01",
+  "revision": "e5fea660aaef4b02a1bf46e650441814af2a0f43",
+  "backend_image": "ujin-backend:e5fea660aaef4b02a1bf46e650441814af2a0f43",
+  "backend_image_id": "sha256:3d59037248cdcca39055439875a4dae5e0f6440c60df82386b2f22c77aa0e767",
+  "frontend_image": "ujin-frontend:e5fea660aaef4b02a1bf46e650441814af2a0f43",
+  "frontend_image_id": "sha256:514f505dc953075277d5614f3d98d812a3dd6deeb41e8485df021c755333d081",
+  "database": "PostgreSQL 17, Flyway V1-V3",
+  "tested_from_and_back_to": "6e7b2a77936c4269cc4d4fed646c5bf403ee7d33",
+  "checks": ["healthy", "static-js-css", "catalog-persistence", "event-replay", "owner-isolation-two-synthetic-accounts"],
+  "limitations": "Identical source trees. Deployment/artifact recovery only, not a fix for shared code defects. Future schema changes require new acceptance."
+}
