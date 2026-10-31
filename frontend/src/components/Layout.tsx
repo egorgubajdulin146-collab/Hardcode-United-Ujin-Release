@@ -23,7 +23,7 @@ export function Layout() {
       <nav className={styles.sidebar} aria-label="Основная навигация">
         <div className={styles.logo}>
           <span className={styles.logoText}>Ujin Editor</span>
-          {mock && <MockBadge />}
+          <span className={styles.logoBadge}>Hardcode United</span>
         </div>
         <ul className={styles.navList}>
           {navItems.map(({ to, label, icon: Icon }) => (
@@ -50,6 +50,7 @@ export function Layout() {
             {mock ? <Database size={16} /> : <Globe size={16} />}
             <span>{mock ? "MOCK" : "API"}</span>
           </button>
+          {mock && <MockBadge />}
         </div>
       </nav>
       <main className={styles.content}>

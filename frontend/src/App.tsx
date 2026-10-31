@@ -4,6 +4,7 @@ import { Layout } from "./components/Layout";
 import { DevicesPage } from "./pages/DevicesPage";
 import { ScenariosPage } from "./pages/ScenariosPage";
 import { RunsPage } from "./pages/RunsPage";
+import { RoomDevicesPage } from "./pages/RoomDevicesPage";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -21,7 +22,8 @@ export default function App() {
         <Routes>
           <Route path="/" element={<Layout />}>
             <Route index element={<Navigate to="/devices" replace />} />
-            <Route path="devices" element={<DevicesPage />} />
+            <Route path="devices" element={<RoomDevicesPage />} />
+            <Route path="devices/old" element={<DevicesPage />} />
             <Route path="scenarios" element={<ScenariosPage />} />
             <Route path="runs" element={<RunsPage />} />
             <Route path="*" element={<Navigate to="/devices" replace />} />
