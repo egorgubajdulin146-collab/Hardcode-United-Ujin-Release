@@ -46,6 +46,7 @@ export function DevicesCrudPage() {
   // Загрузка свежей версии устройства при конфликте
   const handleReloadFresh = async () => {
     if (!editing) return;
+    if (!window.confirm("Загрузить актуальную версию? Введённые изменения будут заменены.")) return;
     setSaving(true);
     try {
       const fresh = await endpoints.devices.get(editing.id);
@@ -217,6 +218,7 @@ export function DevicesCrudPage() {
     return (
       <div className={styles.page}>
         <DeviceForm
+          key={editing ? `${editing.id}:${editing.version}` : "new"}
           initial={mode === "edit" && editing ? {
             title: editing.title,
             family: editing.family,

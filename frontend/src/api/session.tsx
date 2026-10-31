@@ -9,9 +9,11 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   const [checkFailed, setCheckFailed] = useState(false);
   const queryClient = useQueryClient();
   const epochRef = useRef(0);
+  const checkRef = useRef<AbortController | null>(null);
   const [sessionEpoch, setSessionEpoch] = useState(0);
 
   const bumpEpoch = useCallback(() => {
+    checkRef.current?.abort();
     epochRef.current += 1;
     setSessionEpoch(epochRef.current);
   }, []);
@@ -34,32 +36,39 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     queryClient.clear();
   }, [bumpEpoch, queryClient]);
 
-  // Проверка сессии с таймаутом
   const checkSession = useCallback(async () => {
+    checkRef.current?.abort();
+    const controller = new AbortController();
+    checkRef.current = controller;
+    const epoch = epochRef.current;
+    const current = () => checkRef.current === controller && epochRef.current === epoch;
     setChecking(true);
     setCheckFailed(false);
-    const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 10_000);
-
     try {
-      await fetchCsrf();
+      await fetchCsrf(controller.signal);
       const resp = await fetch("/api/v1/devices?size=1", {
         credentials: "include",
         signal: controller.signal,
       });
-      if (resp.status === 200) {
-        setAuthed(true);
-      }
+      if (!current()) return;
+      if (resp.status === 200) setAuthed(true);
+      else if (resp.status === 401) setAuthed(false);
+      else throw new Error(`Session check: HTTP ${resp.status}`);
     } catch {
-      setCheckFailed(true);
+      if (current()) setCheckFailed(true);
     } finally {
       clearTimeout(timeout);
-      setChecking(false);
+      if (current()) setChecking(false);
     }
   }, []);
 
   useEffect(() => {
-    checkSession();
+    void checkSession();
+    return () => {
+      checkRef.current?.abort();
+      checkRef.current = null;
+    };
   }, [checkSession]);
 
   return (

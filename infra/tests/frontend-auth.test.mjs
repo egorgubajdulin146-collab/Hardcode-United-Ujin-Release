@@ -333,3 +333,15 @@ test('no automatic retry on write failure', async () => {
   }
   assert.equal(fetchCount, 1, 'Не должно быть автоматического повтора');
 });
+
+test('CSRF acquisition honours cancellation before publishing the token', async () => {
+  const controller = new AbortController();
+  let receivedSignal;
+  globalThis.fetch = async (_url, options) => {
+    receivedSignal = options.signal;
+    controller.abort();
+    return new Response('late-csrf-token', { status: 200 });
+  };
+  await assert.rejects(fetchCsrf(controller.signal), { name: 'AbortError' });
+  assert.equal(receivedSignal, controller.signal);
+});

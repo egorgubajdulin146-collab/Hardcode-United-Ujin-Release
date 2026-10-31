@@ -1,4 +1,4 @@
-import { useState, useEffect, type FormEvent } from "react";
+import { useState, type FormEvent } from "react";
 import { Plus, Trash2, AlertCircle, Loader2, X, Download } from "lucide-react";
 import type { DeviceWrite, SignalDefinition, EventDefinition } from "../api/types";
 import styles from "./DeviceForm.module.css";
@@ -48,18 +48,6 @@ export function DeviceForm({ initial, onSubmit, onCancel, loading, error, confli
   );
   const [enumErrors, setEnumErrors] = useState<string[]>([]);
 
-  // Обновление полей при смене initial (например, после загрузки свежей версии)
-  useEffect(() => {
-    if (initial) {
-      setTitle(initial.title ?? "");
-      setFamily(initial.family ?? "");
-      setSignals(initial.signals ?? []);
-      setEvents(initial.events ?? []);
-      setEnumTexts((initial.signals ?? []).map((s) => s.enumValues?.join(", ") ?? ""));
-      setEnumErrors([]);
-    }
-  }, [initial]);
-
   // Парсинг enumValues при сохранении
   const parseEnumValues = (text: string): { values?: number[]; error?: string } => {
     const trimmed = text.trim();
@@ -69,7 +57,7 @@ export function DeviceForm({ initial, onSubmit, onCancel, loading, error, confli
     for (const part of parts) {
       if (part === "") return { error: "Пустой элемент в enumValues" };
       const num = Number(part);
-      if (isNaN(num)) return { error: `«${part}» — не число` };
+      if (!Number.isFinite(num)) return { error: `«${part}» — не число` };
       numbers.push(num);
     }
     return { values: numbers };

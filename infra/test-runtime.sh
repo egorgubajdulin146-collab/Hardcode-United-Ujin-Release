@@ -9,7 +9,8 @@ POSTGRES_PASSWORD=$(openssl rand -hex 32)
 export UJIN_API_BASE_URL=https://localhost/api
 export UJIN_AUTH_APP=
 compose=(docker compose --project-directory "$repo_root" --env-file /dev/null
-  -f "$repo_root/infra/compose.yaml" -f "$repo_root/infra/compose.runtime.yaml")
+  -f "$repo_root/infra/compose.yaml" -f "$repo_root/infra/compose.runtime.yaml"
+  -f "$repo_root/infra/compose.catalog.yaml")
 cleanup() { "${compose[@]}" down --volumes --remove-orphans > /dev/null; }
 trap cleanup EXIT
 "${compose[@]}" up -d --wait --wait-timeout 150

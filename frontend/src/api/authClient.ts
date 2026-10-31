@@ -16,14 +16,16 @@ export class AuthError extends Error {
   }
 }
 
-export async function fetchCsrf(): Promise<string> {
+export async function fetchCsrf(signal?: AbortSignal): Promise<string> {
   const response = await fetch("/api/auth/csrf", {
     credentials: "include",
+    signal,
   });
   if (!response.ok) {
     throw new AuthError("server_error", `CSRF: HTTP ${response.status}`);
   }
   const token = await response.text();
+  signal?.throwIfAborted();
   csrfToken = token;
   setCsrfToken(token);
   return token;
