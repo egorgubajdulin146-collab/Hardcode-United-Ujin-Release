@@ -4,6 +4,8 @@ import {
   Lightbulb,
   Plus,
   Settings,
+  X,
+  Construction,
 } from "lucide-react";
 import { MockBadge } from "../components/States";
 import styles from "./RoomDevicesPage.module.css";
@@ -103,6 +105,26 @@ function DeviceCard({
   );
 }
 
+function DisabledAction({
+  icon: Icon,
+  label,
+  hint,
+}: {
+  icon: typeof Droplets;
+  label: string;
+  hint: string;
+}) {
+  return (
+    <div className={styles.disabledAction}>
+      <button type="button" className={styles.emulateButton} disabled>
+        <Icon size={16} aria-hidden="true" />
+        <span>{label}</span>
+      </button>
+      <p className={styles.emulateHint}>{hint}</p>
+    </div>
+  );
+}
+
 export function RoomDevicesPage() {
   const [selectedRoom, setSelectedRoom] = useState("living");
   const [selectedDevice, setSelectedDevice] = useState<string | null>("dev-2");
@@ -117,11 +139,21 @@ export function RoomDevicesPage() {
         <div className={styles.headerLeft}>
           <h1 className={styles.pageTitle}>Устройства</h1>
           <MockBadge />
+          <span className={styles.protoBadge}>
+            <Construction size={14} aria-hidden="true" />
+            Прототип
+          </span>
         </div>
-        <button type="button" className={styles.addButton}>
+        <button type="button" className={styles.addButton} disabled title="Реализация в UJIN-TASK-010">
           <Plus size={18} aria-hidden="true" />
           <span>Добавить устройство</span>
         </button>
+      </div>
+
+      {/* Уведомление о прототипе */}
+      <div className={styles.protoNotice}>
+        Этот экран — визуальный прототип. Данные синтетические (MOCK).
+        Действия отключены до реализации. API-режим для этого экрана не подключён.
       </div>
 
       {/* Комнаты */}
@@ -154,7 +186,7 @@ export function RoomDevicesPage() {
             <div className={styles.emptyState}>
               <p className={styles.emptyTitle}>В комнате нет устройств</p>
               <p className={styles.emptyDescription}>
-                Добавьте первое устройство, чтобы начать
+                Добавление устройств будет доступно после реализации конструктора
               </p>
             </div>
           ) : (
@@ -174,8 +206,13 @@ export function RoomDevicesPage() {
           <aside className={styles.devicePanel} aria-label="Настройки устройства">
             <div className={styles.panelHeader}>
               <h2 className={styles.panelTitle}>{currentDevice.title}</h2>
-              <button type="button" className={styles.panelClose} aria-label="Закрыть">
-                ×
+              <button
+                type="button"
+                className={styles.panelClose}
+                aria-label="Закрыть"
+                onClick={() => setSelectedDevice(null)}
+              >
+                <X size={16} aria-hidden="true" />
               </button>
             </div>
 
@@ -208,12 +245,11 @@ export function RoomDevicesPage() {
                   <span>{currentDevice.state}</span>
                 </div>
                 <h3 className={styles.sectionTitle}>Эмуляция</h3>
-                <button type="button" className={styles.emulateButton}>
-                  Имитировать протечку
-                </button>
-                <p className={styles.emulateHint}>
-                  Воздействие WET на локальный эмулятор
-                </p>
+                <DisabledAction
+                  icon={Droplets}
+                  label="Имитировать протечку"
+                  hint="Будет отправлен stimulus WET=1 (не реализовано)"
+                />
               </div>
             )}
 
@@ -225,12 +261,11 @@ export function RoomDevicesPage() {
                   <span>{currentDevice.state}</span>
                 </div>
                 <h3 className={styles.sectionTitle}>Управление</h3>
-                <button type="button" className={styles.emulateButton}>
-                  Включить свет
-                </button>
-                <p className={styles.emulateHint}>
-                  Команда lamp=1 через API
-                </p>
+                <DisabledAction
+                  icon={Lightbulb}
+                  label="Включить свет"
+                  hint="Будет отправлена команда lamp=1 (не реализовано)"
+                />
               </div>
             )}
 
