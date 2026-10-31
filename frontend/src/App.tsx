@@ -3,7 +3,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { SessionProvider } from "./api/session";
 import { useSession } from "./api/sessionContext";
 import { Layout } from "./components/Layout";
-import { DevicesPage } from "./pages/DevicesPage";
+import { DevicesCrudPage } from "./pages/DevicesCrudPage";
 import { ScenariosPage } from "./pages/ScenariosPage";
 import { RunsPage } from "./pages/RunsPage";
 import { RoomDevicesPage } from "./pages/RoomDevicesPage";
@@ -19,10 +19,6 @@ const queryClient = new QueryClient({
     },
   },
 });
-
-function DevicesRoute() {
-  return isMock() ? <RoomDevicesPage /> : <DevicesPage />;
-}
 
 function AppRoutes() {
   const { authed } = useSession();
@@ -42,7 +38,7 @@ function AppRoutes() {
     <Layout>
       <Routes>
         <Route index element={<Navigate to="/devices" replace />} />
-        <Route path="devices" element={<DevicesRoute />} />
+        <Route path="devices" element={isMock() ? <RoomDevicesPage /> : <DevicesCrudPage />} />
         <Route path="scenarios" element={<ScenariosPage />} />
         <Route path="runs" element={<RunsPage />} />
         <Route path="login" element={<Navigate to="/devices" replace />} />

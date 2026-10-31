@@ -2,6 +2,18 @@ import type { Problem } from "./types";
 
 const BASE_URL = import.meta.env.VITE_API_URL ?? "";
 
+// CSRF-токен для записи (POST/PUT/DELETE).
+// Устанавливается из authClient после GET /api/auth/csrf.
+let csrfToken: string | null = null;
+
+export function setCsrfToken(token: string | null): void {
+  csrfToken = token;
+}
+
+export function getCsrfToken(): string | null {
+  return csrfToken;
+}
+
 export class ApiError extends Error {
   constructor(
     public status: number,
@@ -39,6 +51,8 @@ interface RequestOptions {
   signal?: AbortSignal;
 }
 
+const WRITE_METHODS = new Set(["POST", "PUT", "DELETE", "PATCH"]);
+
 function isCancelled(signal?: AbortSignal): boolean {
   return signal?.aborted ?? false;
 }
@@ -65,12 +79,23 @@ async function request<T>(
   const onAbort = () => controller.abort();
   signal?.addEventListener("abort", onAbort);
 
+  // Формируем заголовки
+  const headers: Record<string, string> = {};
+  if (body) {
+    headers["Content-Type"] = "application/json";
+  }
+  // CSRF-токен для методов записи
+  if (WRITE_METHODS.has(method) && csrfToken) {
+    headers["X-XSRF-TOKEN"] = csrfToken;
+  }
+
   try {
     const response = await fetch(`${BASE_URL}${path}`, {
       method,
-      headers: body ? { "Content-Type": "application/json" } : undefined,
+      headers: Object.keys(headers).length > 0 ? headers : undefined,
       body: body ? JSON.stringify(body) : undefined,
       signal: controller.signal,
+      credentials: "include",
     });
 
     // 204 — успешный ответ без тела

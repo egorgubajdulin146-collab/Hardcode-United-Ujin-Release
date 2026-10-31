@@ -10,7 +10,8 @@ const ts = require('typescript');
 function transpile(path) {
   const source = readFileSync(new URL(path, import.meta.url), 'utf8')
     .replace('import.meta.env.VITE_API_URL', 'undefined')
-    .replace('import.meta.env.VITE_DATA_SOURCE', 'undefined');
+    .replace('import.meta.env.VITE_DATA_SOURCE', 'undefined')
+    .replace(/import\s*\{[^}]*\}\s*from\s*["']\.\/client["'];?/, 'const setCsrfToken = () => {};');
   const { outputText } = ts.transpileModule(source, {
     compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.ES2022 },
   });

@@ -1,4 +1,5 @@
 import type { UjinCredentials, UjinAdapterSignalValue } from "./auth";
+import { setCsrfToken } from "./client";
 
 // Работа с cookie-сессией и CSRF по контракту 0.1.2-draft
 // Состояние авторизации определяется сервером (cookie), не локальным флагом
@@ -24,6 +25,7 @@ export async function fetchCsrf(): Promise<string> {
   }
   const token = await response.text();
   csrfToken = token;
+  setCsrfToken(token);
   return token;
 }
 
@@ -124,4 +126,5 @@ export async function readSignal(
 
 export function clearCsrf(): void {
   csrfToken = null;
+  setCsrfToken(null);
 }
