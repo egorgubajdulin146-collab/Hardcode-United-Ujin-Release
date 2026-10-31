@@ -1,6 +1,7 @@
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { SessionProvider } from "./api/session";
+import { useSession } from "./api/sessionContext";
 import { Layout } from "./components/Layout";
 import { DevicesPage } from "./pages/DevicesPage";
 import { ScenariosPage } from "./pages/ScenariosPage";
@@ -23,22 +24,41 @@ function DevicesRoute() {
   return isMock() ? <RoomDevicesPage /> : <DevicesPage />;
 }
 
+function AppRoutes() {
+  const { authed } = useSession();
+  const location = useLocation();
+
+  // Без авторизации — только форма входа, без бокового меню
+  if (!authed && location.pathname !== "/login") {
+    return <LoginPage />;
+  }
+
+  if (!authed) {
+    return <LoginPage />;
+  }
+
+  // После авторизации — полная оболочка
+  return (
+    <Layout>
+      <Routes>
+        <Route index element={<Navigate to="/devices" replace />} />
+        <Route path="devices" element={<DevicesRoute />} />
+        <Route path="scenarios" element={<ScenariosPage />} />
+        <Route path="runs" element={<RunsPage />} />
+        <Route path="login" element={<Navigate to="/devices" replace />} />
+        <Route path="adapter" element={<AdapterPage />} />
+        <Route path="*" element={<Navigate to="/devices" replace />} />
+      </Routes>
+    </Layout>
+  );
+}
+
 export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <SessionProvider>
         <BrowserRouter>
-          <Routes>
-            <Route path="/" element={<Layout />}>
-              <Route index element={<Navigate to="/devices" replace />} />
-              <Route path="devices" element={<DevicesRoute />} />
-              <Route path="scenarios" element={<ScenariosPage />} />
-              <Route path="runs" element={<RunsPage />} />
-              <Route path="login" element={<LoginPage />} />
-              <Route path="adapter" element={<AdapterPage />} />
-              <Route path="*" element={<Navigate to="/devices" replace />} />
-            </Route>
-          </Routes>
+          <AppRoutes />
         </BrowserRouter>
       </SessionProvider>
     </QueryClientProvider>

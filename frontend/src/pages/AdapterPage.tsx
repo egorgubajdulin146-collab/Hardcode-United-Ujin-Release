@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from "react";
+import { useState, useRef, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { Wifi, Search, AlertCircle, Loader2, Database } from "lucide-react";
 import { readSignal, AuthError } from "../api/authClient";
@@ -14,13 +14,22 @@ export function AdapterPage() {
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<UjinAdapterSignalValue | null>(null);
 
-  const { setAuthed } = useSession();
+  const { setAuthed, terminateSession } = useSession();
   const mock = isMock();
   const navigate = useNavigate();
+
+  const abortRef = useRef<AbortController | null>(null);
+  const requestEpoch = useRef(0);
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     if (loading || mock) return;
+
+    // Отменяем предыдущий запрос
+    abortRef.current?.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
+    const epoch = ++requestEpoch.current;
 
     setLoading(true);
     setError(null);
@@ -28,12 +37,18 @@ export function AdapterPage() {
 
     try {
       const data = await readSignal(serialnumber.trim(), signalName.trim());
+
+      // Проверяем, что запрос всё ещё актуален
+      if (epoch !== requestEpoch.current) return;
+
       setResult(data);
       setAuthed(true);
     } catch (err) {
+      if (epoch !== requestEpoch.current) return;
+
       if (err instanceof AuthError) {
         if (err.kind === "invalid_credentials") {
-          setAuthed(false);
+          terminateSession();
           navigate("/login");
           return;
         }
@@ -42,7 +57,9 @@ export function AdapterPage() {
         setError("Неизвестная ошибка");
       }
     } finally {
-      setLoading(false);
+      if (epoch === requestEpoch.current) {
+        setLoading(false);
+      }
     }
   };
 

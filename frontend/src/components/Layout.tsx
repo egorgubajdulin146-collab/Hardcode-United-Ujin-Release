@@ -1,4 +1,5 @@
-import { NavLink, Outlet, useNavigate } from "react-router-dom";
+import type { ReactNode } from "react";
+import { NavLink, useNavigate } from "react-router-dom";
 import { Cpu, Workflow, PlayCircle, Database, Globe, LogIn, LogOut, Wifi } from "lucide-react";
 import { setDataSource, isMock } from "../api/dataSource";
 import { logout, clearCsrf } from "../api/authClient";
@@ -13,7 +14,7 @@ const navItems = [
   { to: "/adapter", label: "Адаптер", icon: Wifi },
 ];
 
-export function Layout() {
+export function Layout({ children }: { children: ReactNode }) {
   const mock = isMock();
   const { authed, onLogout } = useSession();
   const navigate = useNavigate();
@@ -91,7 +92,7 @@ export function Layout() {
         </div>
       </nav>
       <main className={styles.content}>
-        <Outlet />
+        {children}
       </main>
     </div>
   );
