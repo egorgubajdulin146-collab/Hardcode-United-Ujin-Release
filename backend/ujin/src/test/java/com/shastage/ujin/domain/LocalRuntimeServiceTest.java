@@ -235,4 +235,50 @@ class LocalRuntimeServiceTest {
         var dry = runtimeService.processStimulus(leakDeviceId, dryId, "WET", 0, "owner");
         assertEquals(dry, runtimeService.processStimulus(leakDeviceId, dryId, "WET", 0, "owner"));
     }
+    private Map<String, Object> observedRun(Map<String, Object> receipt) {
+        assertEquals("PROCESSED", receipt.get("status"));
+        var ids = (List<?>) receipt.get("runIds");
+        assertEquals(1, ids.size());
+        return runtimeService.getRun(UUID.fromString(ids.getFirst().toString()), "owner");
+    }
+
+    @Test
+    void unchangedNewEventDoesNotRepeatActionButTransitionsStillExecute() {
+        assertEquals("CONDITION_FALSE", observedRun(runtimeService.processStimulus(leakDeviceId, UUID.randomUUID(), "WET", 0, "owner")).get("reason"));
+        var firstId = UUID.randomUUID();
+        var first = runtimeService.processStimulus(leakDeviceId, firstId, "WET", 1, "owner");
+        assertEquals("SUCCEEDED", observedRun(first).get("status"));
+        runtimeService.processCommand(lightDeviceId, UUID.randomUUID(), "lamp", 0.0, "LOCAL", "owner");
+        var timestamp = stateRepo.findByDeviceIdAndSignalKeyAndOwner(leakDeviceId, "leak", "owner").orElseThrow().getUpdatedAt();
+        var repeatedId = UUID.randomUUID();
+        var repeated = runtimeService.processStimulus(leakDeviceId, repeatedId, "WET", 1, "owner");
+        assertEquals("SKIPPED", observedRun(repeated).get("status"));
+        assertEquals("NO_STATE_CHANGE", observedRun(repeated).get("reason"));
+        assertEquals(0.0, stateRepo.findByDeviceIdAndSignalKeyAndOwner(lightDeviceId, "lamp", "owner").orElseThrow().getValue());
+        assertEquals(timestamp, stateRepo.findByDeviceIdAndSignalKeyAndOwner(leakDeviceId, "leak", "owner").orElseThrow().getUpdatedAt());
+        assertEquals(repeated, runtimeService.processStimulus(leakDeviceId, repeatedId, "WET", 1, "owner"));
+        assertEquals(409, assertThrows(CatalogException.class, () -> runtimeService.processStimulus(leakDeviceId, repeatedId, "WET", 0, "owner")).status);
+        assertEquals("CONDITION_FALSE", observedRun(runtimeService.processStimulus(leakDeviceId, UUID.randomUUID(), "WET", 0, "owner")).get("reason"));
+        assertEquals(first, runtimeService.processStimulus(leakDeviceId, firstId, "WET", 1, "owner"));
+        assertEquals(0.0, stateRepo.findByDeviceIdAndSignalKeyAndOwner(leakDeviceId, "leak", "owner").orElseThrow().getValue());
+        assertEquals("SUCCEEDED", observedRun(runtimeService.processStimulus(leakDeviceId, UUID.randomUUID(), "WET", 1, "owner")).get("status"));
+        assertEquals(1.0, stateRepo.findByDeviceIdAndSignalKeyAndOwner(lightDeviceId, "lamp", "owner").orElseThrow().getValue());
+    }
+
+    @Test
+    void unchangedZeroIsNotConfusedWithConditionFalse() {
+        assertEquals("CONDITION_FALSE", observedRun(runtimeService.processStimulus(leakDeviceId, UUID.randomUUID(), "WET", 0, "owner")).get("reason"));
+        assertEquals("NO_STATE_CHANGE", observedRun(runtimeService.processStimulus(leakDeviceId, UUID.randomUUID(), "WET", 0, "owner")).get("reason"));
+        assertTrue(stateRepo.findByDeviceIdAndSignalKeyAndOwner(lightDeviceId, "lamp", "owner").isEmpty());
+    }
+
+    @Test
+    void restoringOfflineTargetRequiresANewSourceTransition() {
+        runtimeService.setAvailability(lightDeviceId, "OFFLINE", "owner");
+        assertEquals("BLOCKED", observedRun(runtimeService.processStimulus(leakDeviceId, UUID.randomUUID(), "WET", 1, "owner")).get("status"));
+        runtimeService.setAvailability(lightDeviceId, "ONLINE", "owner");
+        assertEquals("NO_STATE_CHANGE", observedRun(runtimeService.processStimulus(leakDeviceId, UUID.randomUUID(), "WET", 1, "owner")).get("reason"));
+        runtimeService.processStimulus(leakDeviceId, UUID.randomUUID(), "WET", 0, "owner");
+        assertEquals("SUCCEEDED", observedRun(runtimeService.processStimulus(leakDeviceId, UUID.randomUUID(), "WET", 1, "owner")).get("status"));
+    }
 }

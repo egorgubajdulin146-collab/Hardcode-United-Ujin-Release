@@ -148,11 +148,14 @@ public class LocalRuntimeService {
         event.setOwner(owner);
         eventRepo.save(event);
 
-        // Обновляем состояние сигнала leak
-        updateSignalState(deviceId, "leak", value, owner);
+        // Compare persisted owner-scoped state under the catalog lock before updating it.
+        boolean changed = stateRepo.findByDeviceIdAndSignalKeyAndOwner(deviceId, "leak", owner)
+                .map(previous -> previous.getValue() != value.doubleValue())
+                .orElse(true);
+        if (changed) updateSignalState(deviceId, "leak", value, owner);
 
         // Запускаем подходящие LOCAL-сценарии
-        var runIds = processScenarios(deviceId, "leak", value, eventId, owner);
+        var runIds = processScenarios(deviceId, "leak", value, eventId, owner, changed);
 
         event.setStatus("PROCESSED");
         event.setProcessedAt(java.time.Instant.now().toString());
@@ -239,7 +242,7 @@ public class LocalRuntimeService {
     }
 
     // ===== Обработка сценариев =====
-    private List<UUID> processScenarios(UUID sourceDeviceId, String signalKey, double value, UUID eventId, String owner) {
+    private List<UUID> processScenarios(UUID sourceDeviceId, String signalKey, double value, UUID eventId, String owner, boolean changed) {
         var scenarios = loadAllScenarios(owner);
         var runIds = new ArrayList<UUID>();
         var now = java.time.Instant.now().toString();
@@ -254,6 +257,11 @@ public class LocalRuntimeService {
 
             // Только LOCAL-сценарии
             if (!"LOCAL".equals(scenario.executionMode())) {
+                continue;
+            }
+
+            if (!changed) {
+                createSkippedRun(scenario, eventId, "NO_STATE_CHANGE", signalKey, value, now, owner);
                 continue;
             }
 
