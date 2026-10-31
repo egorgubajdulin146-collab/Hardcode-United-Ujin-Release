@@ -14,6 +14,7 @@ public class SessionSecurity {
         return http
                 .csrf(csrf -> csrf.csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse()))
                 .authorizeHttpRequests(auth -> auth
+                        .dispatcherTypeMatchers(jakarta.servlet.DispatcherType.ERROR).permitAll()
                         .requestMatchers("/api/auth/login", "/api/auth/csrf", "/actuator/health").permitAll()
                         .anyRequest().authenticated())
                 .formLogin(form -> form.disable())

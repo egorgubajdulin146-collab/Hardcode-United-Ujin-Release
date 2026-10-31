@@ -1,6 +1,7 @@
 package com.shastage.ujin.web.controller;
 
 import com.shastage.ujin.datasource.client.UjinApiClient;
+import com.shastage.ujin.datasource.client.UjinApiException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
@@ -48,11 +49,14 @@ public class UjinSessionController {
             token = client.authenticate(credentials.login(), credentials.password(), app);
         } catch (IllegalArgumentException error) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST);
-        } catch (IllegalStateException error) {
-            if ("Unable to authenticate with Ujin".equals(error.getMessage())) {
-                throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE);
-            }
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED);
+        } catch (UjinApiException error) {
+            throw new ResponseStatusException(switch (error.kind()) {
+                case UNAUTHORIZED -> HttpStatus.UNAUTHORIZED;
+                case FORBIDDEN -> HttpStatus.FORBIDDEN;
+                case UNAVAILABLE -> HttpStatus.SERVICE_UNAVAILABLE;
+                case SIGNAL_NOT_FOUND -> HttpStatus.NOT_FOUND;
+                case BAD_RESPONSE -> HttpStatus.BAD_GATEWAY;
+            });
         }
         HttpSession session = request.getSession(true);
         request.changeSessionId();

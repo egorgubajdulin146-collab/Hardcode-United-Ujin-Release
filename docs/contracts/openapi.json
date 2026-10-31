@@ -1142,6 +1142,178 @@
           }
         }
       }
+    },
+    "/api/auth/csrf": {
+      "get": {
+        "operationId": "getUjinCsrf",
+        "tags": [
+          "Ujin adapter"
+        ],
+        "security": [],
+        "summary": "Получить CSRF перед входом и выходом",
+        "description": "Сохранить cookies, использовать тело как X-XSRF-TOKEN. После login перед logout получить токен снова.",
+        "responses": {
+          "200": {
+            "description": "Маскированный CSRF-токен; Set-Cookie: XSRF-TOKEN",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/login": {
+      "post": {
+        "operationId": "loginUjin",
+        "tags": [
+          "Ujin adapter"
+        ],
+        "security": [],
+        "summary": "Войти через Ujin и создать серверную cookie-сессию",
+        "parameters": [
+          {
+            "name": "X-XSRF-TOKEN",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Тело GET /api/auth/csrf для той же cookie-сессии; возвращается маскированный CSRF-токен. Значение cookie XSRF-TOKEN напрямую в этот заголовок не копировать."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UjinCredentials"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "Вход выполнен; сохранить Set-Cookie JSESSIONID. Пароль не сохраняется, токен Ujin остаётся на сервере."
+          },
+          "400": {
+            "description": "Неверные или пустые параметры"
+          },
+          "401": {
+            "description": "Нет сессии или HTTP 401 от Ujin"
+          },
+          "403": {
+            "description": "Некорректный CSRF или явный HTTP 403 от Ujin"
+          },
+          "502": {
+            "description": "HTTP upstream кроме 200/401/403, невалидный JSON, ответ > 1 MiB, неизвестный error либо отсутствие ожидаемых данных/токена"
+          },
+          "503": {
+            "description": "Ошибка соединения или таймаут Ujin"
+          }
+        }
+      }
+    },
+    "/api/auth/logout": {
+      "post": {
+        "operationId": "logoutUjin",
+        "tags": [
+          "Ujin adapter"
+        ],
+        "security": [
+          {
+            "UjinSession": []
+          }
+        ],
+        "summary": "Закрыть локальную сессию",
+        "parameters": [
+          {
+            "name": "X-XSRF-TOKEN",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Тело GET /api/auth/csrf для той же cookie-сессии; возвращается маскированный CSRF-токен. Значение cookie XSRF-TOKEN напрямую в этот заголовок не копировать."
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Сессия инвалидирована; чтение с прежней cookie даст 401. Повторный выход с корректным CSRF также допустим."
+          },
+          "403": {
+            "description": "Некорректный CSRF или явный HTTP 403 от Ujin"
+          }
+        }
+      }
+    },
+    "/api/v1/ujin/devices/{serialnumber}/signals": {
+      "get": {
+        "operationId": "readUjinAdapterSignal",
+        "tags": [
+          "Ujin adapter"
+        ],
+        "security": [
+          {
+            "UjinSession": []
+          }
+        ],
+        "summary": "Прочитать один сигнал через Ujin",
+        "description": "Отдельный маршрут адаптера. serialnumber — платформенный идентификатор. Не реализует /devices/{deviceId}/state. Неизвестные коды error Ujin дают 502; числовые коды авторизации в JSON пока не подтверждены. DTO value всегда строковый; подключение frontend требует отдельного согласования.",
+        "parameters": [
+          {
+            "name": "serialnumber",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          {
+            "name": "name",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Скалярный сигнал",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UjinAdapterSignalValue"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Неверные или пустые параметры"
+          },
+          "401": {
+            "description": "Нет сессии или HTTP 401 от Ujin"
+          },
+          "403": {
+            "description": "Некорректный CSRF или явный HTTP 403 от Ujin"
+          },
+          "404": {
+            "description": "Сигнал не найден"
+          },
+          "502": {
+            "description": "HTTP upstream кроме 200/401/403, невалидный JSON, ответ > 1 MiB, неизвестный error либо отсутствие ожидаемых данных/токена"
+          },
+          "503": {
+            "description": "Ошибка соединения или таймаут Ujin"
+          }
+        }
+      }
     }
   },
   "components": {
@@ -2103,6 +2275,40 @@
           "resolvedAt",
           "kind"
         ]
+      },
+      "UjinCredentials": {
+        "type": "object",
+        "required": [
+          "login",
+          "password"
+        ],
+        "properties": {
+          "login": {
+            "type": "string",
+            "minLength": 1
+          },
+          "password": {
+            "type": "string",
+            "minLength": 1,
+            "writeOnly": true
+          }
+        }
+      },
+      "UjinAdapterSignalValue": {
+        "type": "object",
+        "required": [
+          "name",
+          "value"
+        ],
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "value": {
+            "type": "string",
+            "description": "Скаляр Ujin, преобразованный в строку; отдельный DTO адаптера, не SignalValue основного API."
+          }
+        }
       }
     },
     "responses": {
@@ -2175,6 +2381,14 @@
             }
           }
         }
+      }
+    },
+    "securitySchemes": {
+      "UjinSession": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "JSESSIONID",
+        "description": "Серверная сессия после POST /api/auth/login; токен Ujin клиенту не передаётся."
       }
     }
   }

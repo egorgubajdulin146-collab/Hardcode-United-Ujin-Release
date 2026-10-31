@@ -51,8 +51,8 @@ class UjinApiClientTest {
 
     @Test
     void missingSignalIsNotReportedAsSuccess() {
-        assertEquals("Requested signal was not found", assertThrows(IllegalStateException.class,
-                () -> client.readSignal("session-token", "device-1", "leak")).getMessage());
+        assertEquals(UjinApiException.Kind.SIGNAL_NOT_FOUND, assertThrows(UjinApiException.class,
+                () -> client.readSignal("session-token", "device-1", "leak")).kind());
     }
 
     private static void respond(com.sun.net.httpserver.HttpExchange exchange, String body) throws java.io.IOException {

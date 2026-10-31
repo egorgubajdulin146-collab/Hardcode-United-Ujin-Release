@@ -39,17 +39,17 @@ public final class UjinApiClient {
             connection.setRequestProperty("Accept", "application/json");
             int status = connection.getResponseCode();
             if (status != 200) {
-                throw new IllegalStateException("Ujin returned HTTP " + status);
+                throw httpError(status);
             }
             try (var input = connection.getInputStream()) {
                 byte[] bytes = input.readNBytes(1_048_577);
                 if (bytes.length > 1_048_576) {
-                    throw new IllegalStateException("Ujin response is too large");
+                    throw new UjinApiException(UjinApiException.Kind.BAD_RESPONSE);
                 }
                 response = new String(bytes, StandardCharsets.UTF_8);
             }
         } catch (IOException error) {
-            throw new IllegalStateException("Unable to read Ujin API; check connection and access");
+            throw new UjinApiException(UjinApiException.Kind.UNAVAILABLE);
         } finally {
             if (connection != null) {
                 connection.disconnect();
@@ -59,10 +59,10 @@ public final class UjinApiClient {
         try {
             root = mapper.readTree(response);
         } catch (RuntimeException error) {
-            throw new IllegalStateException("Ujin returned invalid JSON");
+            throw new UjinApiException(UjinApiException.Kind.BAD_RESPONSE);
         }
         if (root == null || !root.path("error").isIntegralNumber() || root.path("error").asInt() != 0) {
-            throw new IllegalStateException("Ujin rejected the request");
+            throw new UjinApiException(UjinApiException.Kind.BAD_RESPONSE);
         }
         for (JsonNode signal : root.path("data").path("signals")) {
             if (signalName.equals(signal.path("name").asString(""))) {
@@ -70,10 +70,10 @@ public final class UjinApiClient {
                 if (value.isNumber() || value.isString() || value.isBoolean()) {
                     return value.asString();
                 }
-                throw new IllegalStateException("Requested signal has no scalar value");
+                throw new UjinApiException(UjinApiException.Kind.BAD_RESPONSE);
             }
         }
-        throw new IllegalStateException("Requested signal was not found");
+        throw new UjinApiException(UjinApiException.Kind.SIGNAL_NOT_FOUND);
     }
 
     public String authenticate(String login, String password, String app) {
@@ -96,29 +96,42 @@ public final class UjinApiClient {
             try (OutputStream output = connection.getOutputStream()) {
                 output.write(body);
             }
-            if (connection.getResponseCode() != 200) {
-                throw new IllegalStateException("Ujin authentication failed");
+            int status = connection.getResponseCode();
+            if (status != 200) {
+                throw httpError(status);
             }
             JsonNode root;
             try (var input = connection.getInputStream()) {
                 byte[] response = input.readNBytes(1_048_577);
-                if (response.length > 1_048_576) throw new IllegalStateException("Ujin response is too large");
-                root = mapper.readTree(new String(response, StandardCharsets.UTF_8));
+                if (response.length > 1_048_576) throw new UjinApiException(UjinApiException.Kind.BAD_RESPONSE);
+                try {
+                    root = mapper.readTree(new String(response, StandardCharsets.UTF_8));
+                } catch (RuntimeException error) {
+                    throw new UjinApiException(UjinApiException.Kind.BAD_RESPONSE);
+                }
             }
             if (root == null || !root.path("error").isIntegralNumber() || root.path("error").asInt() != 0) {
-                throw new IllegalStateException("Ujin authentication rejected");
+                throw new UjinApiException(UjinApiException.Kind.BAD_RESPONSE);
             }
             String token = root.path("data").path("user").path("token").asString("");
             if (token.isBlank()) token = root.path("data").path("token").asString("");
-            if (token.isBlank()) throw new IllegalStateException("Ujin authentication returned no token");
+            if (token.isBlank()) throw new UjinApiException(UjinApiException.Kind.BAD_RESPONSE);
             return token;
         } catch (IOException error) {
-            throw new IllegalStateException("Unable to authenticate with Ujin");
+            throw new UjinApiException(UjinApiException.Kind.UNAVAILABLE);
         } finally {
             if (connection != null) connection.disconnect();
         }
     }
 
+
+    private static UjinApiException httpError(int status) {
+        return new UjinApiException(switch (status) {
+            case 401 -> UjinApiException.Kind.UNAUTHORIZED;
+            case 403 -> UjinApiException.Kind.FORBIDDEN;
+            default -> UjinApiException.Kind.BAD_RESPONSE;
+        });
+    }
 
     private static String encode(String value) {
         return URLEncoder.encode(value, StandardCharsets.UTF_8);

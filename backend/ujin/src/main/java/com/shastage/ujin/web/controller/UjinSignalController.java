@@ -1,6 +1,7 @@
 package com.shastage.ujin.web.controller;
 
 import com.shastage.ujin.datasource.client.UjinApiClient;
+import com.shastage.ujin.datasource.client.UjinApiException;
 import jakarta.servlet.http.HttpSession;
 import java.net.URI;
 import org.springframework.beans.factory.annotation.Value;
@@ -31,17 +32,14 @@ public class UjinSignalController {
             return new SignalValue(name, client.readSignal(value, serialnumber, name));
         } catch (IllegalArgumentException error) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST);
-        } catch (IllegalStateException error) {
-            if ("Ujin rejected the request".equals(error.getMessage())) {
-                throw new ResponseStatusException(HttpStatus.FORBIDDEN);
-            }
-            if ("Requested signal was not found".equals(error.getMessage())) {
-                throw new ResponseStatusException(HttpStatus.NOT_FOUND);
-            }
-            if ("Unable to read Ujin API; check connection and access".equals(error.getMessage())) {
-                throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE);
-            }
-            throw new ResponseStatusException(HttpStatus.BAD_GATEWAY);
+        } catch (UjinApiException error) {
+            throw new ResponseStatusException(switch (error.kind()) {
+                case UNAUTHORIZED -> HttpStatus.UNAUTHORIZED;
+                case FORBIDDEN -> HttpStatus.FORBIDDEN;
+                case UNAVAILABLE -> HttpStatus.SERVICE_UNAVAILABLE;
+                case SIGNAL_NOT_FOUND -> HttpStatus.NOT_FOUND;
+                case BAD_RESPONSE -> HttpStatus.BAD_GATEWAY;
+            });
         }
     }
 
