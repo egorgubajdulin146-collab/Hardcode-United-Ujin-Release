@@ -944,7 +944,7 @@
         "summary": "getUjinStatus",
         "responses": {
           "200": {
-            "description": "Draft contract response; implementation pending",
+            "description": "Implemented local capability report; does not probe platform or claim checkedAt. Read UNKNOWN; other capabilities BLOCKED.",
             "content": {
               "application/json": {
                 "schema": {
@@ -1262,7 +1262,7 @@
           }
         ],
         "summary": "Прочитать один сигнал через Ujin",
-        "description": "Отдельный маршрут адаптера. serialnumber — платформенный идентификатор. Не реализует /devices/{deviceId}/state. Неизвестные коды error Ujin дают 502; числовые коды авторизации в JSON пока не подтверждены. DTO value всегда строковый; подключение frontend требует отдельного согласования.",
+        "description": "Resident snapshot adapter; exact platform SN and signal name. Does not implement UUID state or binding. Safe UJIN_* Problem codes; no upstream messages.",
         "parameters": [
           {
             "name": "serialnumber",
@@ -1301,16 +1301,44 @@
             "description": "Нет сессии или HTTP 401 от Ujin"
           },
           "403": {
-            "description": "Некорректный CSRF или явный HTTP 403 от Ujin"
+            "description": "Некорректный CSRF или явный HTTP 403 от Ujin",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
           },
           "404": {
-            "description": "Сигнал не найден"
+            "description": "Сигнал не найден",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
           },
           "502": {
-            "description": "HTTP upstream кроме 200/401/403, невалидный JSON, ответ > 1 MiB, неизвестный error либо отсутствие ожидаемых данных/токена"
+            "description": "UJIN_PLATFORM_ERROR or UJIN_BAD_RESPONSE",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
           },
           "503": {
-            "description": "Ошибка соединения или таймаут Ujin"
+            "description": "Ошибка соединения или таймаут Ujin",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
           }
         }
       }

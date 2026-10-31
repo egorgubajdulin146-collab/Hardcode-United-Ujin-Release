@@ -122,6 +122,50 @@ class UjinSessionIntegrationTest {
     }
 
     @Test
+    void integrationStatusRequiresSessionAndReportsLimits() throws Exception {
+        String path = "/api/v1/integrations/ujin/status";
+        assertEquals(401, request(path, "GET", null, null).statusCode());
+        assertEquals(204, login(csrf()).statusCode());
+        upstreamStatus = 500;
+        var response = request(path, "GET", null, null);
+        assertEquals(200, response.statusCode());
+        var root = tools.jackson.databind.json.JsonMapper.builder().build().readTree(response.body());
+        assertEquals("UNKNOWN", root.path("read").path("status").asString());
+        for (String key : java.util.List.of("publish", "downlink", "autoscripts")) {
+            assertEquals("BLOCKED", root.path(key).path("status").asString());
+            assertFalse(root.path(key).path("reason").asString().isBlank());
+            assertFalse(root.path(key).has("checkedAt"));
+        }
+        assertSafe(response);
+    }
+
+    @Test
+    void readErrorsHaveSafeStableProblemCodes() throws Exception {
+        assertEquals(204, login(csrf()).statusCode());
+        String path = "/api/v1/ujin/devices/device-1/signals?name=lamp";
+        String[][] cases = {
+            {"{\"error\":1,\"error_code\":\"Access denied\",\"message\":\"private-token private-password\"}", "403", "UJIN_ACCESS_DENIED"},
+            {"{\"error\":1,\"error_code\":\"unknown\"}", "502", "UJIN_PLATFORM_ERROR"},
+            {"not json", "502", "UJIN_BAD_RESPONSE"},
+            {"{\"error\":0,\"data\":{\"devices\":[]}}", "404", "UJIN_SIGNAL_NOT_FOUND"}
+        };
+        for (String[] entry : cases) {
+            upstreamBody = entry[0];
+            var response = request(path, "GET", null, null);
+            assertEquals(Integer.parseInt(entry[1]), response.statusCode());
+            assertTrue(response.headers().firstValue("Content-Type").orElse("").contains("application/problem+json"));
+            var root = tools.jackson.databind.json.JsonMapper.builder().build().readTree(response.body());
+            assertEquals(entry[2], root.path("code").asString());
+            assertSafe(response);
+        }
+        upstreamMode = "disconnect";
+        var response = request(path, "GET", null, null);
+        assertEquals(503, response.statusCode());
+        assertTrue(response.body().contains("UJIN_UNAVAILABLE"));
+        assertSafe(response);
+    }
+
+    @Test
     void sessionRequiresCsrfAndLogoutRevokesAccess() throws Exception {
         String signal = "/api/v1/ujin/devices/device-1/signals?name=lamp";
         assertEquals(401, request(signal, "GET", null, null).statusCode());
