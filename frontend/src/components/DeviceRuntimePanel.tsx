@@ -147,7 +147,7 @@ export function DeviceRuntimePanel({ device, onClose }: { device: Device; onClos
       {currentCommand && <p>Команда: {COMMAND_STATUS[currentCommand.status]} <small>{currentCommand.commandId}</small></p>}
       {eventLookupId && !currentEvent && <p>Приём события не подтверждён. Проверяем результат. <small>{eventLookupId}</small></p>}
       {currentEvent && <p>{EVENT_STATUS[currentEvent.status]} · запусков: {currentEvent.runIds.length}</p>}
-      {(currentEvent || currentCommand || eventLookupId) && <Link to="/runs">Открыть журнал выполнения</Link>}
+      {(currentEvent || currentCommand || eventLookupId) && <Link to={currentEvent || eventLookupId ? `/runs?eventId=${encodeURIComponent(currentEvent?.eventId ?? eventLookupId!)}` : "/runs"}>Открыть журнал выполнения</Link>}
     </div>
   </section>;
 }

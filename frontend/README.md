@@ -9,7 +9,7 @@ React 18, TypeScript, Vite, React Router, TanStack Query, CSS Modules, Lucide Re
 ## Запуск
 
 ```bash
-npm install
+npm ci
 npm run dev        # dev-сервер на http://localhost:5173
 npm run build      # production build (tsc + vite)
 npm run preview    # предпросмотр production build
@@ -28,7 +28,10 @@ npm run lint       # ESLint
 1. Через переменную окружения: `VITE_DATA_SOURCE=mock|api` в `.env`
 2. Через UI: кнопка «Демо / Подключение» внизу боковой панели (сохраняется в localStorage)
 
-Базовый URL API задаётся переменной `VITE_API_URL` (по умолчанию `http://localhost:8080`).
+Vite пересылает `/api` на `VITE_PROXY_TARGET` или `http://localhost:8080`.
+При общей раздаче через Nginx оставляйте `VITE_API_URL` пустым.
+
+Базовый URL API задаётся переменной `VITE_API_URL` (по умолчанию пустой, запросы идут на тот же origin).
 
 ## Проверки
 
