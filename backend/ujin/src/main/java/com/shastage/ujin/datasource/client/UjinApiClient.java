@@ -36,25 +36,38 @@ public final class UjinApiClient {
         URI uri = URI.create(base + "/apartment/get-device-signals/?token=" + encode(token));
         JsonNode root = executeGet(uri);
 
-        // devices[].id — serialnumber, signals[].value — значение
-        JsonNode devices = root.path("data").path("devices");
-        if (devices.isArray()) {
-            for (JsonNode device : devices) {
-                if (serialnumber.equals(device.path("id").asString(""))) {
-                    JsonNode signals = device.path("signals");
-                    if (signals.isArray()) {
-                        for (JsonNode signal : signals) {
-                            if (signalName.equals(signal.path("name").asString(""))) {
-                                JsonNode value = signal.path("value");
-                                if (value.isNumber() || value.isString() || value.isBoolean()) {
-                                    return value.asString("");
-                                }
-                                throw new UjinApiException(UjinApiException.Kind.BAD_RESPONSE);
-                            }
-                        }
-                    }
-                    throw new UjinApiException(UjinApiException.Kind.SIGNAL_NOT_FOUND);
+        JsonNode data = root.path("data");
+        JsonNode devices = data.path("devices");
+        // Проверка схемы: data.devices должен быть массивом
+        if (!devices.isArray()) {
+            throw new UjinApiException(UjinApiException.Kind.BAD_RESPONSE);
+        }
+        for (JsonNode device : devices) {
+            if (!device.isObject()) {
+                throw new UjinApiException(UjinApiException.Kind.BAD_RESPONSE);
+            }
+            if (serialnumber.equals(device.path("id").asString(""))) {
+                JsonNode signals = device.path("signals");
+                if (!signals.isArray()) {
+                    throw new UjinApiException(UjinApiException.Kind.BAD_RESPONSE);
                 }
+                for (JsonNode signal : signals) {
+                    if (!signal.isObject()) {
+                        throw new UjinApiException(UjinApiException.Kind.BAD_RESPONSE);
+                    }
+                    if (signalName.equals(signal.path("name").asString(""))) {
+                        JsonNode value = signal.path("value");
+                        if (value.isMissingNode() || value.isNull()) {
+                            throw new UjinApiException(UjinApiException.Kind.BAD_RESPONSE);
+                        }
+                        // Поддерживаем числа (включая 0), строки и boolean (включая false)
+                        if (value.isNumber() || value.isString() || value.isBoolean()) {
+                            return value.asString("");
+                        }
+                        throw new UjinApiException(UjinApiException.Kind.BAD_RESPONSE);
+                    }
+                }
+                throw new UjinApiException(UjinApiException.Kind.SIGNAL_NOT_FOUND);
             }
         }
         throw new UjinApiException(UjinApiException.Kind.SIGNAL_NOT_FOUND);

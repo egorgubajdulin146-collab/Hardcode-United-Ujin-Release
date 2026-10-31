@@ -131,7 +131,7 @@ class UjinSessionIntegrationTest {
         assertEquals(204, login.statusCode());
         assertSafe(login);
         upstreamBody =
-                "{\"error\":0,\"data\":{\"signals\":[{\"name\":\"lamp\",\"state\":{\"value\":1}}]}}";
+                "{\"error\":0,\"data\":{\"devices\":[{\"id\":\"device-1\",\"signals\":[{\"name\":\"lamp\",\"value\":\"1\"}]}]}}";
         var read = request(signal, "GET", null, null);
         assertEquals(200, read.statusCode());
         assertTrue(read.body().contains("\"value\":\"1\""));

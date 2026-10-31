@@ -137,3 +137,57 @@ class UjinApiClientTest {
         }
     }
 }
+
+    @Test
+    void residentAuthWithoutApp() {
+        // Резидент входит без app
+        assertEquals("session-token", client.authenticate("resident", "pass", null));
+    }
+
+    @Test
+    void invalidCredentialsReturnsUnauthorized() {
+        acceptedAuth.set("{\"error\":1,\"data\":{}}");
+        var error = assertThrows(UjinApiException.class,
+                () -> client.authenticate("user", "wrong", null));
+        assertEquals(UjinApiException.Kind.UNAUTHORIZED, error.kind());
+    }
+
+    @Test
+    void corruptedResponseReturnsBadResponse() {
+        readResponse.set("not json at all");
+        var error = assertThrows(UjinApiException.class,
+                () -> client.readSignal("tok", "sn-1", "lamp"));
+        assertEquals(UjinApiException.Kind.BAD_RESPONSE, error.kind());
+    }
+
+    @Test
+    void wrongSchemaReturnsBadResponse() {
+        // data.devices не массив
+        readResponse.set("{\"error\":0,\"data\":{\"devices\":\"not-an-array\"}}");
+        var error = assertThrows(UjinApiException.class,
+                () -> client.readSignal("tok", "sn-1", "lamp"));
+        assertEquals(UjinApiException.Kind.BAD_RESPONSE, error.kind());
+    }
+
+    @Test
+    void missingValueReturnsBadResponse() {
+        // value отсутствует
+        readResponse.set("{\"error\":0,\"data\":{\"devices\":[{\"id\":\"sn-1\",\"signals\":[{\"name\":\"lamp\"}]}]}}");
+        var error = assertThrows(UjinApiException.class,
+                () -> client.readSignal("tok", "sn-1", "lamp"));
+        assertEquals(UjinApiException.Kind.BAD_RESPONSE, error.kind());
+    }
+
+    @Test
+    void zeroValueIsReturned() {
+        readResponse.set("{\"error\":0,\"data\":{\"devices\":[{\"id\":\"sn-1\",\"signals\":[{\"name\":\"lamp\",\"value\":0}]}]}}");
+        assertEquals("0", client.readSignal("tok", "sn-1", "lamp"));
+    }
+
+    @Test
+    void falseValueIsReturned() {
+        readResponse.set("{\"error\":0,\"data\":{\"devices\":[{\"id\":\"sn-1\",\"signals\":[{\"name\":\"lamp\",\"value\":false}]}]}}");
+        assertEquals("false", client.readSignal("tok", "sn-1", "lamp"));
+    }
+
+}
