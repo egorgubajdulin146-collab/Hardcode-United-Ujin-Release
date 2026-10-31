@@ -42,7 +42,7 @@ export function ScenarioForm({
   // Подтверждение замены формы свежими данными
   const [pendingFresh, setPendingFresh] = useState<typeof freshData>(null);
 
-  // Применение свежих данных (с подтверждением)
+  // Применение свежих данных — только по подтверждению, без повторного GET
   const applyFresh = () => {
     if (!pendingFresh) return;
     setTitle(pendingFresh.title ?? "");
@@ -55,9 +55,14 @@ export function ScenarioForm({
     setActionDeviceId(pendingFresh.action?.deviceId ?? "");
     setActionSignalKey(pendingFresh.action?.signalKey ?? "");
     setActionValue(pendingFresh.action?.value !== undefined ? String(pendingFresh.action.value) : "");
+    // Заменяем базовую версию вместе с полями
     initRef.current = pendingFresh;
     setPendingFresh(null);
-    onReloadFresh?.();
+    // НЕ вызываем onReloadFresh — данные уже применены
+  };
+
+  const keepCurrent = () => {
+    setPendingFresh(null);
   };
 
   // Когда пришли свежие данные — показываем подтверждение
@@ -216,7 +221,7 @@ export function ScenarioForm({
           <button type="button" className={styles.confirmBtn} onClick={applyFresh}>
             Заменить
           </button>
-          <button type="button" className={styles.keepBtn} onClick={() => setPendingFresh(null)}>
+          <button type="button" className={styles.keepBtn} onClick={keepCurrent}>
             Оставить
           </button>
         </div>

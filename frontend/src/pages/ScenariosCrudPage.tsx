@@ -13,17 +13,18 @@ import styles from "./ScenariosCrudPage.module.css";
 
 type Mode = "list" | "create" | "edit";
 
-// Загрузка всех страниц устройств
-async function fetchAllDevices(): Promise<Device[]> {
+// Загрузка всех страниц устройств с поддержкой отмены
+async function fetchAllDevices(signal?: AbortSignal): Promise<Device[]> {
   const all: Device[] = [];
   let page = 0;
   const size = 100;
   for (;;) {
-    const resp = await endpoints.devices.list({ page, size });
+    if (signal?.aborted) break;
+    const resp = await endpoints.devices.list({ page, size }, signal);
     all.push(...resp.items);
     if (all.length >= resp.total || resp.items.length === 0) break;
     page++;
-    if (page > 50) break; // защита от бесконечного цикла
+    if (page > 50) break;
   }
   return all;
 }
@@ -56,7 +57,7 @@ export function ScenariosCrudPage() {
     refetch: refetchDevices,
   } = useQuery({
     queryKey: ["all-devices"],
-    queryFn: fetchAllDevices,
+    queryFn: ({ signal }) => fetchAllDevices(signal),
     enabled: !mock,
   });
 
@@ -74,12 +75,13 @@ export function ScenariosCrudPage() {
     queryClient.invalidateQueries({ queryKey: ["scenarios"] });
   }, [queryClient]);
 
-  // Загрузка свежей версии
+  // Загрузка свежей версии — только получение данных, без замены формы
   const handleReloadFresh = async () => {
     if (!editing) return;
     setSaving(true);
     try {
       const fresh = await endpoints.scenarios.get(editing.id);
+      // Сохраняем свежие данные отдельно; форма покажет подтверждение
       setFreshData({
         title: fresh.title,
         enabled: fresh.enabled,
@@ -88,7 +90,6 @@ export function ScenariosCrudPage() {
         action: fresh.action,
         expectedVersion: fresh.version,
       });
-      setEditing(fresh);
       setSaveError(null);
       setConflictType(null);
     } catch (err) {
