@@ -12,7 +12,8 @@ permissions:
 
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  # Never interrupt an active deployment on a new push.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   backend:
@@ -69,6 +70,8 @@ jobs:
       - name: Build frontend for combined smoke
         run: |
           npm --prefix frontend ci --ignore-scripts --no-audit --no-fund
+          npm --prefix frontend run lint
+          node --test infra/tests/frontend-*.test.mjs
           npm --prefix frontend run build
           docker build -f frontend/Dockerfile --build-arg VCS_REF="$GITHUB_SHA" -t "ujin-frontend:$GITHUB_SHA" .
           docker tag ujin-backend:ci "ujin-backend:$GITHUB_SHA"
@@ -76,6 +79,18 @@ jobs:
         env:
           UJIN_IMAGE_TAG: ${{ github.sha }}
         run: bash infra/test-runtime.sh
+      - name: Package tested release
+        if: github.event_name == 'push' && github.ref == 'refs/heads/develop'
+        run: |
+          tar -czf release.tar.gz .dockerignore backend/ujin/Dockerfile backend/ujin/build/libs/*.jar frontend/Dockerfile frontend/dist infra/nginx.conf infra/backend-health.sh infra/compose.yaml infra/compose.runtime.yaml infra/compose.catalog.yaml
+      - name: Save tested release
+        if: github.event_name == 'push' && github.ref == 'refs/heads/develop'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: deploy-release
+          path: release.tar.gz
+          retention-days: 7
+          if-no-files-found: error
 
   infrastructure:
     runs-on: ubuntu-24.04
@@ -91,3 +106,34 @@ jobs:
           python3 -m unittest discover -s infra/tests -v
       - name: Verify PostgreSQL health, persistence and restore
         run: bash infra/test-postgres.sh
+
+  deploy:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/develop'
+    needs: [backend, infrastructure]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    concurrency:
+      group: ujin-deploy
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: deploy-release
+      - name: Skip superseded revision
+        id: revision
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          head=$(curl --fail --silent --show-error -H "Authorization: Bearer $GH_TOKEN" "https://api.github.com/repos/$GITHUB_REPOSITORY/git/ref/heads/develop" | python3 -c 'import json,sys; print(json.load(sys.stdin)["object"]["sha"])')
+          if [[ "$head" == "$GITHUB_SHA" ]]; then echo 'current=true' >> "$GITHUB_OUTPUT"; fi
+      - name: Deploy tested artifact
+        if: steps.revision.outputs.current == 'true'
+        env:
+          DEPLOY_HOST: ${{ vars.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ vars.DEPLOY_USER }}
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          DEPLOY_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+        run: bash infra/deploy-send.sh release.tar.gz "$GITHUB_SHA"
