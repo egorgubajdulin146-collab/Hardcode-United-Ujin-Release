@@ -17,20 +17,26 @@ public class LocalRuntimeService {
     private final EventJpaRepository eventRepo;
     private final CommandJpaRepository commandRepo;
     private final RunJpaRepository runRepo;
+    private final LocalAvailabilityJpaRepository availabilityRepo;
     private final CatalogService catalogService;
+    private final com.shastage.ujin.domain.repository.CatalogStore catalogStore;
 
     public LocalRuntimeService(
             LocalSignalStateJpaRepository stateRepo,
             EventJpaRepository eventRepo,
             CommandJpaRepository commandRepo,
             RunJpaRepository runRepo,
-            CatalogService catalogService
+            LocalAvailabilityJpaRepository availabilityRepo,
+            CatalogService catalogService,
+            com.shastage.ujin.domain.repository.CatalogStore catalogStore
     ) {
         this.stateRepo = stateRepo;
         this.eventRepo = eventRepo;
         this.commandRepo = commandRepo;
         this.runRepo = runRepo;
+        this.availabilityRepo = availabilityRepo;
         this.catalogService = catalogService;
+        this.catalogStore = catalogStore;
     }
 
     // ===== GET /devices/{id}/state =====
@@ -54,12 +60,31 @@ public class LocalRuntimeService {
         result.put("deviceId", deviceId.toString());
         result.put("executionMode", mode);
         result.put("values", values);
-        result.put("availability", "ONLINE");
+        result.put("availability", availability(deviceId));
         return result;
+    }
+
+    private String availability(UUID deviceId) {
+        return availabilityRepo.findById(deviceId).map(LocalAvailabilityEntity::getAvailability).orElse("ONLINE");
+    }
+
+    // Internal emulator control; no public endpoint is added outside the contract.
+    public void setAvailability(UUID deviceId, String status) {
+        catalogStore.lock();
+        catalogService.device(deviceId);
+        if (status == null || !Set.of("ONLINE", "OFFLINE", "UNKNOWN").contains(status))
+            throw new CatalogException(422, "VALIDATION_ERROR", "Invalid availability");
+        availabilityRepo.save(new LocalAvailabilityEntity(deviceId, status));
+    }
+
+    private void requireOnline(UUID deviceId) {
+        if (!"ONLINE".equals(availability(deviceId)))
+            throw new CatalogException(409, "DEVICE_OFFLINE", "Device is not online");
     }
 
     // ===== POST /devices/{id}/stimuli =====
     public Map<String, Object> processStimulus(UUID deviceId, UUID eventId, String kind, Integer value) {
+        catalogStore.lock();
         // Валидация обязательных полей
         if (eventId == null) throw new CatalogException(422, "VALIDATION_ERROR", "eventId is required");
         if (kind == null) throw new CatalogException(422, "VALIDATION_ERROR", "kind is required");
@@ -78,6 +103,7 @@ public class LocalRuntimeService {
             return buildEventReceipt(ex);
         }
 
+        requireOnline(deviceId);
         // Валидация: WET только для leak, value 0/1
         if (!"WET".equals(kind)) {
             throw new CatalogException(422, "STIMULUS_UNSUPPORTED", "Unknown stimulus kind: " + kind);
@@ -103,6 +129,11 @@ public class LocalRuntimeService {
             throw new CatalogException(422, "VALIDATION_ERROR", "Value above maximum");
         }
 
+        if ("w".equals(leakSignal.management()) || (leakSignal.enumValues() != null && !leakSignal.enumValues().contains(value.doubleValue())))
+            throw new CatalogException(422, "VALIDATION_ERROR", "Invalid stimulus signal domain");
+        if (device.events().stream().noneMatch(e -> e.signalKey().equals("leak") && e.emission().equals("CHANGE")))
+            throw new CatalogException(422, "VALIDATION_ERROR", "Stimulus requires a declared change event");
+
         // Создаём событие
         var event = new EventEntity();
         event.setEventId(eventId);
@@ -123,15 +154,12 @@ public class LocalRuntimeService {
         event.setProcessedAt(java.time.Instant.now().toString());
         eventRepo.save(event);
 
-        Map<String, Object> result = new LinkedHashMap<>();
-        result.put("eventId", eventId.toString());
-        result.put("status", "PROCESSED");
-        result.put("runIds", runIds);
-        return result;
+        return buildEventReceipt(event);
     }
 
     // ===== POST /devices/{id}/commands =====
     public Map<String, Object> processCommand(UUID deviceId, UUID commandId, String signalKey, Double value, String mode) {
+        catalogStore.lock();
         // Валидация обязательных полей
         if (commandId == null) throw new CatalogException(422, "VALIDATION_ERROR", "commandId is required");
         if (signalKey == null || signalKey.isBlank()) throw new CatalogException(422, "VALIDATION_ERROR", "signalKey is required");
@@ -158,6 +186,7 @@ public class LocalRuntimeService {
             return buildCommandReceipt(ex);
         }
 
+        requireOnline(deviceId);
         // Валидация сигнала
         var signal = device.signals().stream()
                 .filter(s -> s.key().equals(signalKey))
@@ -175,7 +204,7 @@ public class LocalRuntimeService {
             throw new CatalogException(422, "VALIDATION_ERROR", "Value above maximum");
         }
         if (signal.enumValues() != null && !signal.enumValues().isEmpty()) {
-            boolean match = signal.enumValues().stream().anyMatch(v -> Math.abs(v - value) < 1e-9);
+            boolean match = signal.enumValues().stream().anyMatch(v -> Double.compare(v, value) == 0);
             if (!match) {
                 throw new CatalogException(422, "VALIDATION_ERROR", "Value not in enumValues");
             }
@@ -259,7 +288,7 @@ public class LocalRuntimeService {
             all.addAll(resp.items());
             if (all.size() >= resp.total() || resp.items().isEmpty()) break;
             page++;
-            if (page > 100) break;
+
         }
         return all;
     }
@@ -286,6 +315,7 @@ public class LocalRuntimeService {
         run.setActionValue(action.value());
 
         try {
+            requireOnline(action.deviceId());
             var targetDevice = catalogService.device(action.deviceId());
             var targetSignal = targetDevice.signals().stream()
                     .filter(s -> s.key().equals(action.signalKey()))
@@ -365,6 +395,7 @@ public class LocalRuntimeService {
     @Transactional(readOnly = true)
     public Map<String, Object> getRuns(int page, int size, UUID eventId, UUID scenarioId) {
         if (page < 0) throw new CatalogException(400, "INVALID_REQUEST", "page must be >= 0");
+        if ((long) page * size > Integer.MAX_VALUE) throw new CatalogException(400, "INVALID_REQUEST", "Page offset exceeds maximum");
         if (size < 1 || size > 100) throw new CatalogException(400, "INVALID_REQUEST", "size must be 1-100");
 
         var pageable = org.springframework.data.domain.PageRequest.of(page, size);
@@ -399,8 +430,13 @@ public class LocalRuntimeService {
 
     // ===== Построение DTO =====
     private Map<String, Object> buildEventReceipt(EventEntity event) {
-        var runs = runRepo.findByEventId(event.getEventId(), org.springframework.data.domain.PageRequest.of(0, 100));
-        var runIds = runs.getContent().stream().map(RunEntity::getId).map(UUID::toString).toList();
+        var runIds = new ArrayList<String>();
+        int page = 0;
+        org.springframework.data.domain.Page<RunEntity> runs;
+        do {
+            runs = runRepo.findByEventId(event.getEventId(), org.springframework.data.domain.PageRequest.of(page++, 100, org.springframework.data.domain.Sort.by("id")));
+            runs.forEach(run -> runIds.add(run.getId().toString()));
+        } while (runs.hasNext());
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("eventId", event.getEventId().toString());
         result.put("status", event.getStatus());

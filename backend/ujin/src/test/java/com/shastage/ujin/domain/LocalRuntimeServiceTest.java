@@ -103,7 +103,7 @@ class LocalRuntimeServiceTest {
         // При value=0 условие EQ 1 не выполняется → SKIPPED
         assertFalse(runIds.isEmpty());
 
-        var run = runtimeService.getRun((UUID) runIds.get(0));
+        var run = runtimeService.getRun(UUID.fromString(runIds.get(0).toString()));
         assertEquals("SKIPPED", run.get("status"));
         assertEquals("CONDITION_FALSE", run.get("reason"));
     }
@@ -121,7 +121,7 @@ class LocalRuntimeServiceTest {
 
         var runIds = (List<?>) result.get("runIds");
         assertFalse(runIds.isEmpty());
-        var run = runtimeService.getRun((UUID) runIds.get(0));
+        var run = runtimeService.getRun(UUID.fromString(runIds.get(0).toString()));
         assertEquals("SKIPPED", run.get("status"));
         assertEquals("SCENARIO_DISABLED", run.get("reason"));
     }
@@ -131,16 +131,11 @@ class LocalRuntimeServiceTest {
         // Создаём сценарий с действием в read-only сигнал
         var trigger = new Trigger(leakDeviceId, "leak", "EQ", 1.0, "leak_changed");
         var action = new Action(leakDeviceId, "leak", 1.0); // read-only!
-        catalogService.create(new ScenarioWrite("Bad", true, "LOCAL", trigger, action, null));
-
-        var eventId = UUID.randomUUID();
-        var result = runtimeService.processStimulus(leakDeviceId, eventId, "WET", 1);
-
-        var runIds = (List<?>) result.get("runIds");
-        assertFalse(runIds.isEmpty());
-        // Один из запусков должен быть FAILED
-        var statuses = runIds.stream().map(id -> runtimeService.getRun((UUID) id).get("status")).toList();
-        assertTrue(statuses.contains("FAILED"));
+        var failure = assertThrows(CatalogException.class, () ->
+            catalogService.create(new ScenarioWrite("Bad", true, "LOCAL", trigger, action, null)));
+        assertEquals("SIGNAL_READ_ONLY", failure.code);
+        assertThrows(CatalogException.class, () ->
+            runtimeService.processCommand(leakDeviceId, UUID.randomUUID(), "leak", 1.0, "LOCAL"));
     }
 
     @Test
@@ -202,5 +197,20 @@ class LocalRuntimeServiceTest {
         assertThrows(CatalogException.class, () -> runtimeService.getRuns(-1, 20, null, null));
         assertThrows(CatalogException.class, () -> runtimeService.getRuns(0, 0, null, null));
         assertThrows(CatalogException.class, () -> runtimeService.getRuns(0, 101, null, null));
+    }
+    @Test
+    void offlineTargetIsBlockedAndReplayPreservesSkippedRuns() {
+        runtimeService.setAvailability(lightDeviceId, "OFFLINE");
+        assertEquals("OFFLINE", runtimeService.getDeviceState(lightDeviceId, "LOCAL").get("availability"));
+        var eventId = UUID.randomUUID();
+        var receipt = runtimeService.processStimulus(leakDeviceId, eventId, "WET", 1);
+        var ids = (List<?>) receipt.get("runIds");
+        var run = runtimeService.getRun(UUID.fromString(ids.get(0).toString()));
+        assertEquals("BLOCKED", run.get("status"));
+        assertEquals("DEVICE_OFFLINE", run.get("reason"));
+        assertEquals(receipt, runtimeService.processStimulus(leakDeviceId, eventId, "WET", 1));
+        var dryId = UUID.randomUUID();
+        var dry = runtimeService.processStimulus(leakDeviceId, dryId, "WET", 0);
+        assertEquals(dry, runtimeService.processStimulus(leakDeviceId, dryId, "WET", 0));
     }
 }

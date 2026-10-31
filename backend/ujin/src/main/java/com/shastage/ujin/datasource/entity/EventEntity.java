@@ -17,7 +17,7 @@ public class EventEntity {
     @Column(name = "kind", nullable = false, length = 16)
     private String kind;
 
-    @Column(nullable = false)
+    @Column(name = "signal_value", nullable = false)
     private double value;
 
     @Column(nullable = false, length = 16)

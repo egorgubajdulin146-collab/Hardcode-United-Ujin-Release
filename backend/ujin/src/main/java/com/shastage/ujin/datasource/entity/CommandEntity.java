@@ -17,7 +17,7 @@ public class CommandEntity {
     @Column(name = "signal_key", nullable = false, length = 64)
     private String signalKey;
 
-    @Column(nullable = false)
+    @Column(name = "signal_value", nullable = false)
     private double value;
 
     @Column(name = "execution_mode", nullable = false, length = 8)
