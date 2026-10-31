@@ -135,7 +135,9 @@ export function DeviceRuntimePanel({ device, onClose }: { device: Device; onClos
   const currentEvent = eventStatus.data ?? event;
   const unresolved = currentCommand?.status === "PENDING" || currentCommand?.status === "UNKNOWN" || currentEvent?.status === "ACCEPTED" || (eventLookupId !== null && !currentEvent);
   const online = !state.error && state.data?.availability === "ONLINE";
-  const canCommand = online && (mode === "LOCAL" || (device.platformLink === "BOUND" && !integration.error && integration.data?.downlink.status === "AVAILABLE"));
+  const canCommand = mode === "LOCAL"
+    ? online
+    : device.platformLink === "BOUND" && !integration.error && integration.data?.downlink.status === "AVAILABLE";
   const requestError = state.error ?? integration.error ?? commandStatus.error ?? eventStatus.error ?? publications.error;
   useEffect(() => {
     if (requestError instanceof ApiError && requestError.status === 401) terminateSession();
@@ -182,6 +184,23 @@ export function DeviceRuntimePanel({ device, onClose }: { device: Device; onClos
       }
     } finally { if (active.current) setBusy(false); }
   };
+  const checkCommandResult = async () => {
+    if (!currentCommand || busy) return;
+    setBusy(true); setError(null);
+    try {
+      const receipt = await endpoints.commands.check(currentCommand.commandId);
+      if (active.current) setCommand(receipt);
+    } catch (err) {
+      if (!active.current) return;
+      if (err instanceof ApiError && err.status === 401) terminateSession();
+      else setError(errorMessage(err));
+    } finally {
+      if (active.current) {
+        setBusy(false);
+        void queryClient.invalidateQueries({ queryKey: ["command"] });
+      }
+    }
+  };
   const stimulate = async (value: 0 | 1) => {
     if (busy || unresolved || !online || mode !== "LOCAL") return;
     setBusy(true); setError(null); setEvent(null); setEventLookupId(null);
@@ -216,7 +235,11 @@ export function DeviceRuntimePanel({ device, onClose }: { device: Device; onClos
     {mode === "UJIN" && state.data?.observedAt && (
       <p>Наблюдение: {new Date(state.data.observedAt).toLocaleString("ru-RU")} (время чтения backend, не время измерения устройством)</p>
     )}
-    {mode === "UJIN" && !canCommand && <p>Управление доступно после привязки устройства и подтверждения командного канала Ujin.</p>}
+    {mode === "UJIN" && !canCommand && <p>{device.platformLink !== "BOUND"
+      ? "Управление Ujin недоступно: устройство не привязано к платформенному SN. Привязка — в карточке устройства."
+      : integration.data?.downlink.status !== "AVAILABLE"
+        ? `Управление Ujin отключено: ${integration.data?.downlink.reason ?? "командный канал не подтверждён"}`
+        : "Управление Ujin недоступно: состояние устройства неизвестно или запрос не выполнен."}</p>}
     <div className={styles.signals}>{device.signals.map(signal => {
       const value = state.data?.values.find(v => v.signalKey === signal.key);
       const issue = state.data?.signalIssues?.find(i => i.signalKey === signal.key);
@@ -249,7 +272,10 @@ export function DeviceRuntimePanel({ device, onClose }: { device: Device; onClos
           <button type="button" disabled={busy} onClick={() => void checkPublication(receipt)}>Проверить чтением</button>}
       </div>)}
       {busy && <p>Отправка…</p>}{error && <p role="alert" className={styles.error}>{error}</p>}
-      {currentCommand && <p>Команда: {COMMAND_STATUS[currentCommand.status]} <small>{currentCommand.commandId}</small></p>}
+      {currentCommand && <p>Команда: {COMMAND_STATUS[currentCommand.status]}{currentCommand.reason ? ` · ${currentCommand.reason}` : ""} <small>{currentCommand.commandId}</small></p>}
+      {currentCommand && mode === "UJIN" && (currentCommand.status === "PENDING" || currentCommand.status === "UNKNOWN") &&
+        <button type="button" disabled={busy} onClick={() => void checkCommandResult()}>Проверить результат команды</button>}
+      {currentCommand?.resolution && <p>Отмечено как неизвестное: {currentCommand.resolution.note}</p>}
       {eventLookupId && !currentEvent && <p>Приём события не подтверждён. Проверяем результат. <small>{eventLookupId}</small></p>}
       {currentEvent && <p>{EVENT_STATUS[currentEvent.status]} · запусков: {currentEvent.runIds.length}</p>}
       {(currentEvent || currentCommand || eventLookupId) && <Link to={currentEvent || eventLookupId ? `/runs?eventId=${encodeURIComponent(currentEvent?.eventId ?? eventLookupId!)}` : "/runs"}>Открыть журнал выполнения</Link>}

@@ -78,6 +78,8 @@ export const endpoints = {
       api.post<CommandReceipt>(`/api/v1/devices/${deviceId}/commands`, data),
     get: (commandId: string, signal?: AbortSignal) =>
       api.get<CommandReceipt>(`/api/v1/commands/${commandId}`, signal),
+    check: (commandId: string) =>
+      api.post<CommandReceipt>(`/api/v1/commands/${commandId}/check`, {}),
     resolve: (commandId: string, data: UnknownResolutionRequest) =>
       api.post<CommandReceipt>(`/api/v1/commands/${commandId}/resolution`, data),
   },

@@ -223,6 +223,7 @@ export interface CommandReceipt {
   deviceId: string;
   status: CommandStatus;
   executionMode: ExecutionMode;
+  reason?: string;
   resolution?: UnknownResolution;
 }
 

@@ -408,6 +408,14 @@ public class LocalRuntimeService {
         stateRepo.save(state);
     }
 
+    /**
+     * Общая операция применения команды к Java-эмулятору состояния.
+     * Локальный контур и применение задач Ujin используют один путь записи.
+     */
+    public void applyEmulatorValue(UUID deviceId, String signalKey, double value, String owner) {
+        updateSignalState(deviceId, signalKey, value, owner);
+    }
+
     // ===== GET /events/{eventId} =====
     @Transactional(readOnly = true)
     public Map<String, Object> getEvent(UUID eventId, String owner) {
@@ -483,6 +491,14 @@ public class LocalRuntimeService {
         result.put("deviceId", command.getDeviceId().toString());
         result.put("status", command.getStatus());
         result.put("executionMode", command.getExecutionMode());
+        if (command.getReason() != null) result.put("reason", command.getReason());
+        if (command.getResolutionNote() != null) {
+            Map<String, Object> resolution = new LinkedHashMap<>();
+            resolution.put("note", command.getResolutionNote());
+            resolution.put("resolvedAt", command.getResolvedAt());
+            resolution.put("kind", "ACKNOWLEDGED_UNKNOWN");
+            result.put("resolution", resolution);
+        }
         return result;
     }
 

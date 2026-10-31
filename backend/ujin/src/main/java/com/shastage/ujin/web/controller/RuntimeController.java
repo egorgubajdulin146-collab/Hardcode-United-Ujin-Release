@@ -2,6 +2,7 @@ package com.shastage.ujin.web.controller;
 
 import com.shastage.ujin.domain.service.LocalRuntimeService;
 import com.shastage.ujin.domain.service.PlatformBindingService;
+import com.shastage.ujin.domain.service.UjinCommandService;
 import com.shastage.ujin.web.dto.request.*;
 import java.util.*;
 import org.springframework.http.ResponseEntity;
@@ -15,15 +16,25 @@ import jakarta.servlet.http.HttpSession;
 public class RuntimeController {
     private final LocalRuntimeService service;
     private final PlatformBindingService bindingService;
+    private final UjinCommandService commandService;
 
     private String currentOwner() {
         var auth = SecurityContextHolder.getContext().getAuthentication();
         return auth != null ? auth.getName() : "";
     }
 
-    public RuntimeController(LocalRuntimeService service, PlatformBindingService bindingService) {
+    private static String ujinToken(HttpSession session) {
+        Object token = session.getAttribute("UJIN_TOKEN");
+        return token instanceof String value ? value : null;
+    }
+
+    public RuntimeController(
+            LocalRuntimeService service,
+            PlatformBindingService bindingService,
+            UjinCommandService commandService) {
         this.service = service;
         this.bindingService = bindingService;
+        this.commandService = commandService;
     }
 
     @GetMapping("/devices/{deviceId}/state")
@@ -67,10 +78,17 @@ public class RuntimeController {
     @PostMapping("/devices/{deviceId}/commands")
     public ResponseEntity<Map<String, Object>> command(
             @PathVariable UUID deviceId,
-            @RequestBody CommandRequest request
+            @RequestBody CommandRequest request,
+            HttpSession session
     ) {
         if (request == null) {
             throw new com.shastage.ujin.domain.exception.CatalogException(400, "INVALID_REQUEST", "Request body is required");
+        }
+        if ("UJIN".equals(request.executionMode())) {
+            var result = commandService.send(
+                    deviceId, request.commandId(), request.signalKey(), request.value(),
+                    currentOwner(), ujinToken(session));
+            return ResponseEntity.accepted().body(result);
         }
         var result = service.processCommand(
                 deviceId, request.commandId(), request.signalKey(), request.value(), request.executionMode(), currentOwner()
@@ -81,6 +99,21 @@ public class RuntimeController {
     @GetMapping("/commands/{commandId}")
     public Map<String, Object> command(@PathVariable UUID commandId) {
         return service.getCommand(commandId, currentOwner());
+    }
+
+    @PostMapping("/commands/{commandId}/check")
+    public Map<String, Object> checkCommand(
+            @PathVariable UUID commandId, HttpSession session) {
+        return commandService.check(commandId, currentOwner(), ujinToken(session));
+    }
+
+    @PostMapping("/commands/{commandId}/resolution")
+    public Map<String, Object> resolveCommand(
+            @PathVariable UUID commandId, @RequestBody UnknownResolutionRequest request) {
+        if (request == null) {
+            throw new com.shastage.ujin.domain.exception.CatalogException(400, "INVALID_REQUEST", "Request body is required");
+        }
+        return commandService.resolveUnknown(commandId, request.note(), currentOwner());
     }
 
     @GetMapping("/runs")
