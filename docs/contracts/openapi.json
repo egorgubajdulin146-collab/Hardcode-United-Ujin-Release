@@ -2,7 +2,7 @@
   "openapi": "3.0.3",
   "info": {
     "title": "Ujin scenario editor API — review draft",
-    "version": "0.1.0-draft",
+    "version": "0.1.1-draft",
     "description": "Proposed application API, not the external Ujin platform API. Not implemented or jointly approved. See MVP.md for semantics, access and open decisions."
   },
   "x-review-status": "DRAFT_PENDING_BACKEND_REVIEW",
@@ -259,6 +259,56 @@
                 "$ref": "#/components/schemas/DeviceUpdate"
               }
             }
+          }
+        }
+      },
+      "delete": {
+        "operationId": "deleteDevice",
+        "summary": "Delete an unreferenced local device",
+        "parameters": [
+          {
+            "name": "deviceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "expectedVersion",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Deleted locally; external Ujin device unchanged"
+          },
+          "400": {
+            "$ref": "#/components/responses/Problem400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Problem401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Problem403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Problem404"
+          },
+          "409": {
+            "$ref": "#/components/responses/Problem409"
+          },
+          "422": {
+            "$ref": "#/components/responses/Problem422"
+          },
+          "503": {
+            "$ref": "#/components/responses/Problem503"
           }
         }
       }
@@ -926,6 +976,56 @@
           }
         }
       }
+    },
+    "/api/v1/devices/{deviceId}/dependencies": {
+      "get": {
+        "operationId": "getDeviceDependencies",
+        "summary": "Inspect deletion blockers",
+        "parameters": [
+          {
+            "name": "deviceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Snapshot; deletion rechecks dependencies atomically",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeviceDependencies"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Problem400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Problem401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Problem403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Problem404"
+          },
+          "409": {
+            "$ref": "#/components/responses/Problem409"
+          },
+          "422": {
+            "$ref": "#/components/responses/Problem422"
+          },
+          "503": {
+            "$ref": "#/components/responses/Problem503"
+          }
+        }
+      }
     }
   },
   "components": {
@@ -1020,12 +1120,20 @@
             },
             "minItems": 1,
             "maxItems": 100
+          },
+          "events": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/EventDefinition"
+            },
+            "maxItems": 100
           }
         },
         "required": [
           "title",
           "family",
-          "signals"
+          "signals",
+          "events"
         ]
       },
       "DeviceUpdate": {
@@ -1053,13 +1161,21 @@
           "expectedVersion": {
             "type": "integer",
             "minimum": 1
+          },
+          "events": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/EventDefinition"
+            },
+            "maxItems": 100
           }
         },
         "required": [
           "title",
           "family",
           "signals",
-          "expectedVersion"
+          "expectedVersion",
+          "events"
         ]
       },
       "Device": {
@@ -1099,6 +1215,13 @@
               "BOUND",
               "BLOCKED"
             ]
+          },
+          "events": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/EventDefinition"
+            },
+            "maxItems": 100
           }
         },
         "required": [
@@ -1107,7 +1230,8 @@
           "title",
           "family",
           "signals",
-          "platformLink"
+          "platformLink",
+          "events"
         ]
       },
       "SignalValue": {
@@ -1147,12 +1271,21 @@
             "items": {
               "$ref": "#/components/schemas/SignalValue"
             }
+          },
+          "availability": {
+            "type": "string",
+            "enum": [
+              "ONLINE",
+              "OFFLINE",
+              "UNKNOWN"
+            ]
           }
         },
         "required": [
           "deviceId",
           "executionMode",
-          "values"
+          "values",
+          "availability"
         ]
       },
       "ExecutionMode": {
@@ -1296,13 +1429,17 @@
           },
           "value": {
             "type": "number"
+          },
+          "eventKey": {
+            "type": "string"
           }
         },
         "required": [
           "deviceId",
           "signalKey",
           "operator",
-          "value"
+          "value",
+          "eventKey"
         ]
       },
       "Action": {
@@ -1582,7 +1719,7 @@
           "contractVersion": {
             "type": "string",
             "enum": [
-              "0.1.0-draft"
+              "0.1.1-draft"
             ]
           },
           "supportedModes": {
@@ -1741,6 +1878,66 @@
           "page",
           "size",
           "total"
+        ]
+      },
+      "EventDefinition": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "key": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_]*$",
+            "maxLength": 64
+          },
+          "title": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 120
+          },
+          "signalKey": {
+            "type": "string"
+          },
+          "emission": {
+            "type": "string",
+            "enum": [
+              "CHANGE"
+            ]
+          }
+        },
+        "required": [
+          "key",
+          "title",
+          "signalKey",
+          "emission"
+        ]
+      },
+      "DeviceDependencies": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "deviceId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "scenarioIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          "pendingOperationIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        },
+        "required": [
+          "deviceId",
+          "scenarioIds",
+          "pendingOperationIds"
         ]
       }
     },

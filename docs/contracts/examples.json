@@ -4,7 +4,7 @@
     {
       "schema": "SystemStatus",
       "value": {
-        "contractVersion": "0.1.0-draft",
+        "contractVersion": "0.1.1-draft",
         "supportedModes": [
           "LOCAL"
         ]
@@ -53,6 +53,14 @@
               0,
               1
             ]
+          }
+        ],
+        "events": [
+          {
+            "key": "leak_changed",
+            "title": "Изменение протечки",
+            "signalKey": "leak",
+            "emission": "CHANGE"
           }
         ]
       }
@@ -110,7 +118,8 @@
             "min": 0,
             "max": 3600
           }
-        ]
+        ],
+        "events": []
       }
     },
     {
@@ -154,6 +163,14 @@
               1
             ]
           }
+        ],
+        "events": [
+          {
+            "key": "leak_changed",
+            "title": "Изменение протечки",
+            "signalKey": "leak",
+            "emission": "CHANGE"
+          }
         ]
       }
     },
@@ -168,7 +185,8 @@
             "value": 0,
             "updatedAt": "2026-10-31T10:00:00+05:00"
           }
-        ]
+        ],
+        "availability": "ONLINE"
       }
     },
     {
@@ -181,7 +199,8 @@
           "deviceId": "10000000-0000-4000-8000-000000000001",
           "signalKey": "leak",
           "operator": "EQ",
-          "value": 1
+          "value": 1,
+          "eventKey": "leak_changed"
         },
         "action": {
           "deviceId": "10000000-0000-4000-8000-000000000002",
@@ -202,7 +221,8 @@
           "deviceId": "10000000-0000-4000-8000-000000000001",
           "signalKey": "leak",
           "operator": "EQ",
-          "value": 1
+          "value": 1,
+          "eventKey": "leak_changed"
         },
         "action": {
           "deviceId": "10000000-0000-4000-8000-000000000002",
@@ -359,6 +379,16 @@
             "message": "Используйте локальное воздействие WET"
           }
         ]
+      }
+    },
+    {
+      "schema": "DeviceDependencies",
+      "value": {
+        "deviceId": "10000000-0000-4000-8000-000000000001",
+        "scenarioIds": [
+          "20000000-0000-4000-8000-000000000001"
+        ],
+        "pendingOperationIds": []
       }
     }
   ]
