@@ -61,6 +61,21 @@ jobs:
           docker run --rm --network none --read-only --cap-drop ALL \
             --security-opt no-new-privileges --entrypoint sh ujin-backend:ci \
             -c 'test "$(id -u)" != 0 && test -r /app/app.jar && java -version'
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Build frontend for combined smoke
+        run: |
+          npm --prefix frontend ci --ignore-scripts --no-audit --no-fund
+          npm --prefix frontend run build
+          docker build -f frontend/Dockerfile --build-arg VCS_REF="$GITHUB_SHA" -t "ujin-frontend:$GITHUB_SHA" .
+          docker tag ujin-backend:ci "ujin-backend:$GITHUB_SHA"
+      - name: Check isolated combined runtime
+        env:
+          UJIN_IMAGE_TAG: ${{ github.sha }}
+        run: bash infra/test-runtime.sh
 
   infrastructure:
     runs-on: ubuntu-24.04
