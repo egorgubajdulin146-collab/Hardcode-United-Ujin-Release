@@ -9,6 +9,9 @@
 [Manifest принятой пары образов](rollback-baseline.json) содержит точные imageID.
 Повторная сборка той же ревизии не заменяет принятый образ: если ID отличается,
 повторите приёмку и выпустите новый manifest.
+Поля backend_image_id/frontend_image_id относятся к containerd на VPS.
+Classic Docker показывает configID в полях *_classic_docker_image_id.
+После загрузки архива Config и RootFS слои сверены полностью и совпадают.
 
 Текущая базовая версия: `6e7b2a77936c4269cc4d4fed646c5bf403ee7d33`.
 Резерв: `e5fea660aaef4b02a1bf46e650441814af2a0f43`, исправленный head
