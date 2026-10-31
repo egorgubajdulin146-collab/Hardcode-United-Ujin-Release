@@ -1,0 +1,415 @@
+{
+  "notice": "Synthetic contract examples, not executed test evidence",
+  "examples": [
+    {
+      "schema": "SystemStatus",
+      "value": {
+        "contractVersion": "0.1.2-draft",
+        "supportedModes": [
+          "LOCAL"
+        ]
+      }
+    },
+    {
+      "schema": "Device",
+      "value": {
+        "id": "10000000-0000-4000-8000-000000000001",
+        "version": 1,
+        "title": "Датчик протечки",
+        "family": "leak",
+        "platformLink": "NOT_CONFIGURED",
+        "signals": [
+          {
+            "key": "leak",
+            "title": "Протечка",
+            "group": "property",
+            "management": "r",
+            "valueType": "NUMBER",
+            "control": "list",
+            "enumValues": [
+              0,
+              1
+            ]
+          },
+          {
+            "key": "battery",
+            "title": "Батарея",
+            "group": "property",
+            "management": "r",
+            "valueType": "NUMBER",
+            "control": "counter",
+            "unit": "%",
+            "min": 0,
+            "max": 100
+          },
+          {
+            "key": "self_test",
+            "title": "Самотест",
+            "group": "capability",
+            "management": "w",
+            "valueType": "NUMBER",
+            "control": "push_time",
+            "enumValues": [
+              0,
+              1
+            ]
+          }
+        ],
+        "events": [
+          {
+            "key": "leak_changed",
+            "title": "Изменение протечки",
+            "signalKey": "leak",
+            "emission": "CHANGE"
+          }
+        ]
+      }
+    },
+    {
+      "schema": "Device",
+      "value": {
+        "id": "10000000-0000-4000-8000-000000000002",
+        "version": 1,
+        "title": "Светильник",
+        "family": "light",
+        "platformLink": "NOT_CONFIGURED",
+        "signals": [
+          {
+            "key": "lamp",
+            "title": "Свет",
+            "group": "capability",
+            "management": "rw",
+            "valueType": "NUMBER",
+            "control": "switch",
+            "enumValues": [
+              0,
+              1
+            ]
+          },
+          {
+            "key": "brightness",
+            "title": "Яркость",
+            "group": "capability",
+            "management": "rw",
+            "valueType": "NUMBER",
+            "control": "range",
+            "unit": "%",
+            "min": 1,
+            "max": 100
+          },
+          {
+            "key": "power_w",
+            "title": "Мощность",
+            "group": "property",
+            "management": "r",
+            "valueType": "NUMBER",
+            "control": "graph",
+            "unit": "Вт",
+            "min": 0
+          },
+          {
+            "key": "offline_timeout",
+            "title": "Автовыключение",
+            "group": "setting",
+            "management": "rw",
+            "valueType": "NUMBER",
+            "control": "counter",
+            "unit": "с",
+            "min": 0,
+            "max": 3600
+          }
+        ],
+        "events": []
+      }
+    },
+    {
+      "schema": "DeviceWrite",
+      "value": {
+        "title": "Датчик протечки",
+        "family": "leak",
+        "signals": [
+          {
+            "key": "leak",
+            "title": "Протечка",
+            "group": "property",
+            "management": "r",
+            "valueType": "NUMBER",
+            "control": "list",
+            "enumValues": [
+              0,
+              1
+            ]
+          },
+          {
+            "key": "battery",
+            "title": "Батарея",
+            "group": "property",
+            "management": "r",
+            "valueType": "NUMBER",
+            "control": "counter",
+            "unit": "%",
+            "min": 0,
+            "max": 100
+          },
+          {
+            "key": "self_test",
+            "title": "Самотест",
+            "group": "capability",
+            "management": "w",
+            "valueType": "NUMBER",
+            "control": "push_time",
+            "enumValues": [
+              0,
+              1
+            ]
+          }
+        ],
+        "events": [
+          {
+            "key": "leak_changed",
+            "title": "Изменение протечки",
+            "signalKey": "leak",
+            "emission": "CHANGE"
+          }
+        ]
+      }
+    },
+    {
+      "schema": "DeviceState",
+      "value": {
+        "deviceId": "10000000-0000-4000-8000-000000000002",
+        "executionMode": "LOCAL",
+        "values": [
+          {
+            "signalKey": "lamp",
+            "value": 0,
+            "updatedAt": "2026-10-31T10:00:00+05:00"
+          }
+        ],
+        "availability": "ONLINE"
+      }
+    },
+    {
+      "schema": "ScenarioWrite",
+      "value": {
+        "title": "Протечка — включить свет",
+        "enabled": true,
+        "executionMode": "LOCAL",
+        "trigger": {
+          "deviceId": "10000000-0000-4000-8000-000000000001",
+          "signalKey": "leak",
+          "operator": "EQ",
+          "value": 1,
+          "eventKey": "leak_changed"
+        },
+        "action": {
+          "deviceId": "10000000-0000-4000-8000-000000000002",
+          "signalKey": "lamp",
+          "value": 1
+        }
+      }
+    },
+    {
+      "schema": "Scenario",
+      "value": {
+        "id": "20000000-0000-4000-8000-000000000001",
+        "version": 1,
+        "title": "Протечка — включить свет",
+        "enabled": true,
+        "executionMode": "LOCAL",
+        "trigger": {
+          "deviceId": "10000000-0000-4000-8000-000000000001",
+          "signalKey": "leak",
+          "operator": "EQ",
+          "value": 1,
+          "eventKey": "leak_changed"
+        },
+        "action": {
+          "deviceId": "10000000-0000-4000-8000-000000000002",
+          "signalKey": "lamp",
+          "value": 1
+        }
+      }
+    },
+    {
+      "schema": "Stimulus",
+      "value": {
+        "eventId": "30000000-0000-4000-8000-000000000001",
+        "kind": "WET",
+        "value": 1
+      }
+    },
+    {
+      "schema": "EventReceipt",
+      "value": {
+        "eventId": "30000000-0000-4000-8000-000000000001",
+        "status": "PROCESSED",
+        "runIds": [
+          "40000000-0000-4000-8000-000000000001"
+        ]
+      }
+    },
+    {
+      "schema": "Run",
+      "value": {
+        "id": "40000000-0000-4000-8000-000000000001",
+        "eventId": "30000000-0000-4000-8000-000000000001",
+        "scenarioId": "20000000-0000-4000-8000-000000000001",
+        "scenarioVersion": 1,
+        "executionMode": "LOCAL",
+        "status": "SUCCEEDED",
+        "createdAt": "2026-10-31T10:00:00+05:00",
+        "input": {
+          "signalKey": "leak",
+          "value": 1,
+          "updatedAt": "2026-10-31T10:00:00+05:00"
+        },
+        "action": {
+          "deviceId": "10000000-0000-4000-8000-000000000002",
+          "signalKey": "lamp",
+          "value": 1
+        },
+        "entries": [
+          {
+            "at": "2026-10-31T10:00:00+05:00",
+            "stage": "EVENT",
+            "message": "leak=1"
+          },
+          {
+            "at": "2026-10-31T10:00:00+05:00",
+            "stage": "CONDITION",
+            "message": "EQ 1: true"
+          },
+          {
+            "at": "2026-10-31T10:00:00+05:00",
+            "stage": "ACTION",
+            "message": "lamp=1"
+          },
+          {
+            "at": "2026-10-31T10:00:00+05:00",
+            "stage": "RESULT",
+            "message": "Подтверждено состояние lamp=1"
+          }
+        ]
+      }
+    },
+    {
+      "schema": "RunPage",
+      "value": {
+        "items": [
+          {
+            "id": "40000000-0000-4000-8000-000000000001",
+            "eventId": "30000000-0000-4000-8000-000000000001",
+            "scenarioId": "20000000-0000-4000-8000-000000000001",
+            "scenarioVersion": 1,
+            "executionMode": "LOCAL",
+            "status": "SUCCEEDED",
+            "createdAt": "2026-10-31T10:00:00+05:00",
+            "input": {
+              "signalKey": "leak",
+              "value": 1,
+              "updatedAt": "2026-10-31T10:00:00+05:00"
+            },
+            "action": {
+              "deviceId": "10000000-0000-4000-8000-000000000002",
+              "signalKey": "lamp",
+              "value": 1
+            },
+            "entries": [
+              {
+                "at": "2026-10-31T10:00:00+05:00",
+                "stage": "EVENT",
+                "message": "leak=1"
+              },
+              {
+                "at": "2026-10-31T10:00:00+05:00",
+                "stage": "CONDITION",
+                "message": "EQ 1: true"
+              },
+              {
+                "at": "2026-10-31T10:00:00+05:00",
+                "stage": "ACTION",
+                "message": "lamp=1"
+              },
+              {
+                "at": "2026-10-31T10:00:00+05:00",
+                "stage": "RESULT",
+                "message": "Подтверждено состояние lamp=1"
+              }
+            ]
+          }
+        ],
+        "page": 0,
+        "size": 20,
+        "total": 1
+      }
+    },
+    {
+      "schema": "UjinStatus",
+      "value": {
+        "publish": {
+          "status": "UNKNOWN",
+          "reason": "Ещё не проверено"
+        },
+        "read": {
+          "status": "UNKNOWN",
+          "reason": "Ещё не проверено"
+        },
+        "downlink": {
+          "status": "UNKNOWN",
+          "reason": "Ещё не проверено"
+        },
+        "autoscripts": {
+          "status": "UNKNOWN",
+          "reason": "Ещё не проверено"
+        }
+      }
+    },
+    {
+      "schema": "Problem",
+      "value": {
+        "type": "about:blank",
+        "title": "Validation failed",
+        "status": 422,
+        "code": "SIGNAL_READ_ONLY",
+        "detail": "Команда в leak запрещена: management=r",
+        "errors": [
+          {
+            "field": "signalKey",
+            "message": "Используйте локальное воздействие WET"
+          }
+        ]
+      }
+    },
+    {
+      "schema": "DeviceDependencies",
+      "value": {
+        "deviceId": "10000000-0000-4000-8000-000000000001",
+        "scenarioIds": [
+          "20000000-0000-4000-8000-000000000001"
+        ],
+        "pendingOperationIds": []
+      }
+    },
+    {
+      "schema": "UnknownResolutionRequest",
+      "value": {
+        "note": "Исход не подтверждён; неопределённость принята, повтор команды запрещён."
+      }
+    },
+    {
+      "schema": "CommandReceipt",
+      "value": {
+        "commandId": "50000000-0000-4000-8000-000000000001",
+        "deviceId": "10000000-0000-4000-8000-000000000002",
+        "status": "UNKNOWN",
+        "executionMode": "LOCAL",
+        "resolution": {
+          "kind": "ACKNOWLEDGED_UNKNOWN",
+          "note": "Исход не подтверждён; неопределённость принята, повтор команды запрещён.",
+          "resolvedAt": "2026-10-31T12:00:00+05:00"
+        }
+      }
+    }
+  ]
+}
