@@ -1,4 +1,5 @@
 import { useState, type FormEvent } from "react";
+import { useNavigate } from "react-router-dom";
 import { LogIn, AlertCircle, Loader2 } from "lucide-react";
 import { login, fetchCsrf, AuthError } from "../api/authClient";
 import styles from "./LoginPage.module.css";
@@ -8,6 +9,7 @@ export function LoginPage() {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const navigate = useNavigate();
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -19,9 +21,8 @@ export function LoginPage() {
     try {
       await fetchCsrf();
       await login({ login: loginValue, password });
-      // Пароль очищаем из состояния после успешного запроса
       setPassword("");
-      window.location.reload();
+      navigate("/adapter");
     } catch (err) {
       if (err instanceof AuthError) {
         setError(err.message);

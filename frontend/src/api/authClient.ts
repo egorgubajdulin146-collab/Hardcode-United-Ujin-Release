@@ -3,6 +3,7 @@ import type { UjinCredentials, UjinAdapterSignalValue } from "./auth";
 // Работа с cookie-сессией и CSRF по контракту 0.1.2-draft
 
 let csrfToken: string | null = null;
+let loggedIn = false;
 
 export class AuthError extends Error {
   constructor(
@@ -38,9 +39,15 @@ export async function login(credentials: UjinCredentials): Promise<void> {
       },
       body: JSON.stringify(credentials),
     });
-    if (response.status === 204) return;
-    if (response.status === 401 || response.status === 403) {
+    if (response.status === 204) {
+      loggedIn = true;
+      return;
+    }
+    if (response.status === 401) {
       throw new AuthError("invalid_credentials", "Неверный логин или пароль");
+    }
+    if (response.status === 403) {
+      throw new AuthError("forbidden", "Доступ запрещён или ошибка CSRF");
     }
     if (response.status === 502 || response.status === 503) {
       throw new AuthError("server_error", "Сервис временно недоступен");
@@ -67,15 +74,16 @@ export async function logout(): Promise<void> {
     });
     if (response.status === 204) {
       csrfToken = null;
+      loggedIn = false;
       return;
     }
     throw new AuthError("unknown", `Ошибка выхода: HTTP ${response.status}`);
   } catch (err) {
     if (err instanceof AuthError) throw err;
     if (err instanceof TypeError) {
-      throw new AuthError("network", "Сервер недоступен");
+      throw new AuthError("network", "Сервер недоступен — выход не выполнен");
     }
-    throw new AuthError("unknown", "Неизвестная ошибка");
+    throw new AuthError("unknown", "Неизвестная ошибка — выход не выполнен");
   }
 }
 
@@ -89,6 +97,7 @@ export async function readSignal(
       { credentials: "include" }
     );
     if (response.status === 401) {
+      loggedIn = false;
       throw new AuthError("invalid_credentials", "Требуется авторизация");
     }
     if (response.status === 403) {
@@ -114,9 +123,10 @@ export async function readSignal(
 }
 
 export function isAuthenticated(): boolean {
-  return csrfToken !== null;
+  return loggedIn;
 }
 
 export function clearAuthState(): void {
   csrfToken = null;
+  loggedIn = false;
 }

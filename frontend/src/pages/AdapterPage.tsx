@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from "react";
-import { Wifi, Search, AlertCircle, Loader2 } from "lucide-react";
+import { Wifi, Search, AlertCircle, Loader2, Database } from "lucide-react";
 import { readSignal, AuthError, isAuthenticated } from "../api/authClient";
+import { isMock } from "../api/dataSource";
 import type { UjinAdapterSignalValue } from "../api/auth";
 import styles from "./AdapterPage.module.css";
 
@@ -12,10 +13,11 @@ export function AdapterPage() {
   const [result, setResult] = useState<UjinAdapterSignalValue | null>(null);
 
   const authed = isAuthenticated();
+  const mock = isMock();
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    if (loading) return;
+    if (loading || mock) return;
 
     setLoading(true);
     setError(null);
@@ -83,7 +85,7 @@ export function AdapterPage() {
         <button
           type="submit"
           className={styles.submitButton}
-          disabled={loading || !authed}
+          disabled={loading || !authed || mock}
         >
           {loading ? (
             <>
@@ -98,7 +100,14 @@ export function AdapterPage() {
           )}
         </button>
 
-        {!authed && (
+        {mock && (
+          <p className={styles.authHint}>
+            <Database size={14} aria-hidden="true" /> Адаптер работает только в API-режиме.
+            Переключите источник данных.
+          </p>
+        )}
+
+        {!mock && !authed && (
           <p className={styles.authHint}>
             Требуется авторизация. Войдите через форму входа.
           </p>

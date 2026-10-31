@@ -25,12 +25,12 @@ export function Layout() {
   const handleLogout = async () => {
     try {
       await logout();
+      clearAuthState();
+      navigate("/login");
     } catch {
-      // Даже при ошибке очищаем локальное состояние
+      // Ошибка выхода — сессия может быть активна; не очищаем состояние
+      alert("Не удалось выйти. Серверная сессия может быть активна.");
     }
-    clearAuthState();
-    navigate("/login");
-    window.location.reload();
   };
 
   return (
