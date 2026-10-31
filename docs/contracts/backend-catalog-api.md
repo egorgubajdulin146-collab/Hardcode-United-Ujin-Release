@@ -50,3 +50,32 @@ UJIN_DB_PASSWORD вне Git. По умолчанию URL jdbc:postgresql://local
 NOT_CONFIGURED; pendingOperationIds пуст, поскольку исполнителя операций пока
 нет. Наличие executionMode в сохранённом правиле не подтверждает доступность
 его исполнения. Живое подключение frontend и Ujin проверяется отдельно.
+
+## Общий runtime и порядок интеграции
+
+Сначала объедините PR №9 (`infra/combined-runtime`), затем этот API каталога.
+До объединения обоих изменений общий runtime не считается готовым. После
+PR №9 применяйте третий overlay из этого среза последним:
+
+```sh
+export UJIN_IMAGE_TAG=$(git rev-parse HEAD)
+docker compose --project-directory . --env-file .env -f infra/compose.yaml -f infra/compose.runtime.yaml -f infra/compose.catalog.yaml build
+docker compose --project-directory . --env-file .env -f infra/compose.yaml -f infra/compose.runtime.yaml -f infra/compose.catalog.yaml up -d --wait
+```
+
+Overlay подключает backend к внутренней сети database и ожидает healthy
+PostgreSQL. JDBC использует имя сервиса postgres, а имя БД, пользователь и
+пароль совпадают с POSTGRES_* из закрытого env-файла. Порт БД не публикуется.
+Переменные UJIN_DB_* отдельно для этого Compose не нужны. Существующий volume
+должен соответствовать указанным credentials; смена env не меняет пароль БД.
+Команды остановки из infra/RUNTIME.md также выполняйте со всеми тремя файлами.
+
+Приёмка общего runtime ещё NOT RUN. На чистом изолированном проекте нужны:
+успешные Flyway V1 и Hibernate validate; вход через разрешённый тестовый
+upstream и CSRF; создание устройства и ссылающегося сценария; restart backend
+без удаления volume; повторный вход и чтение тех же ID/версий. Записать точный
+SHA образа и результаты. Liveness /api/auth/csrf не заменяет эту проверку.
+
+На исходном 88aa7de автоматический прогон на PostgreSQL 17 проверял миграцию,
+JPA и HTTP API. Тест полного закрытия/старта Spring context использовал файловый
+H2. Перезапуск общего PostgreSQL-стенда и frontend этим не подтверждены.
