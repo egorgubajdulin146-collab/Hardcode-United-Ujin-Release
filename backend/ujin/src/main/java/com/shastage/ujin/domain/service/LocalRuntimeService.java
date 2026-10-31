@@ -68,7 +68,19 @@ public class LocalRuntimeService {
         return availabilityRepo.findById(deviceId).map(LocalAvailabilityEntity::getAvailability).orElse("ONLINE");
     }
 
-    // Internal emulator control; no public endpoint is added outside the contract.
+    public Map<String, Object> updateAvailability(UUID deviceId, String status, String mode, String owner) {
+        if (!"LOCAL".equals(mode)) {
+            if ("UJIN".equals(mode))
+                throw new CatalogException(503, "MODE_UNAVAILABLE", "Only local emulator availability can be changed");
+            throw new CatalogException(422, "VALIDATION_ERROR", "executionMode must be LOCAL");
+        }
+        if (!"ONLINE".equals(status) && !"OFFLINE".equals(status))
+            throw new CatalogException(422, "VALIDATION_ERROR", "availability must be ONLINE or OFFLINE");
+        setAvailability(deviceId, status, owner);
+        return getDeviceState(deviceId, "LOCAL", owner);
+    }
+
+    // Internal emulator state also permits UNKNOWN for runtime diagnostics.
     public void setAvailability(UUID deviceId, String status, String owner) {
         catalogStore.lock();
         catalogService.device(deviceId, owner);

@@ -245,3 +245,14 @@ HTTP 401/403 upstream распознаются как явные отказы; �
 и некорректный ответ дают 502, ошибки соединения/таймаут — 503.
 Коды авторизации внутри JSON Ujin не подтверждены и не угадываются.
 Ошибки не содержат upstream body, credentials или URL с токеном.
+
+
+## Local emulator availability
+
+PUT /api/v1/devices/{deviceId}/availability accepts availability ONLINE/OFFLINE
+and executionMode LOCAL, returns DeviceState. Requires the device owner session
+and CSRF. Unknown devices (including another owner's UUID) return 404; invalid
+values return 422, UJIN mode returns 503 MODE_UNAVAILABLE without changing state.
+This controls the local emulator only. OFFLINE blocks stimuli/direct commands;
+a rule targeting it records BLOCKED/DEVICE_OFFLINE. Returning ONLINE permits
+new operations. Existing values and receipts are retained.

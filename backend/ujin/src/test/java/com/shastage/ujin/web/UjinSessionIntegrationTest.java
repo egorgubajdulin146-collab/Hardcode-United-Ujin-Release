@@ -352,4 +352,26 @@ class UjinSessionIntegrationTest {
         assertEquals(400, request("/api/v1/runs?page=-1", "GET", null, null).statusCode());
         assertEquals(503, request(device + "/state?mode=UJIN", "GET", null, null).statusCode());
     }
+    @Test
+    void localAvailabilityRequiresSessionCsrfAndReturnsUpdatedState() throws Exception {
+        var json = tools.jackson.databind.json.JsonMapper.builder().build();
+        String absent = "/api/v1/devices/" + java.util.UUID.randomUUID() + "/availability";
+        String offline = "{\"availability\":\"OFFLINE\",\"executionMode\":\"LOCAL\"}";
+        assertEquals(401, request(absent, "PUT", offline, csrf()).statusCode());
+        assertEquals(204, login(csrf()).statusCode());
+        String declaration = """
+                {"title":"Availability test","family":"light","signals":[{"key":"lamp","title":"Lamp","group":"capability","management":"rw","valueType":"NUMBER","control":"switch","min":0,"max":1}],"events":[]}
+                """;
+        var created = request("/api/v1/devices", "POST", declaration, csrf());
+        assertEquals(201, created.statusCode(), created.body());
+        String path = "/api/v1/devices/" + json.readTree(created.body()).get("id").asText();
+        assertEquals(403, request(path + "/availability", "PUT", offline, null).statusCode());
+        var updated = request(path + "/availability", "PUT", offline, csrf());
+        assertEquals(200, updated.statusCode(), updated.body());
+        assertEquals("OFFLINE", json.readTree(updated.body()).get("availability").asText());
+        assertEquals(422, request(path + "/availability", "PUT", "{}", csrf()).statusCode());
+        assertEquals(503, request(path + "/availability", "PUT", offline.replace("LOCAL", "UJIN"), csrf()).statusCode());
+        assertEquals(200, request(path + "/availability", "PUT", offline.replace("OFFLINE", "ONLINE"), csrf()).statusCode());
+        assertEquals("ONLINE", json.readTree(request(path + "/state?mode=LOCAL", "GET", null, null).body()).get("availability").asText());
+    }
 }

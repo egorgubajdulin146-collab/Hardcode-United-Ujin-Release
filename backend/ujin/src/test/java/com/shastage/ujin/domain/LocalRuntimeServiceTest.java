@@ -235,4 +235,20 @@ class LocalRuntimeServiceTest {
         var dry = runtimeService.processStimulus(leakDeviceId, dryId, "WET", 0, "owner");
         assertEquals(dry, runtimeService.processStimulus(leakDeviceId, dryId, "WET", 0, "owner"));
     }
+    @Test
+    void availabilityControlRejectsForeignOwnerAndRestoresExecution() {
+        runtimeService.processCommand(lightDeviceId, UUID.randomUUID(), "lamp", 0.0, "LOCAL", "owner");
+        assertEquals(404, assertThrows(CatalogException.class, () -> runtimeService.updateAvailability(lightDeviceId, "OFFLINE", "LOCAL", "other")).status);
+        assertEquals(503, assertThrows(CatalogException.class, () -> runtimeService.updateAvailability(lightDeviceId, "OFFLINE", "UJIN", "owner")).status);
+        assertEquals(422, assertThrows(CatalogException.class, () -> runtimeService.updateAvailability(lightDeviceId, "UNKNOWN", "LOCAL", "owner")).status);
+        assertEquals("ONLINE", runtimeService.getDeviceState(lightDeviceId, "LOCAL", "owner").get("availability"));
+        assertEquals("OFFLINE", runtimeService.updateAvailability(lightDeviceId, "OFFLINE", "LOCAL", "owner").get("availability"));
+        var blocked = runtimeService.processStimulus(leakDeviceId, UUID.randomUUID(), "WET", 1, "owner");
+        var blockedId = ((List<?>) blocked.get("runIds")).get(0).toString();
+        assertEquals("DEVICE_OFFLINE", runtimeService.getRun(UUID.fromString(blockedId), "owner").get("reason"));
+        assertEquals("ONLINE", runtimeService.updateAvailability(lightDeviceId, "ONLINE", "LOCAL", "owner").get("availability"));
+        var restored = runtimeService.processStimulus(leakDeviceId, UUID.randomUUID(), "WET", 1, "owner");
+        var restoredId = ((List<?>) restored.get("runIds")).get(0).toString();
+        assertEquals("SUCCEEDED", runtimeService.getRun(UUID.fromString(restoredId), "owner").get("status"));
+    }
 }
