@@ -35,6 +35,7 @@ export function DeviceRuntimePanel({ device, onClose }: { device: Device; onClos
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [command, setCommand] = useState<CommandReceipt | null>(null);
+  const [eventLookupId, setEventLookupId] = useState<string | null>(null);
   const [event, setEvent] = useState<EventReceipt | null>(null);
   const { terminateSession } = useSession();
   const active = useRef(true);
@@ -57,16 +58,16 @@ export function DeviceRuntimePanel({ device, onClose }: { device: Device; onClos
     refetchInterval: query => query.state.data?.status === "CONFIRMED" || query.state.data?.status === "FAILED" ? false : 3000,
   });
   const eventStatus = useQuery({
-    queryKey: ["event", event?.eventId],
-    queryFn: ({ signal }) => endpoints.events.get(event!.eventId, signal),
-    enabled: event?.status === "ACCEPTED", retry: false,
+    queryKey: ["event", event?.eventId ?? eventLookupId],
+    queryFn: ({ signal }) => endpoints.events.get((event?.eventId ?? eventLookupId)!, signal),
+    enabled: event?.status === "ACCEPTED" || eventLookupId !== null, retry: false,
     refetchInterval: query => query.state.data?.status === "PROCESSED" || query.state.data?.status === "FAILED" ? false : 3000,
   });
   const currentCommand = commandStatus.data ?? command;
   const currentEvent = eventStatus.data ?? event;
-  const unresolved = currentCommand?.status === "PENDING" || currentCommand?.status === "UNKNOWN" || currentEvent?.status === "ACCEPTED";
-  const online = state.data?.availability === "ONLINE";
-  const canCommand = online && (mode === "LOCAL" || (device.platformLink === "BOUND" && integration.data?.downlink.status === "AVAILABLE"));
+  const unresolved = currentCommand?.status === "PENDING" || currentCommand?.status === "UNKNOWN" || currentEvent?.status === "ACCEPTED" || (eventLookupId !== null && !currentEvent);
+  const online = !state.error && state.data?.availability === "ONLINE";
+  const canCommand = online && (mode === "LOCAL" || (device.platformLink === "BOUND" && !integration.error && integration.data?.downlink.status === "AVAILABLE"));
   const requestError = state.error ?? integration.error ?? commandStatus.error ?? eventStatus.error;
   useEffect(() => {
     if (requestError instanceof ApiError && requestError.status === 401) terminateSession();
@@ -99,7 +100,7 @@ export function DeviceRuntimePanel({ device, onClose }: { device: Device; onClos
   };
   const stimulate = async (value: 0 | 1) => {
     if (busy || unresolved || !online || mode !== "LOCAL") return;
-    setBusy(true); setError(null); setEvent(null);
+    setBusy(true); setError(null); setEvent(null); setEventLookupId(null);
     const eventId = crypto.randomUUID();
     try {
       const receipt = await endpoints.stimuli.send(device.id, { eventId, kind: "WET", value });
@@ -108,7 +109,7 @@ export function DeviceRuntimePanel({ device, onClose }: { device: Device; onClos
       if (!active.current) return;
       if (err instanceof ApiError && err.status === 401) terminateSession();
       else {
-        if (!(err instanceof ApiError) || err.status >= 500 || err.status === 408) setEvent({ eventId, status: "ACCEPTED", runIds: [] });
+        if (!(err instanceof ApiError) || err.status >= 500 || err.status === 408) setEventLookupId(eventId);
         setError(`${errorMessage(err)} Проверьте обработку события перед повторной отправкой.`);
       }
     } finally { if (active.current) setBusy(false); }
@@ -116,7 +117,7 @@ export function DeviceRuntimePanel({ device, onClose }: { device: Device; onClos
   return <section className={styles.panel} aria-label={`Управление: ${device.title}`}>
     <header><div><h2>{device.title}</h2><p>Состояние и управление</p></div><button onClick={onClose} type="button" disabled={busy}>Закрыть</button></header>
     <div className={styles.toolbar}>
-      <label>Контур <select value={mode} disabled={busy || !!unresolved} onChange={e => { setMode(e.target.value as ExecutionMode); setError(null); setCommand(null); setEvent(null); }}>
+      <label>Контур <select value={mode} disabled={busy || !!unresolved} onChange={e => { setMode(e.target.value as ExecutionMode); setError(null); setCommand(null); setEvent(null); setEventLookupId(null); }}>
         <option value="LOCAL">Локальный</option><option value="UJIN">Ujin</option>
       </select></label>
       <button type="button" onClick={() => { void state.refetch(); }} disabled={state.isFetching}>Обновить состояние</button>
@@ -144,8 +145,9 @@ export function DeviceRuntimePanel({ device, onClose }: { device: Device; onClos
     <div aria-live="polite">
       {busy && <p>Отправка…</p>}{error && <p role="alert" className={styles.error}>{error}</p>}
       {currentCommand && <p>Команда: {COMMAND_STATUS[currentCommand.status]} <small>{currentCommand.commandId}</small></p>}
+      {eventLookupId && !currentEvent && <p>Приём события не подтверждён. Проверяем результат. <small>{eventLookupId}</small></p>}
       {currentEvent && <p>{EVENT_STATUS[currentEvent.status]} · запусков: {currentEvent.runIds.length}</p>}
-      {(currentEvent || currentCommand) && <Link to="/runs">Открыть журнал выполнения</Link>}
+      {(currentEvent || currentCommand || eventLookupId) && <Link to="/runs">Открыть журнал выполнения</Link>}
     </div>
   </section>;
 }

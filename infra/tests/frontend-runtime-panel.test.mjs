@@ -10,10 +10,10 @@ const device = { id: 'device', title: 'Device', family: 'leak', platformLink: 'N
   { key: 'wet', title: 'Leak', management: 'r' },
   { key: 'lamp', title: 'Lamp', management: 'rw', min: 0, max: 1 },
 ] };
-function mount({ availability = 'ONLINE', send = async () => ({ status: 'PENDING', commandId: 'command' }) } = {}) {
+function mount({ availability = 'ONLINE', stateError, stimulus, send = async () => ({ status: 'PENDING', commandId: 'command' }) } = {}) {
   const calls = [];
   const endpoints = { commands: { send: async (...args) => { calls.push(['command', ...args]); return send(...args); } },
-    stimuli: { send: async (...args) => { calls.push(['stimulus', ...args]); return { status: 'PROCESSED', eventId: 'event', runIds: [] }; } } };
+    stimuli: { send: async (...args) => { calls.push(['stimulus', ...args]); if (stimulus) return stimulus(...args); return { status: 'PROCESSED', eventId: 'event', runIds: [] }; } } };
   class ApiError extends Error {}
   const source = readFileSync(new URL('../../frontend/src/components/DeviceRuntimePanel.tsx', import.meta.url), 'utf8');
   const { outputText } = ts.transpileModule(source, { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.ReactJSX } });
@@ -22,7 +22,7 @@ function mount({ availability = 'ONLINE', send = async () => ({ status: 'PENDING
     '../api/sessionContext': { useSession: () => ({ terminateSession() {} }) },
     'react-router-dom': { Link: props => React.createElement('a', props) },
     '@tanstack/react-query': { useQueryClient: () => ({ invalidateQueries() {} }),
-      useQuery: options => ({ data: options.queryKey[0] === 'device-state' ? { availability, values: [{ signalKey: 'wet', value: 0, updatedAt: '2026-10-31T12:00:00Z' }] } : undefined, refetch() {} }) },
+      useQuery: options => ({ error: options.queryKey[0] === 'device-state' ? stateError : undefined, data: options.queryKey[0] === 'device-state' ? { availability, values: [{ signalKey: 'wet', value: 0, updatedAt: '2026-10-31T12:00:00Z' }] } : undefined, refetch() {} }) },
   };
   const exports = {};
   new Function('require','exports', outputText)(name => name.endsWith('.css') ? { default: {} } : mocks[name] ?? require(name), exports);
@@ -67,5 +67,20 @@ test('dry stimulus preserves numeric zero', async () => {
   await act(async () => { root.root.findAllByType('button').find(b => b.children.includes('Вода отсутствует')).props.onClick(); });
   assert.equal(calls[0][2].value, 0);
   assert.equal(calls[0][2].kind, 'WET');
+  act(() => root.unmount());
+});
+
+test('failed state refresh disables control despite cached ONLINE state', () => {
+  const { root } = mount({ stateError: new Error('State unavailable') });
+  assert.ok(root.root.findAllByType('button').find(b => b.children.includes('Отправить')).props.disabled);
+  act(() => root.unmount());
+});
+test('lost stimulus response does not fabricate ACCEPTED', async () => {
+  const { root, calls } = mount({ stimulus: async () => { throw new Error('Lost response'); } });
+  await act(async () => { root.root.findAllByType('button').find(b => b.children.includes('Вода отсутствует')).props.onClick(); });
+  assert.equal(calls.length, 1);
+  assert.ok(root.root.findAllByType('p').some(p => p.children.includes('Приём события не подтверждён. Проверяем результат. ')));
+  assert.ok(!root.root.findAllByType('p').some(p => p.children.includes('Событие принято')));
+  assert.ok(root.root.findAllByType('button').find(b => b.children.includes('Вода отсутствует')).props.disabled);
   act(() => root.unmount());
 });
