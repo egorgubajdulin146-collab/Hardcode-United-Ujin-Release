@@ -1,0 +1,419 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  gap: var(--space-lg);
+}
+
+/* Заголовок */
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.headerLeft {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.pageTitle {
+  font-size: var(--font-size-2xl);
+  font-weight: 700;
+  color: var(--color-text);
+}
+
+.addButton {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: var(--space-sm) var(--space-md);
+  background: var(--color-primary);
+  color: white;
+  border: none;
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  cursor: pointer;
+  transition: background var(--transition-fast);
+}
+
+.addButton:hover {
+  background: var(--color-primary-hover);
+}
+
+/* Комнаты */
+.roomsBar {
+  display: flex;
+  gap: var(--space-sm);
+  overflow-x: auto;
+  padding-bottom: var(--space-xs);
+}
+
+.roomTab {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: var(--space-sm) var(--space-md);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all var(--transition-fast);
+}
+
+.roomTab:hover {
+  border-color: var(--color-primary-border);
+  color: var(--color-text);
+}
+
+.roomTabActive {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+  color: white;
+}
+
+.roomTabActive .roomCount {
+  background: rgba(255, 255, 255, 0.2);
+  color: white;
+}
+
+.roomTitle {
+  font-weight: 500;
+}
+
+.roomCount {
+  padding: 2px 8px;
+  background: var(--color-bg);
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  color: var(--color-text-muted);
+}
+
+/* Основная область */
+.content {
+  display: grid;
+  grid-template-columns: 1fr 320px;
+  gap: var(--space-lg);
+  flex: 1;
+  min-height: 0;
+}
+
+/* Список устройств */
+.deviceList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  overflow-y: auto;
+}
+
+.deviceCard {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  padding: var(--space-md);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  text-align: left;
+  width: 100%;
+}
+
+.deviceCard:hover {
+  border-color: var(--color-primary-border);
+  box-shadow: var(--shadow-md);
+}
+
+.deviceCardSelected {
+  border-color: var(--color-primary);
+  background: var(--color-primary-light);
+}
+
+.deviceIcon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  background: var(--color-bg);
+  border-radius: var(--radius-md);
+  color: var(--color-primary);
+}
+
+.deviceInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+}
+
+.deviceTitle {
+  font-size: var(--font-size-md);
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.deviceState {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+}
+
+.deviceMeta {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+}
+
+.statusDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.statusOnline {
+  background: var(--color-success);
+}
+
+.statusOffline {
+  background: var(--color-text-muted);
+}
+
+.statusText {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+}
+
+/* Пустое состояние */
+.emptyState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-2xl);
+  background: var(--color-surface);
+  border: 1px dashed var(--color-border);
+  border-radius: var(--radius-lg);
+  text-align: center;
+}
+
+.emptyTitle {
+  font-size: var(--font-size-lg);
+  font-weight: 600;
+  color: var(--color-text);
+  margin-bottom: var(--space-xs);
+}
+
+.emptyDescription {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+}
+
+/* Панель устройства */
+.devicePanel {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-md);
+  overflow-y: auto;
+}
+
+.panelHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--space-md);
+  padding-bottom: var(--space-md);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.panelTitle {
+  font-size: var(--font-size-lg);
+  font-weight: 700;
+  color: var(--color-text);
+}
+
+.panelClose {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  background: var(--color-bg);
+  border: none;
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-lg);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  transition: background var(--transition-fast);
+}
+
+.panelClose:hover {
+  background: var(--color-error-light);
+  color: var(--color-error);
+}
+
+.panelSection {
+  margin-bottom: var(--space-lg);
+}
+
+.sectionTitle {
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-text-muted);
+  margin-bottom: var(--space-sm);
+}
+
+.field {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--space-sm) 0;
+}
+
+.fieldLabel {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+}
+
+.fieldValue {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  color: var(--color-text);
+}
+
+.stateCard {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: var(--space-md);
+  background: var(--color-bg);
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-md);
+  font-weight: 500;
+  color: var(--color-text);
+  margin-bottom: var(--space-md);
+}
+
+.emulateButton {
+  width: 100%;
+  padding: var(--space-sm) var(--space-md);
+  background: var(--color-primary);
+  color: white;
+  border: none;
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  cursor: pointer;
+  transition: background var(--transition-fast);
+}
+
+.emulateButton:hover {
+  background: var(--color-primary-hover);
+}
+
+.emulateHint {
+  margin-top: var(--space-xs);
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+  text-align: center;
+}
+
+.detailRow {
+  display: flex;
+  justify-content: space-between;
+  padding: var(--space-xs) 0;
+  font-size: var(--font-size-xs);
+}
+
+.detailKey {
+  color: var(--color-text-muted);
+}
+
+.detailValue {
+  font-family: var(--font-mono);
+  color: var(--color-text-secondary);
+}
+
+.panelEmpty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 200px;
+  color: var(--color-text-muted);
+  text-align: center;
+  gap: var(--space-sm);
+}
+
+/* Мобильная адаптация */
+@media (max-width: 768px) {
+  .content {
+    grid-template-columns: 1fr;
+  }
+
+  .devicePanel {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    max-height: 60vh;
+    border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+    box-shadow: var(--shadow-lg);
+  }
+
+  .roomsBar {
+    margin: 0 calc(-1 * var(--space-lg));
+    padding: 0 var(--space-lg) var(--space-xs);
+  }
+}
+
+/* Прототип */
+.protoBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  background: var(--color-warning-light);
+  color: var(--color-warning);
+  border: 1px solid var(--color-warning);
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+}
+
+.protoNotice {
+  padding: var(--space-sm) var(--space-md);
+  background: var(--color-warning-light);
+  border: 1px solid var(--color-warning);
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-sm);
+  color: var(--color-text);
+}
+
+/* Отключённые действия */
+.disabledAction {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+}
+
+.emulateButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.emulateButton:disabled:hover {
+  background: var(--color-primary);
+}
