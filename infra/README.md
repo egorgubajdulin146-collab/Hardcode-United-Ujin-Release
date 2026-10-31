@@ -141,3 +141,54 @@ GitHub Actions выполняет сборку backend, требует нену�
 Официальные справочники: [Compose services](https://docs.docker.com/reference/compose-file/services/),
 [PostgreSQL image](https://hub.docker.com/_/postgres),
 [setup-java](https://github.com/actions/setup-java).
+
+## Локальный запуск PostgreSQL и Vite
+
+Для разработки из корня репозитория создайте `.env` по `.env.example` и задайте
+`POSTGRES_PASSWORD`. `docker compose up -d --wait` запускает PostgreSQL на
+`127.0.0.1:5432` и Vite на `127.0.0.1:5173`. Backend запускается отдельно
+на хосте на порту 8080. Compose не передаёт ему переменные из `.env`.
+Перед запуском задайте адрес API платформы в `UJIN_API_BASE_URL` (или адрес
+локального эмулятора). Не используйте значение по умолчанию `https://localhost/api`
+для проверки входа. Пароль и адрес платформы не записывайте в Git или логи.
+
+PowerShell, из корня репозитория:
+
+```powershell
+$config = @{}
+Get-Content .env | Where-Object { $_ -match '^([A-Za-z_][A-Za-z0-9_]*)=(.*)$' } |
+  ForEach-Object { $config[$Matches[1]] = $Matches[2].Trim('"', "'") }
+$database = if ($config['POSTGRES_DB']) { $config['POSTGRES_DB'] } else { 'ujin' }
+$user = if ($config['POSTGRES_USER']) { $config['POSTGRES_USER'] } else { 'ujin' }
+$env:UJIN_DB_URL = "jdbc:postgresql://localhost:5432/$database"
+$env:UJIN_DB_USER = $user
+$env:UJIN_DB_PASSWORD = $config['POSTGRES_PASSWORD']
+$env:UJIN_API_BASE_URL = '<адрес API платформы или эмулятора>'
+Set-Location backend/ujin
+.\gradlew.bat bootRun
+```
+
+При отсутствии `POSTGRES_DB` или `POSTGRES_USER` используются значения Compose
+`ujin`. Для Bash/macOS/Linux из корня репозитория:
+
+```sh
+set -a
+. ./.env
+set +a
+export UJIN_DB_URL="jdbc:postgresql://localhost:5432/${POSTGRES_DB:-ujin}"
+export UJIN_DB_USER="${POSTGRES_USER:-ujin}"
+export UJIN_DB_PASSWORD="$POSTGRES_PASSWORD"
+export UJIN_API_BASE_URL='<адрес API платформы или эмулятора>'
+cd backend/ujin
+./gradlew bootRun
+```
+
+Загружайте только собственный проверенный `.env`: Bash выполняет его как shell-файл.
+Контейнер Vite пересылает `/api` на `host.docker.internal:8080`; на Linux
+имя добавляется через `extra_hosts` с `host-gateway`. Если Docker не поддерживает
+`host-gateway`, задайте доступный контейнеру адрес хоста вручную.
+
+`infra/local.ps1 start|status|logs|restart|stop` и `Makefile` управляют этим
+локальным Compose. `docker compose down` сохраняет данные PostgreSQL.
+Изолированный runtime и его проверки описаны в `infra/RUNTIME.md` и используют
+отдельные Compose-файлы `infra/compose*.yaml`.

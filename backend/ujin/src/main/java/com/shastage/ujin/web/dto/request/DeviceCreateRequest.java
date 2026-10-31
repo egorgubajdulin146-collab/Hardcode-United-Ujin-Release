@@ -1,6 +1,11 @@
 package com.shastage.ujin.web.dto.request;
 
 import com.shastage.ujin.web.dto.*;
+
 import java.util.*;
 
-public record DeviceCreateRequest(String title, String family, List<SignalDefinitionDto> signals, List<EventDefinitionDto> events) {}
+public record DeviceCreateRequest(
+        String title,
+        String family,
+        List<SignalDefinitionDto> signals,
+        List<EventDefinitionDto> events) {}
