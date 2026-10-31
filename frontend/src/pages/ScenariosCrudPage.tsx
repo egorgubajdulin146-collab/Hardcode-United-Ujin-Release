@@ -137,7 +137,7 @@ export function ScenariosCrudPage() {
     try {
       await endpoints.scenarios.update(editing.id, {
         ...data,
-        expectedVersion: editing.version,
+        expectedVersion: data.expectedVersion ?? editing.version,
       });
       refresh();
       setMode("list");
@@ -227,7 +227,7 @@ export function ScenariosCrudPage() {
 
       {mock && (
         <div className={styles.mockNotice}>
-          Режим MOCK: данные синтетические. Создание/редактирование отключены.
+          Демо: для сохранения сценариев переключитесь на подключённые устройства.
         </div>
       )}
 

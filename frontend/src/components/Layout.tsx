@@ -4,7 +4,6 @@ import { Cpu, Workflow, PlayCircle, Database, Globe, LogIn, LogOut, Wifi } from 
 import { setDataSource, isMock } from "../api/dataSource";
 import { logout, clearCsrf } from "../api/authClient";
 import { useSession } from "../api/sessionContext";
-import { MockBadge } from "./States";
 import styles from "./Layout.module.css";
 
 const navItems = [
@@ -83,12 +82,12 @@ export function Layout({ children }: { children: ReactNode }) {
             type="button"
             className={styles.sourceToggle}
             onClick={toggleSource}
-            title={`Источник данных: ${mock ? "мок-данные" : "реальный API"}`}
+            title={`Источник данных: ${mock ? "демонстрационные устройства" : "подключённые устройства"}`}
           >
             {mock ? <Database size={16} /> : <Globe size={16} />}
-            <span>{mock ? "MOCK" : "API"}</span>
+            <span>{mock ? "Демо" : "Подключение"}</span>
           </button>
-          {mock && <MockBadge />}
+
         </div>
       </nav>
       <main className={styles.content}>
