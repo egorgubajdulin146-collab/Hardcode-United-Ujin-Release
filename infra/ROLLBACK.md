@@ -20,6 +20,23 @@
 `70ecac6` и более старые версии не входят в список безопасного отката.
 Совместимость любой будущей миграции после V3 требует нового прогона.
 
+Принятые образы сохранены на VPS в закрытом каталоге
+`/var/backups/ujin/releases/e5fea660aaef4b02a1bf46e650441814af2a0f43`:
+images.tar.gz, images.sha256, manifest.json и compose.tar.gz. Каталог700,
+файлы600. Compose snapshot не содержит env/credentials. Не удаляйте резерв
+автоматической очисткой образов или release directories.
+
+Если принятых образов больше нет в Docker, восстановите архив до шага up:
+
+```sh
+cd /var/backups/ujin/releases/e5fea660aaef4b02a1bf46e650441814af2a0f43
+sha256sum -c images.sha256
+gzip -t images.tar.gz
+gzip -dc images.tar.gz | docker load
+```
+
+Затем сверяйте imageID с manifest. Подмена тега другой сборкой не допускается.
+
 Для каждого резерва сохраняйте полные SHA, imageID frontend/backend,
 образный архив с SHA256, конфигурацию Compose той же версии и закрытый
 backup БД. Теги не являются неизменяемыми идентификаторами: перед up
