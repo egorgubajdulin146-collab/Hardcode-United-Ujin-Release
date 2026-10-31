@@ -191,7 +191,7 @@ public class PublicationService {
     }
 
     private PublicationEntity owned(UUID deviceId, UUID id, String owner) {
-        catalog.device(deviceId, owner);
+        // Receipts retain their own owner and device identity after terminal device deletion.
         return repository.findById(id).filter(p -> owner.equals(p.owner) && deviceId.equals(p.deviceId))
                 .orElseThrow(() -> error(404, "PUBLICATION_NOT_FOUND", "Publication not found"));
     }

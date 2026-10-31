@@ -15,10 +15,13 @@ import java.util.*;
 public class CatalogService {
     private final CatalogStore repository;
     private final LocalSignalStateJpaRepository stateRepo;
+    private final com.shastage.ujin.datasource.repository.jpa.PublicationJpaRepository publications;
 
-    public CatalogService(CatalogStore repository, LocalSignalStateJpaRepository stateRepo) {
+    public CatalogService(CatalogStore repository, LocalSignalStateJpaRepository stateRepo,
+            com.shastage.ujin.datasource.repository.jpa.PublicationJpaRepository publications) {
         this.repository = repository;
         this.stateRepo = stateRepo;
+        this.publications = publications;
     }
 
     public Page<Device> devices(int page, int size, String owner) {
@@ -86,14 +89,18 @@ public class CatalogService {
     public Dependencies dependencies(UUID id, String owner) {
         device(id, owner);
         var ids = repository.dependencies(id, owner);
-        return new Dependencies(id, ids, List.of());
+        return new Dependencies(id, ids, publications.findByDeviceIdAndOwnerAndStatusIn(
+                id, owner, List.of("PENDING", "UNKNOWN")).stream().map(p -> p.id).toList());
     }
 
     public void delete(UUID id, long expectedVersion, String owner) {
         repository.lock();
         var old = device(id, owner);
         version(expectedVersion, old.version());
-        if (!dependencies(id, owner).scenarioIds().isEmpty())
+        var dependencies = dependencies(id, owner);
+        if (!dependencies.pendingOperationIds().isEmpty())
+            throw new CatalogException(409, "DEVICE_IN_USE", "Device has unresolved platform publications");
+        if (!dependencies.scenarioIds().isEmpty())
             throw new CatalogException(409, "DEVICE_IN_USE", "Device is referenced by scenarios");
         // Очищаем локальное состояние сигналов
         stateRepo.deleteByDeviceIdAndOwner(id, owner);

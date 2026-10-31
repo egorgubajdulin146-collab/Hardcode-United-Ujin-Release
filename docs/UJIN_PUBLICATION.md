@@ -96,3 +96,12 @@ PENDING/UNKNOWN. При обрыве браузер сохраняет ID, по�
 model/class подтверждено; создание словаря и фактическая запись остаются
 неподтверждёнными. Нужна проверка lookup extGuid + class и создания словаря на
 стороне платформы. Приложение сохраняет UNKNOWN до наблюдения значения.
+
+
+### Device deletion and receipt retention
+
+PENDING/UNKNOWN publication IDs appear in device dependencies and block deletion
+with 409 DEVICE_IN_USE under the same catalog lock as publication reservation.
+A confirmed or failed receipt retains its owner and device ID after device deletion;
+GET by publication ID remains available only to its original owner. Deletion never
+authorizes retransmission, and old IDs cannot be assigned to another device.

@@ -27,6 +27,8 @@ class PublicationHttpTest {
     static volatile String failure = "";
     static volatile boolean visible = true;
     static volatile String malformedQuery = null;
+    static volatile java.util.concurrent.CountDownLatch sendStarted;
+    static volatile java.util.concurrent.CountDownLatch releaseSend;
     static {
         try {
             upstream = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
@@ -41,6 +43,11 @@ class PublicationHttpTest {
             upstream.createContext("/api/import_device/group-update-device-signal/", e -> {
                 String body = new String(e.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
                 writes.add(body);
+                if (failure.equals("hold")) {
+                    sendStarted.countDown();
+                    try { releaseSend.await(10, java.util.concurrent.TimeUnit.SECONDS); }
+                    catch (InterruptedException ex) { Thread.currentThread().interrupt(); }
+                }
                 if (!e.getRequestMethod().equals("POST") || !"application/json".equals(e.getRequestHeaders().getFirst("Content-Type"))
                         || !"token=ust-secret&apartment_id=apt-test&serialnumber=ext-test".equals(e.getRequestURI().getRawQuery()))
                     malformedQuery = "Wire contract mismatch";
@@ -135,6 +142,57 @@ class PublicationHttpTest {
         assertFalse(response.body().contains("secret")); assertFalse(response.body().contains("token="));
         assertNull(malformedQuery);
     }
+    @Test void concurrentDeleteCannotRemoveInFlightPublication() throws Exception {
+        failure="hold";
+        sendStarted=new java.util.concurrent.CountDownLatch(1);
+        releaseSend=new java.util.concurrent.CountDownLatch(1);
+        var future=java.util.concurrent.CompletableFuture.supplyAsync(() -> {
+            try { return publish(UUID.randomUUID(),1); }
+            catch(Exception ex) { throw new java.util.concurrent.CompletionException(ex); }
+        });
+        try {
+            assertTrue(sendStarted.await(5,java.util.concurrent.TimeUnit.SECONDS));
+            long version=JSON.readTree(request(user,"/api/v1/devices/"+device,"GET",null,false).body()).path("version").asLong();
+            var deleted=request(user,"/api/v1/devices/"+device+"?expectedVersion="+version,"DELETE",null,true);
+            assertEquals(409,deleted.statusCode());
+        } finally { releaseSend.countDown(); }
+        status(future.get(10,java.util.concurrent.TimeUnit.SECONDS),"CONFIRMED");
+        assertEquals(200,request(user,"/api/v1/devices/"+device,"GET",null,false).statusCode());
+    }
+
+    @Test void terminalReceiptRemainsOwnerScopedAfterDeviceDeletion() throws Exception {
+        UUID id = UUID.randomUUID();
+        status(publish(id, 1), "CONFIRMED");
+        long version = JSON.readTree(request(user, "/api/v1/devices/"+device, "GET", null, false).body()).path("version").asLong();
+        assertEquals(204, request(user, "/api/v1/devices/"+device+"?expectedVersion="+version, "DELETE", null, true).statusCode());
+        assertEquals(200, request(user, "/api/v1/devices/"+device+"/publications/"+id, "GET", null, false).statusCode());
+        var other = login("other-history-"+UUID.randomUUID());
+        assertEquals(404, request(other, "/api/v1/devices/"+device+"/publications/"+id, "GET", null, false).statusCode());
+    }
+
+    @Test void persistedPendingPreventsDeletionAndAppearsInDependencies() throws Exception {
+        failure="silent";
+        UUID id=UUID.randomUUID(); status(publish(id,1),"UNKNOWN");
+        var row=repository.findById(id).orElseThrow(); row.status="PENDING";repository.saveAndFlush(row);
+        var dependencies=request(user,"/api/v1/devices/"+device+"/dependencies","GET",null,false);
+        assertTrue(dependencies.body().contains(id.toString()));
+        long version=JSON.readTree(request(user,"/api/v1/devices/"+device,"GET",null,false).body()).path("version").asLong();
+        assertEquals(409,request(user,"/api/v1/devices/"+device+"?expectedVersion="+version,"DELETE",null,true).statusCode());
+        assertEquals(200,request(user,"/api/v1/devices/"+device+"/publications/"+id,"GET",null,false).statusCode());
+    }
+
+    @Test void reviewUnknownPublicationBlocksDeviceDeletion() throws Exception {
+        failure = "silent";
+        String id = UUID.randomUUID().toString();
+        var pending = request(user, "/api/v1/devices/" + device + "/publications", "POST",
+                "{\"publicationId\":\"" + id + "\",\"signalKey\":\"leak\",\"value\":1}", true);
+        status(pending, "UNKNOWN");
+        var current = request(user, "/api/v1/devices/" + device, "GET", null, false);
+        long version = JSON.readTree(current.body()).path("version").asLong();
+        var deleted = request(user, "/api/v1/devices/" + device + "?expectedVersion=" + version, "DELETE", null, true);
+        assertEquals(409, deleted.statusCode(), "Unresolved external publication must retain device and receipt: " + deleted.body());
+    }
+
     @Test void twoPhasesReadbackAndZeroPreserveLocalState() throws Exception {
         var id = UUID.randomUUID(); status(publish(id, 1), "CONFIRMED");
         assertEquals(2, writes.size());
