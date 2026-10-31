@@ -22,6 +22,12 @@ public class DeviceEntity {
     @Column(name = "platform_link", nullable = false, length = 24)
     private String platformLink;
 
+    @Column(name = "owner", length = 120)
+    private String owner;
+
+    public String getOwner() { return owner; }
+    public void setOwner(String owner) { this.owner = owner; }
+
     @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true)
     @JoinColumn(name = "device_id", nullable = false)
     @OrderColumn(name = "signal_order")

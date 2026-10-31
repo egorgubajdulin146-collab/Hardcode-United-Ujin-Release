@@ -23,6 +23,9 @@ public class LocalSignalStateEntity {
     @Column(name = "updated_at", nullable = false)
     private String updatedAt;
 
+    @Column(name = "owner", length = 120)
+    private String owner;
+
     public UUID getId() { return id; }
     public UUID getDeviceId() { return deviceId; }
     public void setDeviceId(UUID deviceId) { this.deviceId = deviceId; }
@@ -31,5 +34,7 @@ public class LocalSignalStateEntity {
     public double getValue() { return value; }
     public void setValue(double value) { this.value = value; }
     public String getUpdatedAt() { return updatedAt; }
+    public String getOwner() { return owner; }
+    public void setOwner(String owner) { this.owner = owner; }
     public void setUpdatedAt(String updatedAt) { this.updatedAt = updatedAt; }
 }

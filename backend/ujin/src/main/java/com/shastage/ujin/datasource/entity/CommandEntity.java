@@ -32,6 +32,9 @@ public class CommandEntity {
     @Column(name = "confirmed_at")
     private String confirmedAt;
 
+    @Column(name = "owner", length = 120)
+    private String owner;
+
     public UUID getCommandId() { return commandId; }
     public void setCommandId(UUID commandId) { this.commandId = commandId; }
     public UUID getDeviceId() { return deviceId; }
@@ -47,5 +50,7 @@ public class CommandEntity {
     public String getCreatedAt() { return createdAt; }
     public void setCreatedAt(String createdAt) { this.createdAt = createdAt; }
     public String getConfirmedAt() { return confirmedAt; }
+    public String getOwner() { return owner; }
+    public void setOwner(String owner) { this.owner = owner; }
     public void setConfirmedAt(String confirmedAt) { this.confirmedAt = confirmedAt; }
 }

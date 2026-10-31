@@ -1,15 +1,20 @@
 package com.shastage.ujin.datasource.repository.jpa;
 
 import com.shastage.ujin.datasource.entity.ScenarioEntity;
-
+import org.springframework.data.domain.*;
 import org.springframework.data.jpa.repository.JpaRepository;
-
-import java.util.UUID;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+import java.util.*;
 
 public interface ScenarioJpaRepository extends JpaRepository<ScenarioEntity, UUID> {
-    @org.springframework.data.jpa.repository.Query(
-            "select s.id from ScenarioEntity s where s.triggerDevice.id=:deviceId or"
-                + " s.actionDevice.id=:deviceId order by s.id")
-    java.util.List<UUID> findDependencies(
-            @org.springframework.data.repository.query.Param("deviceId") UUID deviceId);
+    Page<ScenarioEntity> findByOwner(String owner, Pageable pageable);
+    Optional<ScenarioEntity> findByIdAndOwner(UUID id, String owner);
+    List<ScenarioEntity> findByOwner(String owner);
+
+    @Query("SELECT s.id FROM ScenarioEntity s WHERE (s.triggerDevice.id = :deviceId OR s.actionDevice.id = :deviceId) AND s.owner = :owner")
+    List<UUID> findDependenciesByDeviceIdAndOwner(@Param("deviceId") UUID deviceId, @Param("owner") String owner);
+
+    @Query("SELECT s.id FROM ScenarioEntity s WHERE s.triggerDevice.id = :deviceId OR s.actionDevice.id = :deviceId")
+    List<UUID> findDependencies(@Param("deviceId") UUID deviceId);
 }

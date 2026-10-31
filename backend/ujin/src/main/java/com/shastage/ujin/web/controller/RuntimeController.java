@@ -4,12 +4,18 @@ import com.shastage.ujin.domain.service.LocalRuntimeService;
 import com.shastage.ujin.web.dto.request.*;
 import java.util.*;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/v1")
 public class RuntimeController {
     private final LocalRuntimeService service;
+
+    private String currentOwner() {
+        var auth = SecurityContextHolder.getContext().getAuthentication();
+        return auth != null ? auth.getName() : "";
+    }
 
     public RuntimeController(LocalRuntimeService service) {
         this.service = service;
@@ -20,7 +26,7 @@ public class RuntimeController {
             @PathVariable UUID deviceId,
             @RequestParam(defaultValue = "LOCAL") String mode
     ) {
-        return service.getDeviceState(deviceId, mode);
+        return service.getDeviceState(deviceId, mode, currentOwner());
     }
 
     @PostMapping("/devices/{deviceId}/stimuli")
@@ -31,13 +37,13 @@ public class RuntimeController {
         if (request == null) {
             throw new com.shastage.ujin.domain.exception.CatalogException(400, "INVALID_REQUEST", "Request body is required");
         }
-        var result = service.processStimulus(deviceId, request.eventId(), request.kind(), request.value());
+        var result = service.processStimulus(deviceId, request.eventId(), request.kind(), request.value(), currentOwner());
         return ResponseEntity.accepted().body(result);
     }
 
     @GetMapping("/events/{eventId}")
     public Map<String, Object> event(@PathVariable UUID eventId) {
-        return service.getEvent(eventId);
+        return service.getEvent(eventId, currentOwner());
     }
 
     @PostMapping("/devices/{deviceId}/commands")
@@ -49,14 +55,14 @@ public class RuntimeController {
             throw new com.shastage.ujin.domain.exception.CatalogException(400, "INVALID_REQUEST", "Request body is required");
         }
         var result = service.processCommand(
-                deviceId, request.commandId(), request.signalKey(), request.value(), request.executionMode()
+                deviceId, request.commandId(), request.signalKey(), request.value(), request.executionMode(), currentOwner()
         );
         return ResponseEntity.accepted().body(result);
     }
 
     @GetMapping("/commands/{commandId}")
     public Map<String, Object> command(@PathVariable UUID commandId) {
-        return service.getCommand(commandId);
+        return service.getCommand(commandId, currentOwner());
     }
 
     @GetMapping("/runs")
@@ -66,11 +72,11 @@ public class RuntimeController {
             @RequestParam(required = false) UUID eventId,
             @RequestParam(required = false) UUID scenarioId
     ) {
-        return service.getRuns(page, size, eventId, scenarioId);
+        return service.getRuns(page, size, eventId, scenarioId, currentOwner());
     }
 
     @GetMapping("/runs/{runId}")
     public Map<String, Object> run(@PathVariable UUID runId) {
-        return service.getRun(runId);
+        return service.getRun(runId, currentOwner());
     }
 }

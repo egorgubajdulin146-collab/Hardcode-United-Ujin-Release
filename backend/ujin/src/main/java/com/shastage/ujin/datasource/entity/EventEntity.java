@@ -29,6 +29,9 @@ public class EventEntity {
     @Column(name = "processed_at")
     private String processedAt;
 
+    @Column(name = "owner", length = 120)
+    private String owner;
+
     public UUID getEventId() { return eventId; }
     public void setEventId(UUID eventId) { this.eventId = eventId; }
     public UUID getDeviceId() { return deviceId; }
@@ -42,5 +45,7 @@ public class EventEntity {
     public String getCreatedAt() { return createdAt; }
     public void setCreatedAt(String createdAt) { this.createdAt = createdAt; }
     public String getProcessedAt() { return processedAt; }
+    public String getOwner() { return owner; }
+    public void setOwner(String owner) { this.owner = owner; }
     public void setProcessedAt(String processedAt) { this.processedAt = processedAt; }
 }

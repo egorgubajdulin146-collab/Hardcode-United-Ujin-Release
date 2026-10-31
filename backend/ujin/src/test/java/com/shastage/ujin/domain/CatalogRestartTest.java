@@ -53,8 +53,8 @@ class CatalogRestartTest {
         var events = List.of(new Event("changed", "Changed", "lamp", "CHANGE"));
         try (var context = start()) {
             var service = context.getBean(CatalogService.class);
-            source = service.create(new DeviceWrite("Source", "light", signals, events, null));
-            target = service.create(new DeviceWrite("Target", "light", signals, events, null));
+            source = service.create(new DeviceWrite("Source", "light", signals, events, null), "owner");
+            target = service.create(new DeviceWrite("Target", "light", signals, events, null), "owner");
             rule =
                     service.create(
                             new ScenarioWrite(
@@ -63,14 +63,14 @@ class CatalogRestartTest {
                                     "UJIN",
                                     new Trigger(source.id(), "lamp", "EQ", 1.0, "changed"),
                                     new Action(target.id(), "lamp", 1.0),
-                                    null));
+                                    null), "owner");
         }
         try (var context = start()) {
             var service = context.getBean(CatalogService.class);
-            assertEquals(source, service.device(source.id()));
-            assertEquals(target, service.device(target.id()));
-            assertEquals(rule, service.scenario(rule.id()));
-            assertEquals(List.of(rule.id()), service.dependencies(target.id()).scenarioIds());
+            assertEquals(source, service.device(source.id(), "owner"));
+            assertEquals(target, service.device(target.id(), "owner"));
+            assertEquals(rule, service.scenario(rule.id(), "owner"));
+            assertEquals(List.of(rule.id()), service.dependencies(target.id(), "owner").scenarioIds());
             assertEquals(
                     2,
                     service.update(
@@ -81,7 +81,8 @@ class CatalogRestartTest {
                                             "LOCAL",
                                             rule.trigger(),
                                             rule.action(),
-                                            1L))
+                                            1L),
+                                    "owner")
                             .version());
         }
     }

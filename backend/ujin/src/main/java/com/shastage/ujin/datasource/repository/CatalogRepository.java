@@ -32,20 +32,20 @@ public class CatalogRepository implements com.shastage.ujin.domain.repository.Ca
         locks.lockCatalog();
     }
 
-    public Optional<Device> device(UUID id) {
-        return devices.findById(id).map(mapper::toDomain);
+    public Optional<Device> device(UUID id, String owner) {
+        return devices.findByIdAndOwner(id, owner).map(mapper::toDomain);
     }
 
-    public Optional<Scenario> scenario(UUID id) {
-        return scenarios.findById(id).map(mapper::toDomain);
+    public Optional<Scenario> scenario(UUID id, String owner) {
+        return scenarios.findByIdAndOwner(id, owner).map(mapper::toDomain);
     }
 
-    public List<Scenario> scenarios() {
-        return scenarios.findAll(Sort.by("id")).stream().map(mapper::toDomain).toList();
+    public List<Scenario> scenarios(String owner) {
+        return scenarios.findByOwner(owner).stream().map(mapper::toDomain).toList();
     }
 
-    public com.shastage.ujin.domain.model.Catalog.Page<Device> devices(int page, int size) {
-        var result = devices.findAll(PageRequest.of(page, size, Sort.by("id")));
+    public com.shastage.ujin.domain.model.Catalog.Page<Device> devices(int page, int size, String owner) {
+        var result = devices.findByOwner(owner, PageRequest.of(page, size, Sort.by("id")));
         return new com.shastage.ujin.domain.model.Catalog.Page<>(
                 result.getContent().stream().map(mapper::toDomain).toList(),
                 page,
@@ -53,8 +53,8 @@ public class CatalogRepository implements com.shastage.ujin.domain.repository.Ca
                 result.getTotalElements());
     }
 
-    public com.shastage.ujin.domain.model.Catalog.Page<Scenario> scenarios(int page, int size) {
-        var result = scenarios.findAll(PageRequest.of(page, size, Sort.by("id")));
+    public com.shastage.ujin.domain.model.Catalog.Page<Scenario> scenarios(int page, int size, String owner) {
+        var result = scenarios.findByOwner(owner, PageRequest.of(page, size, Sort.by("id")));
         return new com.shastage.ujin.domain.model.Catalog.Page<>(
                 result.getContent().stream().map(mapper::toDomain).toList(),
                 page,
@@ -62,30 +62,32 @@ public class CatalogRepository implements com.shastage.ujin.domain.repository.Ca
                 result.getTotalElements());
     }
 
-    public List<UUID> dependencies(UUID id) {
-        return scenarios.findDependencies(id);
+    public List<UUID> dependencies(UUID id, String owner) {
+        return scenarios.findDependenciesByDeviceIdAndOwner(id, owner);
     }
 
-    public Device insert(Device device) {
+    public Device insert(Device device, String owner) {
         var entity = new DeviceEntity();
         mapper.update(entity, device);
+        entity.setOwner(owner);
         return mapper.toDomain(devices.saveAndFlush(entity));
     }
 
-    public Device update(Device device) {
-        var entity = devices.findById(device.id()).orElseThrow();
+    public Device update(Device device, String owner) {
+        var entity = devices.findByIdAndOwner(device.id(), owner).orElseThrow();
         mapper.update(entity, device);
         return mapper.toDomain(devices.saveAndFlush(entity));
     }
 
-    public Scenario insert(Scenario scenario) {
+    public Scenario insert(Scenario scenario, String owner) {
         var entity = new ScenarioEntity();
         apply(entity, scenario);
+        entity.setOwner(owner);
         return mapper.toDomain(scenarios.saveAndFlush(entity));
     }
 
-    public Scenario update(Scenario scenario) {
-        var entity = scenarios.findById(scenario.id()).orElseThrow();
+    public Scenario update(Scenario scenario, String owner) {
+        var entity = scenarios.findByIdAndOwner(scenario.id(), owner).orElseThrow();
         apply(entity, scenario);
         return mapper.toDomain(scenarios.saveAndFlush(entity));
     }
@@ -98,8 +100,9 @@ public class CatalogRepository implements com.shastage.ujin.domain.repository.Ca
                 devices.getReferenceById(scenario.action().deviceId()));
     }
 
-    public void deleteDevice(UUID id) {
-        devices.deleteById(id);
+    public void deleteDevice(UUID id, String owner) {
+        var entity = devices.findByIdAndOwner(id, owner).orElseThrow();
+        devices.delete(entity);
         devices.flush();
     }
 }
