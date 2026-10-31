@@ -1,0 +1,7 @@
+**
+!backend/
+!backend/ujin/
+!backend/ujin/Dockerfile
+!backend/ujin/build/
+!backend/ujin/build/libs/
+!backend/ujin/build/libs/*.jar

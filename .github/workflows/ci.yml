@@ -1,0 +1,78 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [develop, main]
+  push:
+    branches: [develop, main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+      - uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6
+        with:
+          distribution: temurin
+          java-version: '25'
+          cache: gradle
+          cache-dependency-path: |
+            backend/ujin/*.gradle.kts
+            backend/ujin/gradle/wrapper/gradle-wrapper.properties
+      - name: Build and test backend
+        working-directory: backend/ujin
+        run: bash gradlew --no-daemon --max-workers=2 --console=plain clean test bootJar
+      - name: Require executed tests
+        run: python3 infra/verify_junit.py backend/ujin/build/test-results/test
+      - name: Save test reports
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: backend-test-reports
+          path: |
+            backend/ujin/build/test-results/test/
+            backend/ujin/build/reports/tests/test/
+          if-no-files-found: error
+          retention-days: 7
+      - name: Save backend JAR
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: backend-jar
+          path: backend/ujin/build/libs/*.jar
+          if-no-files-found: error
+          retention-days: 7
+      - name: Build runtime image
+        run: docker build -f backend/ujin/Dockerfile --build-arg VCS_REF="$GITHUB_SHA" -t ujin-backend:ci .
+      - name: Check unprivileged runtime
+        run: |
+          # Expand id inside the container.
+          # shellcheck disable=SC2016
+          docker run --rm --network none --read-only --cap-drop ALL \
+            --security-opt no-new-privileges --entrypoint sh ujin-backend:ci \
+            -c 'test "$(id -u)" != 0 && test -r /app/app.jar && java -version'
+
+  infrastructure:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+      - name: Check scripts
+        run: |
+          for script in infra/*.sh; do bash -n "$script"; done
+          shellcheck infra/*.sh
+          python3 -m unittest discover -s infra/tests -v
+      - name: Verify PostgreSQL health, persistence and restore
+        run: bash infra/test-postgres.sh
