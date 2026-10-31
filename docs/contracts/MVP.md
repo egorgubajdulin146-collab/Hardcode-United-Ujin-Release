@@ -264,3 +264,22 @@ rules can be enabled normally. Existing enabled UJIN rows are not rewritten:
 the executor continues to skip them, and the UI labels them as unsupported.
 To save such a row, explicitly disable it or choose LOCAL. No schema/data
 migration or automatic mode conversion is performed.
+## CHANGE semantics for LOCAL WET
+
+The first valid observation initializes the signal and evaluates matching LOCAL
+rules. Later observations evaluate actions only when the numeric value changes.
+A new eventId with the same value is still persisted as PROCESSED; matching LOCAL
+rules get SKIPPED / NO_STATE_CHANGE without executing actions. This reason takes
+precedence over enabled/condition checks for an unchanged observation. A changed
+value still yields SCENARIO_DISABLED or CONDITION_FALSE when appropriate.
+An unchanged observation does not rewrite the signal's updatedAt. Event receipt
+records when the observation was accepted. Replaying an existing eventId returns
+its original receipt even if the current state has since changed; a conflicting
+payload with the same ID still returns 409. The prior signal value is persisted
+in the existing state table, so restart does not reset CHANGE detection. A retry
+after restoring an offline target requires a new source transition, not the same
+value under another ID. No cascaded events are emitted by actions.
+
+Example: first WET=0 -> CONDITION_FALSE; WET=1 -> SUCCEEDED;
+new eventId/WET=1 -> NO_STATE_CHANGE; WET=0 -> CONDITION_FALSE;
+WET=1 -> SUCCEEDED. A replay creates no additional run.

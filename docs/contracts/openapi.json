@@ -538,7 +538,8 @@
               }
             }
           }
-        }
+        },
+        "description": "LOCAL WET CHANGE: first observation evaluates rules; new eventId with unchanged value returns PROCESSED and matching runs SKIPPED/NO_STATE_CHANGE without action. Existing eventId replay returns original receipt; changed payload conflicts. Prior state persists across restart."
       }
     },
     "/api/v1/events/{eventId}": {
