@@ -6,29 +6,35 @@ import { clearCsrf } from "./authClient";
 export function SessionProvider({ children }: { children: ReactNode }) {
   const [authed, setAuthed] = useState(false);
   const queryClient = useQueryClient();
-  const sessionEpoch = useRef(0);
+  const epochRef = useRef(0);
+  const [sessionEpoch, setSessionEpoch] = useState(0);
+
+  const bumpEpoch = useCallback(() => {
+    epochRef.current += 1;
+    setSessionEpoch(epochRef.current);
+  }, []);
 
   const terminateSession = useCallback(() => {
-    sessionEpoch.current += 1;
+    bumpEpoch();
     setAuthed(false);
     clearCsrf();
     queryClient.cancelQueries();
     queryClient.clear();
-  }, [queryClient]);
+  }, [bumpEpoch, queryClient]);
 
   const onLogout = useCallback(() => {
     terminateSession();
   }, [terminateSession]);
 
   const onLogin = useCallback(() => {
-    sessionEpoch.current += 1;
+    bumpEpoch();
     setAuthed(true);
     queryClient.clear();
-  }, [queryClient]);
+  }, [bumpEpoch, queryClient]);
 
   return (
     <SessionContext.Provider
-      value={{ authed, setAuthed, terminateSession, onLogout, onLogin }}
+      value={{ authed, sessionEpoch, setAuthed, terminateSession, onLogout, onLogin }}
     >
       {children}
     </SessionContext.Provider>

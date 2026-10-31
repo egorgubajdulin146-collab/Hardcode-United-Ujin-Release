@@ -86,12 +86,13 @@ export async function logout(): Promise<void> {
 
 export async function readSignal(
   serialnumber: string,
-  signalName: string
+  signalName: string,
+  signal?: AbortSignal
 ): Promise<UjinAdapterSignalValue> {
   try {
     const response = await fetch(
       `/api/v1/ujin/devices/${encodeURIComponent(serialnumber)}/signals?name=${encodeURIComponent(signalName)}`,
-      { credentials: "include" }
+      { credentials: "include", signal }
     );
     if (response.status === 401) {
       throw new AuthError("invalid_credentials", "Требуется авторизация");
@@ -111,6 +112,9 @@ export async function readSignal(
     return await response.json();
   } catch (err) {
     if (err instanceof AuthError) throw err;
+    if (err instanceof DOMException && err.name === "AbortError") {
+      throw err; // Пробрасываем отмену как есть
+    }
     if (err instanceof TypeError) {
       throw new AuthError("network", "Сервер недоступен");
     }

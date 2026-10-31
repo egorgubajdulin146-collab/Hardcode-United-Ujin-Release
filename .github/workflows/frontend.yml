@@ -35,6 +35,8 @@ jobs:
         run: npm run lint
       - name: Check API client regression
         run: node --test infra/tests/frontend-client.test.mjs
+      - name: Check auth scenarios
+        run: node --test infra/tests/frontend-auth.test.mjs
       - name: Build frontend
         working-directory: frontend
         run: npm run build

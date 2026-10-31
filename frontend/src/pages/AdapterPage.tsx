@@ -1,4 +1,4 @@
-import { useState, useRef, type FormEvent } from "react";
+import { useState, useRef, useEffect, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { Wifi, Search, AlertCircle, Loader2, Database } from "lucide-react";
 import { readSignal, AuthError } from "../api/authClient";
@@ -14,12 +14,19 @@ export function AdapterPage() {
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<UjinAdapterSignalValue | null>(null);
 
-  const { setAuthed, terminateSession } = useSession();
+  const { setAuthed, terminateSession, sessionEpoch } = useSession();
   const mock = isMock();
   const navigate = useNavigate();
 
   const abortRef = useRef<AbortController | null>(null);
-  const requestEpoch = useRef(0);
+  const startEpochRef = useRef(0);
+
+  // Отмена запроса при размонтировании
+  useEffect(() => {
+    return () => {
+      abortRef.current?.abort();
+    };
+  }, []);
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -29,22 +36,31 @@ export function AdapterPage() {
     abortRef.current?.abort();
     const controller = new AbortController();
     abortRef.current = controller;
-    const epoch = ++requestEpoch.current;
+
+    // Запоминаем epoch на момент старта запроса
+    const startEpoch = sessionEpoch;
+    startEpochRef.current = startEpoch;
 
     setLoading(true);
     setError(null);
     setResult(null);
 
     try {
-      const data = await readSignal(serialnumber.trim(), signalName.trim());
+      const data = await readSignal(
+        serialnumber.trim(),
+        signalName.trim(),
+        controller.signal
+      );
 
-      // Проверяем, что запрос всё ещё актуален
-      if (epoch !== requestEpoch.current) return;
+      // Проверяем: запрос не отменён и сессия не изменилась
+      if (controller.signal.aborted) return;
+      if (sessionEpoch !== startEpochRef.current) return;
 
       setResult(data);
       setAuthed(true);
     } catch (err) {
-      if (epoch !== requestEpoch.current) return;
+      if (controller.signal.aborted) return;
+      if (sessionEpoch !== startEpochRef.current) return;
 
       if (err instanceof AuthError) {
         if (err.kind === "invalid_credentials") {
@@ -57,7 +73,7 @@ export function AdapterPage() {
         setError("Неизвестная ошибка");
       }
     } finally {
-      if (epoch === requestEpoch.current) {
+      if (!controller.signal.aborted && sessionEpoch === startEpochRef.current) {
         setLoading(false);
       }
     }
