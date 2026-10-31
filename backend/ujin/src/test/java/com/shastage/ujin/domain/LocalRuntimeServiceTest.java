@@ -61,6 +61,28 @@ class LocalRuntimeServiceTest {
     }
 
     @Test
+    void journalReturnsNewestPageAndExactEventBeyondFirstTwenty() {
+        UUID latestEvent = null;
+        for (int i = 0; i < 21; i++) {
+            UUID event = UUID.randomUUID();
+            runtimeService.processStimulus(leakDeviceId, event, "WET", 1);
+            var run = runRepo.findAll().stream().filter(r -> event.equals(r.getEventId())).findFirst().orElseThrow();
+            run.setCreatedAt(java.time.Instant.parse("2026-10-31T12:00:00Z").plusSeconds(i).toString());
+            runRepo.saveAndFlush(run);
+            latestEvent = event;
+        }
+        var first = runtimeService.getRuns(0, 20, null, null);
+        var firstItems = (List<?>) first.get("items");
+        assertEquals(21L, first.get("total"));
+        assertEquals(20, firstItems.size());
+        assertEquals(latestEvent.toString(), ((Map<?, ?>) firstItems.get(0)).get("eventId"));
+        assertEquals(1, ((List<?>) runtimeService.getRuns(1, 20, null, null).get("items")).size());
+        var filtered = runtimeService.getRuns(0, 20, latestEvent, scenarioId);
+        assertEquals(1L, filtered.get("total"));
+        assertEquals(latestEvent.toString(), ((Map<?, ?>) ((List<?>) filtered.get("items")).get(0)).get("eventId"));
+    }
+
+    @Test
     void successfulChain() {
         var eventId = UUID.randomUUID();
         var result = runtimeService.processStimulus(leakDeviceId, eventId, "WET", 1);

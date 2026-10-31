@@ -398,7 +398,7 @@ public class LocalRuntimeService {
         if ((long) page * size > Integer.MAX_VALUE) throw new CatalogException(400, "INVALID_REQUEST", "Page offset exceeds maximum");
         if (size < 1 || size > 100) throw new CatalogException(400, "INVALID_REQUEST", "size must be 1-100");
 
-        var pageable = org.springframework.data.domain.PageRequest.of(page, size);
+        var pageable = org.springframework.data.domain.PageRequest.of(page, size, org.springframework.data.domain.Sort.by(org.springframework.data.domain.Sort.Order.desc("createdAt"), org.springframework.data.domain.Sort.Order.desc("id")));
         org.springframework.data.domain.Page<RunEntity> runPage;
 
         if (eventId != null && scenarioId != null) {

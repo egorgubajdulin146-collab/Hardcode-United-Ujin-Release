@@ -1,3 +1,6 @@
+import { useEffect, useState } from "react";
+import { useSearchParams } from "react-router-dom";
+import { useSession } from "../api/sessionContext";
 import { useQuery } from "@tanstack/react-query";
 import { PlayCircle, CheckCircle, XCircle, Clock, HelpCircle, Ban, SkipForward } from "lucide-react";
 import { endpoints } from "../api/endpoints";
@@ -70,6 +73,8 @@ function RunCard({ run, mock }: { run: Run; mock: boolean }) {
         </span>
       </div>
 
+      <p className={styles.runIdentifiers}>Событие: {run.eventId}<br />Сценарий: {run.scenarioId} · версия {run.scenarioVersion}</p>
+
       {run.reason && (
         <div className={styles.reasonLine}>
           Причина: {run.reason}
@@ -100,15 +105,33 @@ function RunCard({ run, mock }: { run: Run; mock: boolean }) {
 }
 
 export function RunsPage() {
+  const [params, setParams] = useSearchParams();
+  const eventId = params.get("eventId") ?? "";
+  const scenarioId = params.get("scenarioId") ?? "";
+  const [eventInput, setEventInput] = useState(eventId);
+  const [scenarioInput, setScenarioInput] = useState(scenarioId);
+  const { terminateSession } = useSession();
+  useEffect(() => { setEventInput(eventId); setScenarioInput(scenarioId); }, [eventId, scenarioId]);
+  const pageIndex = Number(params.get("page") ?? "0");
+  const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  const valid = (!eventId || uuid.test(eventId)) && (!scenarioId || uuid.test(scenarioId)) &&
+    Number.isInteger(pageIndex) && pageIndex >= 0 && pageIndex * 20 <= 2147483647;
+  const setPage = (page: number) => {
+    const next = new URLSearchParams(params); next.set("page", String(page)); setParams(next);
+  };
   const mock = isMock();
   const source = getDataSource();
 
   const { data, isLoading, error, refetch } = useQuery({
-    queryKey: ["runs", source],
-    queryFn: ({ signal }) => endpoints.runs.list(undefined, signal),
-    enabled: !mock,
+    queryKey: ["runs", source, eventId, scenarioId, pageIndex],
+    queryFn: ({ signal }) => endpoints.runs.list({ page: pageIndex, size: 20, eventId: eventId || undefined, scenarioId: scenarioId || undefined }, signal),
+    enabled: !mock && valid,
+    refetchInterval: 5000,
   });
 
+  useEffect(() => {
+    if (error instanceof ApiError && error.status === 401) terminateSession();
+  }, [error, terminateSession]);
   const page = mock ? mockRunPage : data;
 
   if (isLoading && !mock) return <LoadingState />;
@@ -145,7 +168,19 @@ export function RunsPage() {
         </p>
       </div>
 
-      {runs.length === 0 ? (
+      {!mock && <form className={styles.journalFilters} onSubmit={e => {
+        e.preventDefault(); const next = new URLSearchParams();
+        if (eventInput.trim()) next.set("eventId", eventInput.trim());
+        if (scenarioInput.trim()) next.set("scenarioId", scenarioInput.trim());
+        setParams(next);
+      }}>
+        <label>Событие<input value={eventInput} onChange={e => setEventInput(e.target.value)} placeholder="UUID события" pattern="[0-9a-fA-F-]{36}" /></label>
+        <label>Сценарий<input value={scenarioInput} onChange={e => setScenarioInput(e.target.value)} placeholder="UUID сценария" pattern="[0-9a-fA-F-]{36}" /></label>
+        <button type="submit">Применить</button>
+        <button type="button" onClick={() => setParams({})}>Сбросить</button>
+        <button type="button" disabled={!valid} onClick={() => { void refetch(); }}>Обновить</button>
+      </form>}
+      {!valid && !mock ? <p role="alert">Проверьте UUID фильтров и номер страницы.</p> : runs.length === 0 ? (
         <EmptyState
           title="Запусков пока нет"
           description="Здесь появится история выполнения сценариев"
@@ -157,6 +192,11 @@ export function RunsPage() {
           ))}
         </div>
       )}
+      {!mock && valid && <nav className={styles.journalPagination} aria-label="Страницы журнала">
+        <button type="button" disabled={pageIndex === 0} onClick={() => setPage(pageIndex - 1)}>Назад</button>
+        <span>Страница {pageIndex + 1} · запусков: {page?.total ?? 0}</span>
+        <button type="button" disabled={(pageIndex + 1) * 20 >= (page?.total ?? 0)} onClick={() => setPage(pageIndex + 1)}>Далее</button>
+      </nav>}
     </div>
   );
 }
