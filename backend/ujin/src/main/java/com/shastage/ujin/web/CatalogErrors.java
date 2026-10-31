@@ -9,7 +9,7 @@ import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
-@RestControllerAdvice(assignableTypes = {CatalogController.class, com.shastage.ujin.web.controller.RuntimeController.class, com.shastage.ujin.web.controller.UjinSignalController.class})
+@RestControllerAdvice(assignableTypes = {CatalogController.class, com.shastage.ujin.web.controller.RuntimeController.class, com.shastage.ujin.web.controller.UjinSignalController.class, com.shastage.ujin.web.controller.PlatformBindingController.class})
 public class CatalogErrors {
     public record Problem(String type, String title, int status, String code, String detail) {}
 

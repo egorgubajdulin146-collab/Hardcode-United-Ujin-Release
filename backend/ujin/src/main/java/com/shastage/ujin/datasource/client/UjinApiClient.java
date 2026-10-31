@@ -9,6 +9,8 @@ import java.net.HttpURLConnection;
 import java.net.URI;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.List;
 
 public final class UjinApiClient {
     private final URI base;
@@ -71,6 +73,60 @@ public final class UjinApiClient {
             }
         }
         throw new UjinApiException(UjinApiException.Kind.SIGNAL_NOT_FOUND);
+    }
+
+    // ===== Полный снимок назначений резидента: один запрос на вызов =====
+    public List<PlatformDevice> fetchDeviceSignals(String token) {
+        requireValue(token, "token");
+        URI uri = URI.create(base + "/apartment/get-device-signals/?token=" + encode(token));
+        JsonNode root = executeGet(uri);
+        JsonNode devices = root.path("data").path("devices");
+        if (!devices.isArray()) {
+            throw new UjinApiException(UjinApiException.Kind.BAD_RESPONSE);
+        }
+        List<PlatformDevice> result = new ArrayList<>();
+        for (JsonNode device : devices) {
+            if (!device.isObject()) {
+                throw new UjinApiException(UjinApiException.Kind.BAD_RESPONSE);
+            }
+            JsonNode signals = device.path("signals");
+            if (!signals.isArray()) {
+                throw new UjinApiException(UjinApiException.Kind.BAD_RESPONSE);
+            }
+            List<PlatformDevice.PlatformSignal> parsed = new ArrayList<>();
+            for (JsonNode signal : signals) {
+                if (!signal.isObject()) {
+                    throw new UjinApiException(UjinApiException.Kind.BAD_RESPONSE);
+                }
+                parsed.add(parseSignal(signal));
+            }
+            result.add(new PlatformDevice(device.path("id").asString(""), List.copyOf(parsed)));
+        }
+        return List.copyOf(result);
+    }
+
+    private static PlatformDevice.PlatformSignal parseSignal(JsonNode signal) {
+        String name = signal.path("name").asString("");
+        String dt = signal.path("dt").asString(null);
+        JsonNode value = signal.path("value");
+        if (value.isMissingNode() || value.isNull()) {
+            return new PlatformDevice.PlatformSignal(
+                    name, PlatformDevice.PlatformSignal.ValueKind.NULL, null, null, null, dt);
+        }
+        if (value.isNumber()) {
+            return new PlatformDevice.PlatformSignal(
+                    name, PlatformDevice.PlatformSignal.ValueKind.NUMBER, value.asDouble(), null, null, dt);
+        }
+        if (value.isString()) {
+            return new PlatformDevice.PlatformSignal(
+                    name, PlatformDevice.PlatformSignal.ValueKind.STRING, null, value.asString(), null, dt);
+        }
+        if (value.isBoolean()) {
+            return new PlatformDevice.PlatformSignal(
+                    name, PlatformDevice.PlatformSignal.ValueKind.BOOLEAN, null, null, value.asBoolean(), dt);
+        }
+        return new PlatformDevice.PlatformSignal(
+                name, PlatformDevice.PlatformSignal.ValueKind.OTHER, null, null, null, dt);
     }
 
     // ===== Аутентификация =====
