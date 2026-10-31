@@ -10,9 +10,13 @@ const device = { id: 'device', title: 'Device', family: 'leak', platformLink: 'N
   { key: 'wet', title: 'Leak', management: 'r' },
   { key: 'lamp', title: 'Lamp', management: 'rw', min: 0, max: 1 },
 ] };
-function mount({ availability = 'ONLINE', stateError, stimulus, send = async () => ({ status: 'PENDING', commandId: 'command' }) } = {}) {
+function mount({ availability = 'ONLINE', stateError, stimulus, availabilityUpdate, send = async () => ({ status: 'PENDING', commandId: 'command' }) } = {}) {
   const calls = [];
-  const endpoints = { commands: { send: async (...args) => { calls.push(['command', ...args]); return send(...args); } },
+  const endpoints = { devices: { setAvailability: async (...args) => {
+    calls.push(['availability', ...args]);
+    if (availabilityUpdate) return availabilityUpdate(...args);
+    return { availability: args[1], values: [] };
+  } }, commands: { send: async (...args) => { calls.push(['command', ...args]); return send(...args); } },
     stimuli: { send: async (...args) => { calls.push(['stimulus', ...args]); if (stimulus) return stimulus(...args); return { status: 'PROCESSED', eventId: 'event', runIds: [] }; } } };
   class ApiError extends Error {}
   const source = readFileSync(new URL('../../frontend/src/components/DeviceRuntimePanel.tsx', import.meta.url), 'utf8');
@@ -21,7 +25,7 @@ function mount({ availability = 'ONLINE', stateError, stimulus, send = async () 
     '../api/endpoints': { endpoints }, '../api/client': { ApiError },
     '../api/sessionContext': { useSession: () => ({ terminateSession() {} }) },
     'react-router-dom': { Link: props => React.createElement('a', props) },
-    '@tanstack/react-query': { useQueryClient: () => ({ invalidateQueries() {} }),
+    '@tanstack/react-query': { useQueryClient: () => ({ invalidateQueries() {}, setQueryData() {} }),
       useQuery: options => ({ error: options.queryKey[0] === 'device-state' ? stateError : undefined, data: options.queryKey[0] === 'device-state' ? { availability, values: [{ signalKey: 'wet', value: 0, updatedAt: '2026-10-31T12:00:00Z' }] } : undefined, refetch() {} }) },
   };
   const exports = {};
@@ -45,7 +49,7 @@ test('offline device cannot receive commands or stimuli', () => {
 });
 test('pending command is not presented as executed and blocks duplicate sending', async () => {
   const { root, calls } = mount();
-  await act(async () => { root.root.findByType('input').props.onChange({ target: { value: '1' } }); });
+  await act(async () => { root.root.findAllByType('input').find(i => i.props.type === 'number').props.onChange({ target: { value: '1' } }); });
   await act(async () => { root.root.findByType('form').props.onSubmit({ preventDefault() {} }); });
   assert.equal(calls.length, 1);
   assert.equal(calls[0][2].executionMode, 'LOCAL');
@@ -55,7 +59,7 @@ test('pending command is not presented as executed and blocks duplicate sending'
 });
 test('lost command response keeps UNKNOWN and prevents a new command id', async () => {
   const { root, calls } = mount({ send: async () => { throw new Error('Network failure'); } });
-  await act(async () => { root.root.findByType('input').props.onChange({ target: { value: '1' } }); });
+  await act(async () => { root.root.findAllByType('input').find(i => i.props.type === 'number').props.onChange({ target: { value: '1' } }); });
   await act(async () => { root.root.findByType('form').props.onSubmit({ preventDefault() {} }); });
   assert.equal(calls.length, 1);
   assert.ok(root.root.findAllByType('p').some(p => p.children.includes('Результат неизвестен')));
@@ -82,5 +86,24 @@ test('lost stimulus response does not fabricate ACCEPTED', async () => {
   assert.ok(root.root.findAllByType('p').some(p => p.children.includes('Приём события не подтверждён. Проверяем результат. ')));
   assert.ok(!root.root.findAllByType('p').some(p => p.children.includes('Событие принято')));
   assert.ok(root.root.findAllByType('button').find(b => b.children.includes('Вода отсутствует')).props.disabled);
+  act(() => root.unmount());
+});
+
+
+test('offline emulator can be restored without sending a device command', async () => {
+  const { root, calls } = mount({ availability: 'OFFLINE' });
+  const toggle = root.root.findAllByType('input').find(i => i.props.type === 'checkbox');
+  assert.equal(toggle.props.checked, false);
+  assert.equal(toggle.props.disabled, false);
+  await act(async () => { await toggle.props.onChange({ target: { checked: true } }); });
+  assert.deepEqual(calls, [['availability', 'device', 'ONLINE']]);
+  act(() => root.unmount());
+});
+
+test('failed availability update shows an error without reporting success', async () => {
+  const { root } = mount({ availabilityUpdate: async () => { throw new Error('Unavailable'); } });
+  await act(async () => { await root.root.findAllByType('input').find(i => i.props.type === 'checkbox').props.onChange({ target: { checked: false } }); });
+  assert.ok(root.root.findAllByType('p').some(p => p.children.some(c => typeof c === 'string' && c.includes('Обновите состояние'))));
+  assert.equal(root.root.findAllByType('input').find(i => i.props.type === 'checkbox').props.checked, true);
   act(() => root.unmount());
 });

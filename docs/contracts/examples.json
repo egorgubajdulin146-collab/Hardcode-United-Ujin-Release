@@ -410,6 +410,36 @@
           "resolvedAt": "2026-10-31T12:00:00+05:00"
         }
       }
+    },
+    {
+      "schema": "Run",
+      "value": {
+        "id": "40000000-0000-4000-8000-000000000001",
+        "eventId": "30000000-0000-4000-8000-000000000001",
+        "scenarioId": "20000000-0000-4000-8000-000000000001",
+        "scenarioVersion": 1,
+        "executionMode": "LOCAL",
+        "status": "SKIPPED",
+        "createdAt": "2026-10-31T10:00:00+05:00",
+        "input": {
+          "signalKey": "leak",
+          "value": 1,
+          "updatedAt": "2026-10-31T10:00:00+05:00"
+        },
+        "entries": [
+          {
+            "at": "2026-11-01T00:00:00Z",
+            "stage": "EVENT",
+            "message": "leak=1 observed again with a new eventId"
+          },
+          {
+            "at": "2026-11-01T00:00:00Z",
+            "stage": "CONDITION",
+            "message": "NO_STATE_CHANGE: action not executed"
+          }
+        ],
+        "reason": "NO_STATE_CHANGE"
+      }
     }
   ]
 }

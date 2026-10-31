@@ -53,6 +53,8 @@ export const endpoints = {
       api.delete(`/api/v1/devices/${id}?expectedVersion=${expectedVersion}`),
     getState: (id: string, mode: "LOCAL" | "UJIN", signal?: AbortSignal) =>
       api.get<DeviceState>(`/api/v1/devices/${id}/state?mode=${mode}`, signal),
+    setAvailability: (id: string, availability: "ONLINE" | "OFFLINE") =>
+      api.put<DeviceState>(`/api/v1/devices/${id}/availability`, { availability, executionMode: "LOCAL" }),
     getDependencies: (id: string, signal?: AbortSignal) =>
       api.get<DeviceDependencies>(`/api/v1/devices/${id}/dependencies`, signal),
   },

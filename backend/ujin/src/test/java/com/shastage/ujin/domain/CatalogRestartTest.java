@@ -86,4 +86,35 @@ class CatalogRestartTest {
                             .version());
         }
     }
+    @Test
+    void changeDetectionAndOriginalReceiptSurviveRestart() {
+        java.util.UUID sensorId;
+        var originalId = java.util.UUID.randomUUID();
+        java.util.Map<String, Object> original;
+        try (var context = start()) {
+            var catalog = context.getBean(CatalogService.class);
+            var runtime = context.getBean(com.shastage.ujin.domain.service.LocalRuntimeService.class);
+            var sensor = catalog.create(new DeviceWrite("Persistent leak", "leak", List.of(
+                new Signal("leak", "Leak", "property", "r", "NUMBER", "switch", null, 0.0, 1.0, null)),
+                List.of(new Event("changed", "Changed", "leak", "CHANGE")), null), "owner");
+            sensorId = sensor.id();
+            var target = catalog.create(new DeviceWrite("Persistent lamp", "light", List.of(
+                new Signal("lamp", "Lamp", "capability", "rw", "NUMBER", "switch", null, 0.0, 1.0, null)), List.of(), null), "owner");
+            catalog.create(new ScenarioWrite("Persistent CHANGE", true, "LOCAL", new Trigger(sensorId, "leak", "EQ", 1.0, "changed"), new Action(target.id(), "lamp", 1.0), null), "owner");
+            original = runtime.processStimulus(sensorId, originalId, "WET", 1, "owner");
+        }
+        try (var context = start()) {
+            var runtime = context.getBean(com.shastage.ujin.domain.service.LocalRuntimeService.class);
+            assertEquals(original, runtime.processStimulus(sensorId, originalId, "WET", 1, "owner"));
+            var repeated = runtime.processStimulus(sensorId, java.util.UUID.randomUUID(), "WET", 1, "owner");
+            var runId = ((List<?>) repeated.get("runIds")).getFirst().toString();
+            var run = runtime.getRun(java.util.UUID.fromString(runId), "owner");
+            assertEquals("SKIPPED", run.get("status"));
+            assertEquals("NO_STATE_CHANGE", run.get("reason"));
+            runtime.processStimulus(sensorId, java.util.UUID.randomUUID(), "WET", 0, "owner");
+            var changed = runtime.processStimulus(sensorId, java.util.UUID.randomUUID(), "WET", 1, "owner");
+            var changedId = ((List<?>) changed.get("runIds")).getFirst().toString();
+            assertEquals("SUCCEEDED", runtime.getRun(java.util.UUID.fromString(changedId), "owner").get("status"));
+        }
+    }
 }

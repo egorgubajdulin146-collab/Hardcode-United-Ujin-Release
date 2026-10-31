@@ -76,6 +76,22 @@ export function DeviceRuntimePanel({ device, onClose }: { device: Device; onClos
     void queryClient.invalidateQueries({ queryKey: ["device-state", device.id] });
     void queryClient.invalidateQueries({ queryKey: ["runs"] });
   };
+  const setAvailability = async (availability: "ONLINE" | "OFFLINE") => {
+    if (mode !== "LOCAL" || busy || unresolved) return;
+    setBusy(true); setError(null);
+    try {
+      const updated = await endpoints.devices.setAvailability(device.id, availability);
+      if (active.current) {
+        queryClient.setQueryData(["device-state", device.id, "LOCAL"], updated);
+        refresh();
+      }
+    } catch (err) {
+      if (!active.current) return;
+      if (err instanceof ApiError && err.status === 401) terminateSession();
+      else setError(`${errorMessage(err)} Обновите состояние перед повтором.`);
+      refresh();
+    } finally { if (active.current) setBusy(false); }
+  };
   const sendCommand = async (signal: SignalDefinition) => {
     const raw = values[signal.key] ?? "";
     const value = Number(raw);
@@ -123,6 +139,11 @@ export function DeviceRuntimePanel({ device, onClose }: { device: Device; onClos
       <button type="button" onClick={() => { void state.refetch(); }} disabled={state.isFetching}>Обновить состояние</button>
       <span>{state.isLoading ? "Загрузка…" : state.error ? "Состояние недоступно" : state.data?.availability === "ONLINE" ? "На связи" : state.data?.availability === "OFFLINE" ? "Не на связи" : "Состояние неизвестно"}</span>
     </div>
+    {mode === "LOCAL" && <label>
+      <input type="checkbox" checked={online} disabled={busy || !!unresolved || state.isLoading || !!state.error}
+        onChange={e => void setAvailability(e.target.checked ? "ONLINE" : "OFFLINE")} />
+      Эмулятор онлайн
+    </label>}
     {requestError && <p role="alert" className={styles.error}>{errorMessage(requestError)}</p>}
     {mode === "UJIN" && !canCommand && <p>Управление доступно после привязки устройства и подтверждения командного канала Ujin.</p>}
     <div className={styles.signals}>{device.signals.map(signal => {
