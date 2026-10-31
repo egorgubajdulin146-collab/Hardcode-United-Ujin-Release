@@ -9,8 +9,8 @@ LOCAL выполняет сценарий внутри backend. Демо/MOCK п
 
 ## Быстрый запуск
 
-Нужны Linux/GNU, Bash, Docker Engine с Compose v2, Node.js22/npm, Python3,
-curl и OpenSSL. JDK25 используется внутри контейнера сборки.
+Нужны Bash, Docker Engine с Compose v2 (Linux или Docker Desktop), Node.js22/npm,
+Python3, curl и OpenSSL. JDK25 используется внутри контейнера сборки.
 Для первой сборки нужен интернет. Из чистого checkout:
 
 ```sh
@@ -55,13 +55,17 @@ Frontend по умолчанию использует API. Backend и БД не 
 
 ## Первый сценарий LOCAL
 
-1. Создайте «Датчик протечки», family `leak`. Сигнал `leak`, title «Протечка»,
-   group `property`, management `r`, control `input`, min0/max1, enum0,1.
-   Конструктор задаёт NUMBER. Событие `leak_changed` связано с `leak` (CHANGE).
-2. Создайте «Сигнальная лампа», family `light`. Сигнал `lamp`, title «Свет»,
-   group `capability`, management `rw`, control `input`, min0/max1, enum0,1.
-3. Создайте включённое LOCAL-правило: событие leak_changed, условие leak EQ1,
-   действие lamp=1 на лампе. Сохраните и откройте заново.
+1. В разделе «Устройства» нажмите «Добавить устройство» и выберите шаблон
+   «Датчик протечки». Он заполнит показания `leak` (0 — сухо, 1 — протечка),
+   `battery` и событие изменения протечки. Проверьте название и нажмите «Создать».
+2. Так же создайте устройство из шаблона «Сигнальная лампа». У него есть
+   управляемый сигнал `lamp` (0 — выключено, 1 — включено). Создание в этом
+   каталоге не регистрирует оборудование на платформе Ujin.
+3. В разделе сценариев создайте правило «При протечке включить свет».
+   Где выполнять — «Локально — на эмуляторах»; «Сценарий включён» — да.
+   Когда: датчик → «Протечка» → «Изменение протечки».
+   Если: «1 — Протечка». Тогда: лампа → «Свет» → «1 — Свет включён».
+   Сохраните и откройте заново.
 4. В панели лампы выберите «Локальный», отправьте lamp=0. В панели датчика
    выберите «Локальный», нажмите «Вода отсутствует», затем «Обнаружить воду».
 5. Откройте ссылку журнала: EVENT, CONDITION, ACTION, RESULT и SUCCEEDED с
@@ -78,9 +82,12 @@ Frontend по умолчанию использует API. Backend и БД не 
 ```sh
 npm --prefix frontend run lint
 node --test infra/tests/frontend-*.test.mjs
-python3 -m unittest discover -s infra/tests -v
 bash infra/test-runtime.sh
 ```
+
+Тесты deploy/rollback требуют Linux/GNU и `flock`; их полный прогон выполняется
+в Linux CI: `python3 -m unittest discover -s infra/tests -v`.
+Локальный запуск Docker на macOS не требует этих утилит.
 
 Backend build уже запускает тесты. Runtime smoke не заменяет функциональную
 приёмку. PostgreSQL хранит данные в named volume.
@@ -95,8 +102,9 @@ docker compose --project-directory . --env-file .env -f infra/compose.yaml -f in
 
 ## Ограничения
 
-- Повтор того же eventId идемпотентен. Новый eventId при неизменном WET пока
-  может повторно выполнить правило. Подавление такого CHANGE требует исправления.
+- Повтор того же eventId возвращает прежнюю квитанцию без нового действия.
+  Новый eventId при неизменном WET записывается как NO_STATE_CHANGE, без повторного
+  выполнения. Для нового положительного запуска нужен переход 1→0→1.
 - Авторизация и диагностика чтения Ujin существуют. Полный roundtrip
   публикации/downlink этим LOCAL-примером не подтверждён. Проверяйте статус
   возможностей адаптера. Недоступный UJIN не подменяется LOCAL-успехом.
@@ -108,7 +116,7 @@ docker compose --project-directory . --env-file .env -f infra/compose.yaml -f in
 
 [Runtime](infra/RUNTIME.md), [backup/restore](infra/README.md),
 [безопасный rollback](infra/ROLLBACK.md), [контракт](docs/contracts/MVP.md),
-[frontend development](frontend/README.md).
+[frontend development](frontend/README.md), [демонстрация и приёмка](docs/DEMO.md).
 
 CI проверяет backend/frontend/инфраструктуру. Push в develop после успешных
 проверок публикует артефакт и запускает SSH deploy при настроенных vars
@@ -118,5 +126,8 @@ CI/deploy не заменяют приёмку фактического runtime 
 
 Публикация текущих показаний после привязки устройства: [настройка и квитанции](docs/UJIN_PUBLICATION.md).
 Включается оператором для назначенных устройств; реальный результат проверяется отдельным чтением.
+
+Доставка команд через Ujin: [настройка и ограничения](docs/UJIN_COMMAND_DELIVERY.md).
+Она выключена по умолчанию. Наличие кода и зелёный CI не подтверждают live roundtrip.
 
 Порядок работы: [CONTRIBUTING.md](CONTRIBUTING.md).
