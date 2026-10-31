@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from "react";
+import { useState, useEffect, type FormEvent } from "react";
 import { Plus, Trash2, AlertCircle, Loader2, X, Download } from "lucide-react";
 import type { DeviceWrite, SignalDefinition, EventDefinition } from "../api/types";
 import styles from "./DeviceForm.module.css";
@@ -29,14 +29,12 @@ const EMPTY_EVENT: EventDefinition = {
   emission: "CHANGE",
 };
 
-// Разрешённые сочетания group/management
 const GROUP_MGMT: Record<string, string[]> = {
   property: ["r"],
   capability: ["rw", "w"],
   setting: ["rw"],
 };
 
-// Допустимые management для событий (только читаемые)
 const READABLE_MGMT = ["r", "rw"];
 
 export function DeviceForm({ initial, onSubmit, onCancel, loading, error, conflictType, onReloadFresh }: Props) {
@@ -44,27 +42,91 @@ export function DeviceForm({ initial, onSubmit, onCancel, loading, error, confli
   const [family, setFamily] = useState(initial?.family ?? "");
   const [signals, setSignals] = useState<SignalDefinition[]>(initial?.signals ?? []);
   const [events, setEvents] = useState<EventDefinition[]>(initial?.events ?? []);
+  // Сырой текст enumValues для каждого сигнала
+  const [enumTexts, setEnumTexts] = useState<string[]>(() =>
+    (initial?.signals ?? []).map((s) => s.enumValues?.join(", ") ?? "")
+  );
+  const [enumErrors, setEnumErrors] = useState<string[]>([]);
+
+  // Обновление полей при смене initial (например, после загрузки свежей версии)
+  useEffect(() => {
+    if (initial) {
+      setTitle(initial.title ?? "");
+      setFamily(initial.family ?? "");
+      setSignals(initial.signals ?? []);
+      setEvents(initial.events ?? []);
+      setEnumTexts((initial.signals ?? []).map((s) => s.enumValues?.join(", ") ?? ""));
+      setEnumErrors([]);
+    }
+  }, [initial]);
+
+  // Парсинг enumValues при сохранении
+  const parseEnumValues = (text: string): { values?: number[]; error?: string } => {
+    const trimmed = text.trim();
+    if (!trimmed) return { values: undefined };
+    const parts = trimmed.split(",").map((s) => s.trim());
+    const numbers: number[] = [];
+    for (const part of parts) {
+      if (part === "") return { error: "Пустой элемент в enumValues" };
+      const num = Number(part);
+      if (isNaN(num)) return { error: `«${part}» — не число` };
+      numbers.push(num);
+    }
+    return { values: numbers };
+  };
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
+
+    // Парсим enumValues и проверяем ошибки
+    const parsedEnums = enumTexts.map(parseEnumValues);
+    const errors = parsedEnums.map((p) => p.error ?? "");
+    setEnumErrors(errors);
+    if (errors.some(Boolean)) return;
+
+    const finalSignals = signals.map((s, i) => ({
+      ...s,
+      enumValues: parsedEnums[i].values,
+    }));
+
     await onSubmit({
       title: title.trim(),
       family: family.trim(),
-      signals,
+      signals: finalSignals,
       events,
       ...(initial?.expectedVersion ? { expectedVersion: initial.expectedVersion } : {}),
     });
   };
 
-  const addSignal = () => setSignals([...signals, { ...EMPTY_SIGNAL }]);
+  const addSignal = () => {
+    setSignals([...signals, { ...EMPTY_SIGNAL }]);
+    setEnumTexts([...enumTexts, ""]);
+    setEnumErrors([...enumErrors, ""]);
+  };
+
   const removeSignal = (i: number) => {
     const removed = signals[i];
     setSignals(signals.filter((_, idx) => idx !== i));
-    // Удаляем события, ссылающиеся на удалённый сигнал
+    setEnumTexts(enumTexts.filter((_, idx) => idx !== i));
+    setEnumErrors(enumErrors.filter((_, idx) => idx !== i));
     setEvents(events.filter((e) => e.signalKey !== removed.key));
   };
+
   const updateSignal = (i: number, patch: Partial<SignalDefinition>) => {
+    const old = signals[i];
     setSignals(signals.map((s, idx) => (idx === i ? { ...s, ...patch } : s)));
+
+    // При переименовании обновляем ссылки в событиях
+    if (patch.key !== undefined && patch.key !== old.key) {
+      setEvents(events.map((e) =>
+        e.signalKey === old.key ? { ...e, signalKey: patch.key! } : e
+      ));
+    }
+
+    // При смене management на w — убираем события, ссылающиеся на этот сигнал
+    if (patch.management === "w" && old.management !== "w") {
+      setEvents(events.filter((e) => e.signalKey !== old.key));
+    }
   };
 
   const addEvent = () => setEvents([...events, { ...EMPTY_EVENT }]);
@@ -73,7 +135,6 @@ export function DeviceForm({ initial, onSubmit, onCancel, loading, error, confli
     setEvents(events.map((e, idx) => (idx === i ? { ...e, ...patch } : e)));
   };
 
-  // Читаемые сигналы для событий
   const readableSignals = signals.filter((s) => READABLE_MGMT.includes(s.management));
 
   return (
@@ -216,24 +277,27 @@ export function DeviceForm({ initial, onSubmit, onCancel, loading, error, confli
                 disabled={loading}
               />
             </div>
-            {/* enumValues */}
+            {/* enumValues — сырой текст */}
             <div className={styles.signalRow}>
               <input
-                className={styles.inputSmall}
-                placeholder="enumValues (через запятую)"
-                value={s.enumValues?.join(", ") ?? ""}
+                className={`${styles.inputSmall} ${enumErrors[i] ? styles.inputError : ""}`}
+                placeholder="enumValues (через запятую, напр. 0, 1, 2.5)"
+                value={enumTexts[i] ?? ""}
                 onChange={(e) => {
-                  const raw = e.target.value.trim();
-                  if (!raw) {
-                    updateSignal(i, { enumValues: undefined });
-                  } else {
-                    const vals = raw.split(",").map((v) => Number(v.trim())).filter((v) => !isNaN(v));
-                    updateSignal(i, { enumValues: vals.length > 0 ? vals : undefined });
-                  }
+                  const newEnumTexts = [...enumTexts];
+                  newEnumTexts[i] = e.target.value;
+                  setEnumTexts(newEnumTexts);
+                  // Очищаем ошибку при вводе
+                  const newErrors = [...enumErrors];
+                  newErrors[i] = "";
+                  setEnumErrors(newErrors);
                 }}
                 disabled={loading}
               />
             </div>
+            {enumErrors[i] && (
+              <div className={styles.signalError}>{enumErrors[i]}</div>
+            )}
           </div>
         ))}
       </div>
@@ -246,54 +310,63 @@ export function DeviceForm({ initial, onSubmit, onCancel, loading, error, confli
             <Plus size={14} /> Добавить
           </button>
         </div>
-        {events.map((e, i) => (
-          <div key={i} className={styles.signalCard}>
-            <div className={styles.signalRow}>
-              <input
-                className={styles.inputSmall}
-                placeholder="key"
-                value={e.key}
-                onChange={(ev) => updateEvent(i, { key: ev.target.value })}
-                pattern="^[a-z][a-z0-9_]*$"
-                maxLength={64}
-                required
-                disabled={loading}
-              />
-              <input
-                className={styles.inputSmall}
-                placeholder="Название"
-                value={e.title}
-                onChange={(ev) => updateEvent(i, { title: ev.target.value })}
-                maxLength={120}
-                required
-                disabled={loading}
-              />
-              <button
-                type="button"
-                className={styles.removeBtn}
-                onClick={() => removeEvent(i)}
-                disabled={loading}
-                aria-label="Удалить событие"
-              >
-                <Trash2 size={14} />
-              </button>
+        {events.map((e, i) => {
+          const linkedSignal = signals.find((s) => s.key === e.signalKey);
+          const invalidLink = linkedSignal && !READABLE_MGMT.includes(linkedSignal.management);
+          return (
+            <div key={i} className={styles.signalCard}>
+              <div className={styles.signalRow}>
+                <input
+                  className={styles.inputSmall}
+                  placeholder="key"
+                  value={e.key}
+                  onChange={(ev) => updateEvent(i, { key: ev.target.value })}
+                  pattern="^[a-z][a-z0-9_]*$"
+                  maxLength={64}
+                  required
+                  disabled={loading}
+                />
+                <input
+                  className={styles.inputSmall}
+                  placeholder="Название"
+                  value={e.title}
+                  onChange={(ev) => updateEvent(i, { title: ev.target.value })}
+                  maxLength={120}
+                  required
+                  disabled={loading}
+                />
+                <button
+                  type="button"
+                  className={styles.removeBtn}
+                  onClick={() => removeEvent(i)}
+                  disabled={loading}
+                  aria-label="Удалить событие"
+                >
+                  <Trash2 size={14} />
+                </button>
+              </div>
+              <div className={styles.signalRow}>
+                <select
+                  className={`${styles.select} ${invalidLink ? styles.selectError : ""}`}
+                  value={e.signalKey}
+                  onChange={(ev) => updateEvent(i, { signalKey: ev.target.value })}
+                  disabled={loading}
+                  required
+                >
+                  <option value="">— читаемый сигнал —</option>
+                  {readableSignals.map((s) => (
+                    <option key={s.key} value={s.key}>{s.key}</option>
+                  ))}
+                </select>
+              </div>
+              {invalidLink && (
+                <div className={styles.signalError}>
+                  Сигнал «{e.signalKey}» стал недоступным для чтения. Выберите другой.
+                </div>
+              )}
             </div>
-            <div className={styles.signalRow}>
-              <select
-                className={styles.select}
-                value={e.signalKey}
-                onChange={(ev) => updateEvent(i, { signalKey: ev.target.value })}
-                disabled={loading}
-                required
-              >
-                <option value="">— читаемый сигнал —</option>
-                {readableSignals.map((s) => (
-                  <option key={s.key} value={s.key}>{s.key}</option>
-                ))}
-              </select>
-            </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       {/* Ошибка и конфликт */}

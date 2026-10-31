@@ -189,9 +189,12 @@ export function DevicesCrudPage() {
   };
 
   // Проверка возможности удаления
-  const canDelete = deleteDeps
-    ? deleteDeps.scenarioIds.length === 0 && deleteDeps.pendingOperationIds.length === 0
-    : !deleteDepsLoading;
+  // Разрешаем удаление только после успешной проверки И отсутствия зависимостей
+  const canDelete = deleteDeps !== null
+    && deleteDeps.scenarioIds.length === 0
+    && deleteDeps.pendingOperationIds.length === 0
+    && !deleteDepsLoading
+    && !deleteError;
 
   // Рендер
   if (isLoading && !mock) return <LoadingState />;
@@ -364,7 +367,19 @@ export function DevicesCrudPage() {
             {deleteError && (
               <div className={styles.dialogError} role="alert">
                 <AlertCircle size={16} />
-                <span>{deleteError}</span>
+                <div className={styles.errorContent}>
+                  <span>{deleteError}</span>
+                  {!deleteDeps && (
+                    <button
+                      type="button"
+                      className={styles.retryBtn}
+                      onClick={() => deleteTarget && handleDeleteClick(deleteTarget)}
+                      disabled={deleteDepsLoading}
+                    >
+                      <RefreshCw size={14} /> Повторить проверку
+                    </button>
+                  )}
+                </div>
               </div>
             )}
 

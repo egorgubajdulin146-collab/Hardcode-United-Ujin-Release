@@ -6,6 +6,7 @@ import { clearCsrf, fetchCsrf } from "./authClient";
 export function SessionProvider({ children }: { children: ReactNode }) {
   const [authed, setAuthed] = useState(false);
   const [checking, setChecking] = useState(true);
+  const [checkFailed, setCheckFailed] = useState(false);
   const queryClient = useQueryClient();
   const epochRef = useRef(0);
   const [sessionEpoch, setSessionEpoch] = useState(0);
@@ -33,39 +34,37 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     queryClient.clear();
   }, [bumpEpoch, queryClient]);
 
-  // Проверка сессии на сервере при загрузке
-  useEffect(() => {
-    let cancelled = false;
+  // Проверка сессии с таймаутом
+  const checkSession = useCallback(async () => {
+    setChecking(true);
+    setCheckFailed(false);
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 10_000);
 
-    async function checkSession() {
-      try {
-        // Получаем CSRF — если сервер отвечает, проверяем защищённый endpoint
-        await fetchCsrf();
-        const resp = await fetch("/api/v1/devices?size=1", {
-          credentials: "include",
-        });
-        if (!cancelled) {
-          if (resp.status === 200) {
-            setAuthed(true);
-          }
-          // 401 — не авторизован, остаёмся на false
-        }
-      } catch {
-        // Сервер недоступен — не авторизован
-      } finally {
-        if (!cancelled) {
-          setChecking(false);
-        }
+    try {
+      await fetchCsrf();
+      const resp = await fetch("/api/v1/devices?size=1", {
+        credentials: "include",
+        signal: controller.signal,
+      });
+      if (resp.status === 200) {
+        setAuthed(true);
       }
+    } catch {
+      setCheckFailed(true);
+    } finally {
+      clearTimeout(timeout);
+      setChecking(false);
     }
-
-    checkSession();
-    return () => { cancelled = true; };
   }, []);
+
+  useEffect(() => {
+    checkSession();
+  }, [checkSession]);
 
   return (
     <SessionContext.Provider
-      value={{ authed, checking, sessionEpoch, setAuthed, terminateSession, onLogout, onLogin }}
+      value={{ authed, checking, checkFailed, checkSession, sessionEpoch, setAuthed, terminateSession, onLogout, onLogin }}
     >
       {children}
     </SessionContext.Provider>

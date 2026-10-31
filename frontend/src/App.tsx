@@ -21,13 +21,29 @@ const queryClient = new QueryClient({
 });
 
 function AppRoutes() {
-  const { authed, checking } = useSession();
+  const { authed, checking, checkFailed, checkSession } = useSession();
 
   // Проверка сессии на сервере — показываем загрузку без бокового меню
   if (checking) {
     return (
       <div style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "100vh" }}>
         <p style={{ color: "#6b7280" }}>Проверка сессии…</p>
+      </div>
+    );
+  }
+
+  // Ошибка проверки — показываем повтор
+  if (checkFailed && !authed) {
+    return (
+      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", minHeight: "100vh", gap: 16 }}>
+        <p style={{ color: "#6b7280" }}>Не удалось проверить сессию. Сервер недоступен.</p>
+        <button
+          type="button"
+          onClick={() => checkSession()}
+          style={{ padding: "8px 16px", background: "#00b4b4", color: "white", border: "none", borderRadius: 6, cursor: "pointer" }}
+        >
+          Повторить
+        </button>
       </div>
     );
   }
