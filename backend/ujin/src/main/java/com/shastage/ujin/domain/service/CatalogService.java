@@ -16,12 +16,18 @@ public class CatalogService {
     private final CatalogStore repository;
     private final LocalSignalStateJpaRepository stateRepo;
     private final com.shastage.ujin.datasource.repository.jpa.PublicationJpaRepository publications;
+    private final com.shastage.ujin.datasource.repository.jpa.CommandJpaRepository commands;
+    private final com.shastage.ujin.datasource.repository.jpa.RunJpaRepository runs;
 
     public CatalogService(CatalogStore repository, LocalSignalStateJpaRepository stateRepo,
-            com.shastage.ujin.datasource.repository.jpa.PublicationJpaRepository publications) {
+            com.shastage.ujin.datasource.repository.jpa.PublicationJpaRepository publications,
+            com.shastage.ujin.datasource.repository.jpa.CommandJpaRepository commands,
+            com.shastage.ujin.datasource.repository.jpa.RunJpaRepository runs) {
         this.repository = repository;
         this.stateRepo = stateRepo;
         this.publications = publications;
+        this.commands = commands;
+        this.runs = runs;
     }
 
     public Page<Device> devices(int page, int size, String owner) {
@@ -89,8 +95,18 @@ public class CatalogService {
     public Dependencies dependencies(UUID id, String owner) {
         device(id, owner);
         var ids = repository.dependencies(id, owner);
-        return new Dependencies(id, ids, publications.findByDeviceIdAndOwnerAndStatusIn(
-                id, owner, List.of("PENDING", "UNKNOWN")).stream().map(p -> p.id).toList());
+        // Незавершённые операции держат удаление. Отмеченный ACKNOWLEDGED_UNKNOWN
+        // снимает удержание команды; повторные попытки команды не отправляются.
+        List<UUID> pending = new ArrayList<>();
+        publications.findByDeviceIdAndOwnerAndStatusIn(id, owner, List.of("PENDING", "UNKNOWN"))
+                .forEach(p -> pending.add(p.id));
+        commands.findByDeviceIdAndOwnerAndStatusIn(id, owner, List.of("PENDING", "UNKNOWN"))
+                .forEach(command -> {
+                    if (command.getResolutionNote() == null) pending.add(command.getCommandId());
+                });
+        runs.findByActionDeviceIdAndOwnerAndStatusIn(id, owner, List.of("PENDING", "UNKNOWN"))
+                .forEach(run -> pending.add(run.getId()));
+        return new Dependencies(id, ids, pending);
     }
 
     public void delete(UUID id, long expectedVersion, String owner) {

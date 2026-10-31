@@ -129,6 +129,70 @@ public final class UjinApiClient {
                 name, PlatformDevice.PlatformSignal.ValueKind.OTHER, null, null, null, dt);
     }
 
+    // ===== Команда вниз: apartment/send-signal (задокументированные параметры) =====
+    // POST form, как в документированных клиентах; GET не используется, чтобы
+    // транспорт не повторял команду автоматически при обрыве соединения.
+    public void sendSignal(String token, String serialnumber, String signalName, double value) {
+        requireValue(token, "token");
+        requireValue(serialnumber, "serialnumber");
+        requireValue(signalName, "signalName");
+        if (!Double.isFinite(value)) throw new IllegalArgumentException("Finite value required");
+        String wire =
+                value == Math.rint(value) && Math.abs(value) < 1e15
+                        ? String.valueOf((long) value)
+                        : Double.toString(value);
+        String form =
+                "token="
+                        + encode(token)
+                        + "&serialnumber="
+                        + encode(serialnumber)
+                        + "&signal="
+                        + encode(signalName)
+                        + "&value="
+                        + encode(wire);
+        executeFormPost(URI.create(base + "/apartment/send-signal/"), form);
+    }
+
+    // ===== Задачи платформы: bmsdevice/get-device-info → signal task =====
+    // Документированный источник task/task_dt. Исторически закрыт для роли
+    // резидента (Access denied) — вызывается только при явном включении флага.
+    public List<PlatformTask> fetchDeviceInfoTasks(String token, String serialnumber) {
+        requireValue(token, "token");
+        requireValue(serialnumber, "serialnumber");
+        URI uri =
+                URI.create(
+                        base
+                                + "/bmsdevice/get-device-info/?token="
+                                + encode(token)
+                                + "&serialnumber="
+                                + encode(serialnumber)
+                                + "&mts=1");
+        JsonNode root = executeGet(uri);
+        JsonNode signals = root.path("data").path("signals");
+        if (!signals.isArray()) {
+            throw new UjinApiException(UjinApiException.Kind.BAD_RESPONSE);
+        }
+        List<PlatformTask> tasks = new ArrayList<>();
+        for (JsonNode signal : signals) {
+            if (!signal.isObject()) {
+                throw new UjinApiException(UjinApiException.Kind.BAD_RESPONSE);
+            }
+            String name = signal.path("name").asString(signal.path("signal_name").asString(""));
+            JsonNode task = signal.path("task");
+            if (task.isMissingNode() || task.isNull()) {
+                task = signal.path("state").path("task");
+            }
+            if (task.isMissingNode() || task.isNull() || task.asString("").isEmpty()) continue;
+            String dt =
+                    signal.path("signal_task_dt")
+                            .asString(signal.path("task_dt").asString(signal.path("dt").asString(null)));
+            JsonNode value = signal.path("state").path("value");
+            String current = value.isMissingNode() || value.isNull() ? null : value.asString("");
+            tasks.add(new PlatformTask(name, task.asString(""), dt, current));
+        }
+        return List.copyOf(tasks);
+    }
+
     // ===== Аутентификация =====
     public void publishGroup(String ust, String apartmentId, String extGuid,
                              String publishClass, String signalName, double value) {
@@ -189,6 +253,57 @@ public final class UjinApiClient {
     }
 
     // ===== Вспомогательные методы =====
+
+    private JsonNode executeFormPost(URI uri, String form) {
+        HttpURLConnection connection = null;
+        String response;
+        try {
+            connection = (HttpURLConnection) uri.toURL().openConnection();
+            connection.setInstanceFollowRedirects(false);
+            connection.setConnectTimeout(10_000);
+            connection.setReadTimeout(15_000);
+            connection.setRequestMethod("POST");
+            connection.setRequestProperty(
+                    "Content-Type", "application/x-www-form-urlencoded; charset=UTF-8");
+            connection.setRequestProperty("Accept", "application/json");
+            connection.setDoOutput(true);
+            byte[] body = form.getBytes(StandardCharsets.UTF_8);
+            connection.setFixedLengthStreamingMode(body.length);
+            try (OutputStream output = connection.getOutputStream()) {
+                output.write(body);
+            }
+            int status = connection.getResponseCode();
+            if (status != 200) {
+                throw httpError(status);
+            }
+            try (var input = connection.getInputStream()) {
+                byte[] bytes = input.readNBytes(1_048_577);
+                if (bytes.length > 1_048_576) {
+                    throw new UjinApiException(UjinApiException.Kind.BAD_RESPONSE);
+                }
+                response = new String(bytes, StandardCharsets.UTF_8);
+            }
+        } catch (IOException error) {
+            throw new UjinApiException(UjinApiException.Kind.UNAVAILABLE);
+        } finally {
+            if (connection != null) {
+                connection.disconnect();
+            }
+        }
+        try {
+            JsonNode root = mapper.readTree(response);
+            if (root == null || !root.path("error").isIntegralNumber()) {
+                throw new UjinApiException(UjinApiException.Kind.BAD_RESPONSE);
+            }
+            if (root.path("error").asInt() != 0) {
+                throw classifyPlatformError(root);
+            }
+            return root;
+        } catch (RuntimeException error) {
+            if (error instanceof UjinApiException uae) throw uae;
+            throw new UjinApiException(UjinApiException.Kind.BAD_RESPONSE);
+        }
+    }
 
     private JsonNode executeGet(URI uri) {
         HttpURLConnection connection = null;
