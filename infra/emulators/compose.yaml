@@ -1,6 +1,7 @@
 name: ujin-emulators
 x-common: &common
   image: ujin-python-emulator:${EMULATOR_IMAGE_TAG:-local}
+  pull_policy: never
   restart: unless-stopped
   read_only: true
   cap_drop: [ALL]

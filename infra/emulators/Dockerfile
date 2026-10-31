@@ -8,5 +8,5 @@ COPY server.py /app/server.py
 RUN chmod -R a+rX /app
 USER 10001:10001
 EXPOSE 8080
-HEALTHCHECK --interval=10s --timeout=3s --start-period=5s --retries=3 CMD python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8080/health', timeout=2)"
+HEALTHCHECK --interval=20s --timeout=10s --start-period=20s --retries=3 CMD python -c "import socket; s=socket.create_connection(('127.0.0.1',8080),2); s.sendall(b'GET /health HTTP/1.0\r\n\r\n'); assert b' 200 ' in s.recv(64)"
 CMD ["python", "server.py"]
