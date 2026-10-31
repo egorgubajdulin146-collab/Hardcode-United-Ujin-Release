@@ -350,6 +350,9 @@ class UjinSessionIntegrationTest {
         assertEquals(422, invalid.statusCode());
         assertTrue(invalid.body().contains("VALIDATION_ERROR"));
         assertEquals(400, request("/api/v1/runs?page=-1", "GET", null, null).statusCode());
-        assertEquals(503, request(device + "/state?mode=UJIN", "GET", null, null).statusCode());
+        var ujinMissing = request(device + "/state?mode=UJIN", "GET", null, null);
+        assertEquals(404, ujinMissing.statusCode());
+        assertTrue(ujinMissing.body().contains("DEVICE_NOT_FOUND"));
+        assertEquals(503, request(device + "/state?mode=BOGUS", "GET", null, null).statusCode());
     }
 }
