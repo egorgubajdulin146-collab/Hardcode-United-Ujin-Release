@@ -1,7 +1,8 @@
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import { Cpu, Workflow, PlayCircle, Database, Globe, LogIn, LogOut, Wifi } from "lucide-react";
 import { setDataSource, isMock } from "../api/dataSource";
-import { isAuthenticated, logout, clearAuthState } from "../api/authClient";
+import { logout, clearCsrf } from "../api/authClient";
+import { useSession } from "../api/sessionContext";
 import { MockBadge } from "./States";
 import styles from "./Layout.module.css";
 
@@ -14,7 +15,7 @@ const navItems = [
 
 export function Layout() {
   const mock = isMock();
-  const authed = isAuthenticated();
+  const { authed, onLogout } = useSession();
   const navigate = useNavigate();
 
   const toggleSource = () => {
@@ -25,10 +26,10 @@ export function Layout() {
   const handleLogout = async () => {
     try {
       await logout();
-      clearAuthState();
+      clearCsrf();
+      onLogout();
       navigate("/login");
     } catch {
-      // Ошибка выхода — сессия может быть активна; не очищаем состояние
       alert("Не удалось выйти. Серверная сессия может быть активна.");
     }
   };

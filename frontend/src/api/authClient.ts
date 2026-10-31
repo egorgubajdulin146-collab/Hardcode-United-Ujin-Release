@@ -1,9 +1,9 @@
 import type { UjinCredentials, UjinAdapterSignalValue } from "./auth";
 
 // Работа с cookie-сессией и CSRF по контракту 0.1.2-draft
+// Состояние авторизации определяется сервером (cookie), не локальным флагом
 
 let csrfToken: string | null = null;
-let loggedIn = false;
 
 export class AuthError extends Error {
   constructor(
@@ -39,10 +39,7 @@ export async function login(credentials: UjinCredentials): Promise<void> {
       },
       body: JSON.stringify(credentials),
     });
-    if (response.status === 204) {
-      loggedIn = true;
-      return;
-    }
+    if (response.status === 204) return;
     if (response.status === 401) {
       throw new AuthError("invalid_credentials", "Неверный логин или пароль");
     }
@@ -63,7 +60,8 @@ export async function login(credentials: UjinCredentials): Promise<void> {
 }
 
 export async function logout(): Promise<void> {
-  const token = csrfToken ?? (await fetchCsrf());
+  // Всегда свежий CSRF перед выходом
+  const token = await fetchCsrf();
   try {
     const response = await fetch("/api/auth/logout", {
       method: "POST",
@@ -74,7 +72,6 @@ export async function logout(): Promise<void> {
     });
     if (response.status === 204) {
       csrfToken = null;
-      loggedIn = false;
       return;
     }
     throw new AuthError("unknown", `Ошибка выхода: HTTP ${response.status}`);
@@ -97,7 +94,6 @@ export async function readSignal(
       { credentials: "include" }
     );
     if (response.status === 401) {
-      loggedIn = false;
       throw new AuthError("invalid_credentials", "Требуется авторизация");
     }
     if (response.status === 403) {
@@ -122,11 +118,6 @@ export async function readSignal(
   }
 }
 
-export function isAuthenticated(): boolean {
-  return loggedIn;
-}
-
-export function clearAuthState(): void {
+export function clearCsrf(): void {
   csrfToken = null;
-  loggedIn = false;
 }

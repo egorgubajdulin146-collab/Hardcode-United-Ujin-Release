@@ -1,6 +1,8 @@
 import { useState, type FormEvent } from "react";
+import { useNavigate } from "react-router-dom";
 import { Wifi, Search, AlertCircle, Loader2, Database } from "lucide-react";
-import { readSignal, AuthError, isAuthenticated } from "../api/authClient";
+import { readSignal, AuthError } from "../api/authClient";
+import { useSession } from "../api/sessionContext";
 import { isMock } from "../api/dataSource";
 import type { UjinAdapterSignalValue } from "../api/auth";
 import styles from "./AdapterPage.module.css";
@@ -12,8 +14,9 @@ export function AdapterPage() {
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<UjinAdapterSignalValue | null>(null);
 
-  const authed = isAuthenticated();
+  const { setAuthed } = useSession();
   const mock = isMock();
+  const navigate = useNavigate();
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -26,8 +29,14 @@ export function AdapterPage() {
     try {
       const data = await readSignal(serialnumber.trim(), signalName.trim());
       setResult(data);
+      setAuthed(true);
     } catch (err) {
       if (err instanceof AuthError) {
+        if (err.kind === "invalid_credentials") {
+          setAuthed(false);
+          navigate("/login");
+          return;
+        }
         setError(err.message);
       } else {
         setError("Неизвестная ошибка");
@@ -85,7 +94,7 @@ export function AdapterPage() {
         <button
           type="submit"
           className={styles.submitButton}
-          disabled={loading || !authed || mock}
+          disabled={loading || mock}
         >
           {loading ? (
             <>
@@ -104,12 +113,6 @@ export function AdapterPage() {
           <p className={styles.authHint}>
             <Database size={14} aria-hidden="true" /> Адаптер работает только в API-режиме.
             Переключите источник данных.
-          </p>
-        )}
-
-        {!mock && !authed && (
-          <p className={styles.authHint}>
-            Требуется авторизация. Войдите через форму входа.
           </p>
         )}
       </form>
