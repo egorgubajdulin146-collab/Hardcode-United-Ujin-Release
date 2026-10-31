@@ -144,7 +144,7 @@ export function RoomDevicesPage() {
             Прототип
           </span>
         </div>
-        <button type="button" className={styles.addButton} disabled title="Реализация в UJIN-TASK-010">
+        <button type="button" className={styles.addButton} disabled title="Пока недоступно">
           <Plus size={18} aria-hidden="true" />
           <span>Добавить устройство</span>
         </button>
