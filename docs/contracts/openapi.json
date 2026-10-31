@@ -697,7 +697,8 @@
               }
             }
           }
-        }
+        },
+        "description": "Enabled UJIN scenarios are rejected with 503 MODE_UNAVAILABLE until execution is connected. Disabled UJIN drafts are supported."
       }
     },
     "/api/v1/scenarios/{scenarioId}": {
@@ -805,7 +806,8 @@
               }
             }
           }
-        }
+        },
+        "description": "Enabled UJIN scenarios are rejected with 503 MODE_UNAVAILABLE until execution is connected. Disabled UJIN drafts are supported."
       }
     },
     "/api/v1/runs": {

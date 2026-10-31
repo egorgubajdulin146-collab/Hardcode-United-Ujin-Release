@@ -152,6 +152,7 @@ export function ScenarioForm({
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
+    if (executionMode === "UJIN" && enabled) return;
     const trigger: Trigger = {
       deviceId: triggerDeviceId,
       signalKey: triggerSignalKey,
@@ -245,11 +246,14 @@ export function ScenarioForm({
           <select
             className={styles.select}
             value={executionMode}
-            onChange={(e) => setExecutionMode(e.target.value as "LOCAL" | "UJIN")}
+            onChange={(e) => {
+              setExecutionMode(e.target.value as "LOCAL" | "UJIN");
+              if (e.target.value === "UJIN") setEnabled(false);
+            }}
             disabled={loading}
           >
             <option value="LOCAL">LOCAL</option>
-            <option value="UJIN">UJIN</option>
+            <option value="UJIN">UJIN (только черновик)</option>
           </select>
         </div>
         <div className={styles.field}>
@@ -259,13 +263,17 @@ export function ScenarioForm({
               type="checkbox"
               checked={enabled}
               onChange={(e) => setEnabled(e.target.checked)}
-              disabled={loading}
+              disabled={loading || (executionMode === "UJIN" && !enabled)}
             />
             <span>{enabled ? "Включён" : "Выключен"}</span>
           </label>
         </div>
       </div>
 
+      {executionMode === "UJIN" && <p role="status">
+        Исполнение Ujin ещё не подключено. Сохраните выключенный черновик или выберите LOCAL.
+        {enabled && " Ранее включённый сценарий не исполняется; выключите его перед сохранением."}
+      </p>}
       {/* Когда → Если → Тогда */}
       <div className={styles.flowSection}>
         <h3 className={styles.flowTitle}>Условие срабатывания</h3>
@@ -404,7 +412,7 @@ export function ScenarioForm({
         <button type="button" className={styles.cancelBtn} onClick={onCancel} disabled={loading}>
           Отмена
         </button>
-        <button type="submit" className={styles.submitBtn} disabled={loading}>
+        <button type="submit" className={styles.submitBtn} disabled={loading || (executionMode === "UJIN" && enabled)}>
           {loading ? <Loader2 size={16} className={styles.spinner} /> : null}
           {initRef.current?.expectedVersion ? "Сохранить" : "Создать"}
         </button>

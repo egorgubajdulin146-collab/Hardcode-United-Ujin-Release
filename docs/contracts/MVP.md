@@ -245,3 +245,13 @@ HTTP 401/403 upstream распознаются как явные отказы; �
 и некорректный ответ дают 502, ошибки соединения/таймаут — 503.
 Коды авторизации внутри JSON Ujin не подтверждены и не угадываются.
 Ошибки не содержат upstream body, credentials или URL с токеном.
+
+
+## Unsupported UJIN scenario execution
+
+Creating or updating an enabled UJIN scenario returns 503 MODE_UNAVAILABLE.
+Disabled UJIN drafts remain editable and retain their executionMode. LOCAL
+rules can be enabled normally. Existing enabled UJIN rows are not rewritten:
+the executor continues to skip them, and the UI labels them as unsupported.
+To save such a row, explicitly disable it or choose LOCAL. No schema/data
+migration or automatic mode conversion is performed.

@@ -69,3 +69,42 @@ for (const choice of ['Оставить', 'Заменить']) {
     await act(async () => root.unmount());
   });
 }
+
+
+for (const legacy of [false, true]) {
+  test(`UJIN ${legacy ? 'legacy enabled rule' : 'draft'} cannot be submitted enabled`, async () => {
+    const writes = [];
+    const filename = fileURLToPath(new URL('../../frontend/src/components/ScenarioForm.tsx', import.meta.url));
+    const { ScenarioForm } = loadComponent(filename, {});
+    let root;
+    await act(async () => { root = create(React.createElement(ScenarioForm, {
+      initial: { ...initial, executionMode: 'UJIN', enabled: legacy }, devices,
+      onSubmit: async data => writes.push(data), onCancel() {},
+    })); });
+    const toggle = () => root.root.findAllByType('input').find(n => n.props.type === 'checkbox');
+    assert.equal(toggle().props.checked, legacy);
+    assert.equal(toggle().props.disabled, !legacy);
+    assert.equal(root.root.findAllByType('select')[0].props.value, 'UJIN');
+    assert.ok(root.root.findAllByProps({ role: 'status' }).length);
+    await act(async () => { await root.root.findByType('form').props.onSubmit({ preventDefault() {} }); });
+    assert.equal(writes.length, legacy ? 0 : 1);
+    if (legacy) await act(async () => toggle().props.onChange({ target: { checked: false } }));
+    await act(async () => { await root.root.findByType('form').props.onSubmit({ preventDefault() {} }); });
+    assert.equal(writes.at(-1).enabled, false);
+    assert.equal(writes.at(-1).executionMode, 'UJIN');
+    await act(async () => root.unmount());
+  });
+}
+
+test('choosing UJIN explicitly creates a disabled draft', async () => {
+  const filename = fileURLToPath(new URL('../../frontend/src/components/ScenarioForm.tsx', import.meta.url));
+  const { ScenarioForm } = loadComponent(filename, {});
+  const writes = [];
+  let root;
+  await act(async () => { root = create(React.createElement(ScenarioForm, { initial, devices, onSubmit: async d => writes.push(d), onCancel() {} })); });
+  await act(async () => root.root.findAllByType('select')[0].props.onChange({ target: { value: 'UJIN' } }));
+  await act(async () => root.root.findByType('form').props.onSubmit({ preventDefault() {} }));
+  assert.equal(writes[0].executionMode, 'UJIN');
+  assert.equal(writes[0].enabled, false);
+  await act(async () => root.unmount());
+});
