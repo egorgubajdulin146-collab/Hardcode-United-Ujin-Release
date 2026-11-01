@@ -34,6 +34,11 @@ find frontend/dist -type f -exec chmod 644 {} +
 export UJIN_IMAGE_TAG=$revision
 compose=(docker compose --project-directory "$release" --env-file /etc/ujin/local.env
   -f infra/compose.yaml -f infra/compose.runtime.yaml -f infra/compose.catalog.yaml)
+# Operator-owned configuration survives release replacement; never accept it
+# from the uploaded artifact. Absence keeps the default Java-only runtime.
+if [[ -f /etc/ujin/python-local.yaml ]]; then
+  compose+=(-f /etc/ujin/python-local.yaml)
+fi
 "${compose[@]}" config --quiet
 "${compose[@]}" build
 # Dump before any migrations, without exposing credentials or deleting the volume.

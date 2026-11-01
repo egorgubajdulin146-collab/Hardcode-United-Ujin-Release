@@ -30,7 +30,7 @@ else:
 
 
 class DeployTests(unittest.TestCase):
-    def run_receiver(self, mode, binding='127.0.0.1:19191'):
+    def run_receiver(self, mode, binding='127.0.0.1:19191', python_overlay=False):
         # Isolated filesystem and fake executables: no Docker, SSH or live env.
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
@@ -43,8 +43,11 @@ class DeployTests(unittest.TestCase):
             for old, new in (('/opt/ujin', str(root / 'app')),
                              ('/var/backups/ujin', str(root / 'backups')),
                              ('/run/lock/ujin-deploy.lock', str(root / 'lock')),
+                             ('/etc/ujin/python-local.yaml', str(root / 'python-local.yaml')),
                              ('/etc/ujin/local.env', str(root / 'local.env'))):
                 script = script.replace(old, new)
+            if python_overlay:
+                (root / 'python-local.yaml').write_text('services: {}\n')
             receiver = root / 'receiver.sh'
             receiver.write_text(script)
             (root / 'app').mkdir()
@@ -70,6 +73,10 @@ class DeployTests(unittest.TestCase):
                      'CALLS': str(root / 'calls'),
                      'SSH_ORIGINAL_COMMAND': 'deploy ' + revision}, capture_output=True)
             calls = (root / 'calls').read_text()
+            compose_calls = [line for line in calls.splitlines() if line.startswith('docker compose ')]
+            self.assertTrue(compose_calls)
+            for call in compose_calls:
+                self.assertEqual('-f ' + str(root / 'python-local.yaml') in call, python_overlay)
             pointer = os.readlink(root / 'app/current')
             if mode == 'success' and binding.startswith('127.0.0.1:'):
                 self.assertEqual(result.returncode, 0, result.stderr.decode())
@@ -84,6 +91,9 @@ class DeployTests(unittest.TestCase):
 
     def test_success_and_custom_port(self):
         self.run_receiver('success')
+
+    def test_operator_python_overlay_survives_every_deploy_step(self):
+        self.run_receiver('success', python_overlay=True)
 
     def test_failures_do_not_publish_current(self):
         for mode in ('backup', 'up', 'health', 'revision'):
