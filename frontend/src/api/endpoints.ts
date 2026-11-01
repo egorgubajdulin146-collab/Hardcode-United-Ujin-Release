@@ -40,6 +40,7 @@ function pageQuery(params?: PageParams): string {
 
 export const endpoints = {
   localPython: {
+    checkEvent: (eventId: string) => api.post<EventReceipt>(`/local-python/events/${eventId}/check`, {}),
     poll: (eventId: string) => api.post<EventReceipt>("/local-python/poll", { eventId }),
     check: (commandId: string) => api.post<CommandReceipt>(`/local-python/commands/${commandId}/check`, {}),
   },

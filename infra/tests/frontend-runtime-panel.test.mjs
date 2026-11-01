@@ -155,3 +155,21 @@ test('Python source offers observation instead of writing Java WET state', async
   assert.equal(typeof calls[0][1], 'string');
   act(() => root.unmount());
 });
+
+test('Python observation stops when the checkbox is off or the panel unmounts', async t => {
+  t.mock.timers.enable({ apis: ['setTimeout'] });
+  const { root, calls } = mount({ provider: 'PYTHON' });
+  const watch = root.root.findAllByType('input').find(input => input.props.type === 'checkbox' && input.props.onChange && input.parent?.children.some(child => typeof child === 'string' && child.includes('Наблюдать Python')));
+  assert.ok(watch);
+  await act(async () => watch.props.onChange({ target: { checked: true } }));
+  await act(async () => t.mock.timers.tick(3000));
+  assert.equal(calls.filter(call => call[0] === 'python-poll').length, 1);
+  await act(async () => watch.props.onChange({ target: { checked: false } }));
+  await act(async () => t.mock.timers.tick(6000));
+  assert.equal(calls.filter(call => call[0] === 'python-poll').length, 1);
+  await act(async () => watch.props.onChange({ target: { checked: true } }));
+  act(() => root.unmount());
+  await act(async () => t.mock.timers.tick(6000));
+  assert.equal(calls.filter(call => call[0] === 'python-poll').length, 1);
+  t.mock.timers.reset();
+});

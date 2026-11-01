@@ -88,6 +88,16 @@ public class PythonEmulatorService {
         });
         dispatchEvent(eventId,owner);return runtime.getEvent(eventId,owner);
     }
+    public Map<String,Object> checkEvent(UUID eventId,String owner) {
+        requireOwner(owner);
+        var e=events.findByEventIdAndOwner(eventId,owner).orElseThrow(()->new CatalogException(404,"EVENT_NOT_FOUND","Event not found"));
+        if(!config.getSourceDeviceId().equals(e.getDeviceId()))throw new CatalogException(404,"EVENT_NOT_FOUND","Event not found");
+        int page=0; org.springframework.data.domain.Page<com.shastage.ujin.datasource.entity.RunEntity> found;
+        do { found=runs.findByOwnerAndEventId(owner,eventId,PageRequest.of(page++,100));
+            for(var run:found)if(config.target(run.getActionDeviceId(),owner) && commands.findByCommandIdAndOwner(run.getId(),owner).isPresent())check(run.getId(),owner);
+        }while(found.hasNext());
+        return runtime.getEvent(eventId,owner);
+    }
     public void dispatchEvent(UUID eventId,String owner) {
         if(!config.isEnabled() || !config.getOwner().equals(owner))return;
         int page=0;
