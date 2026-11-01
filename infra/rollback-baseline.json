@@ -7,10 +7,10 @@
   "frontend_image_id": "sha256:92d83b3d20c5ee692897a94d26b74833a67a5f55010c926780b3cc850efe1d98",
   "image_id_scope": "VPS Docker/containerd image IDs; verify on target daemon after archive load",
   "archive_sha256": "c1c7b27e4ae2ed239c5f45438bdf7e8d328c93f8371b5f15c96138a4f5475f49",
-  "database": "PostgreSQL 17, Flyway V1-V7",
-  "tested_from_and_back_to": "c0dc8667dc5a789a56795c21300553fa024d253e",
+  "database": "PostgreSQL 17, existing Flyway V1-V9; fallback ships V1-V7, no downgrade",
+  "tested_from_and_back_to": "24129a5188a5c722f0e55c96dd09e8d25d2feedf",
   "checks": ["healthy", "static-js-css", "all-public-table-fingerprints", "event-replay", "owner-isolation-two-synthetic-accounts", "publication-UNKNOWN-retained", "task-history-retained", "postgres-backend-restart"],
   "test_scope": "Dedicated Compose project, restored live database plus synthetic acceptance rows; public containers not switched",
-  "limitations": "Guest demo and external Python adapter are absent in fallback. Disable guest entry during fallback; sessions require login again. No schema downgrade. Future migrations after V7 require new acceptance.",
-  "previous_baseline": {"revision": "e5fea660aaef4b02a1bf46e650441814af2a0f43", "database": "V1-V3 only; not accepted for current V7"}
+  "limitations": "Guest demo, external Python adapter and new Ujin scenario observation are absent in fallback. Disable guest entry during fallback; sessions require login again. No schema downgrade. Future migrations after V9 require new acceptance.",
+  "previous_baseline": {"revision": "e5fea660aaef4b02a1bf46e650441814af2a0f43", "database": "V1-V3 only; not accepted for current V9"}
 }
