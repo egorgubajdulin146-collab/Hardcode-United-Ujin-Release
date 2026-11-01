@@ -21,7 +21,7 @@ const queryClient = new QueryClient({
 });
 
 function AppRoutes() {
-  const { authed, checking, checkFailed, checkSession } = useSession();
+  const { authed, demo, checking, checkFailed, checkSession } = useSession();
 
   // Проверка сессии на сервере — показываем загрузку без бокового меню
   if (checking) {
@@ -62,7 +62,7 @@ function AppRoutes() {
         <Route path="scenarios" element={<ScenariosCrudPage />} />
         <Route path="runs" element={<RunsPage />} />
         <Route path="login" element={<Navigate to="/devices" replace />} />
-        <Route path="adapter" element={<AdapterPage />} />
+        <Route path="adapter" element={demo ? <Navigate to="/devices" replace /> : <AdapterPage />} />
         <Route path="*" element={<Navigate to="/devices" replace />} />
       </Routes>
     </Layout>

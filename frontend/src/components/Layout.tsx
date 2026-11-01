@@ -15,7 +15,7 @@ const navItems = [
 
 export function Layout({ children }: { children: ReactNode }) {
   const mock = isMock();
-  const { authed, onLogout } = useSession();
+  const { authed, demo, onLogout } = useSession();
   const navigate = useNavigate();
 
   const toggleSource = () => {
@@ -42,7 +42,7 @@ export function Layout({ children }: { children: ReactNode }) {
           <span className={styles.logoBadge}>Hardcode United</span>
         </div>
         <ul className={styles.navList}>
-          {navItems.map(({ to, label, icon: Icon }) => (
+          {navItems.filter(item => !demo || item.to !== "/adapter").map(({ to, label, icon: Icon }) => (
             <li key={to}>
               <NavLink
                 to={to}
@@ -78,19 +78,23 @@ export function Layout({ children }: { children: ReactNode }) {
               <span>Войти</span>
             </NavLink>
           )}
-          <button
+          {!demo && <button
             type="button"
             className={styles.sourceToggle}
             onClick={toggleSource}
             title={`Источник данных: ${mock ? "демонстрационные устройства" : "подключённые устройства"}`}
           >
             {mock ? <Database size={16} /> : <Globe size={16} />}
-            <span>{mock ? "Демо" : "Подключение"}</span>
-          </button>
+            <span>{mock ? "Готовые примеры" : "Подключение"}</span>
+          </button>}
 
         </div>
       </nav>
       <main className={styles.content}>
+        {demo && <aside role="status" className={styles.demoNotice}>
+          <strong>Гостевое демо — локальные Java-эмуляторы</strong>
+          <span> Создайте датчик и лампу из шаблонов, затем правило «протечка → свет». До 8 устройств и 8 сценариев, 30 минут. После выхода доступ к этим данным теряется. Ujin и оборудование не подключены.</span>
+        </aside>}
         {children}
       </main>
     </div>

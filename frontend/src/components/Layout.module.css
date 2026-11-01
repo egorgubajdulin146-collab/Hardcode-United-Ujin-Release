@@ -137,3 +137,5 @@
     padding: var(--space-md);
   }
 }
+
+.demoNotice { margin-bottom: var(--space-lg); padding: var(--space-md); border: 1px solid var(--color-primary); border-radius: var(--radius-md); color: var(--color-text); background: var(--color-surface); line-height: 1.5; }

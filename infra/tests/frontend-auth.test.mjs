@@ -19,7 +19,7 @@ function transpile(path) {
 }
 
 const authClientUrl = transpile('../../frontend/src/api/authClient.ts');
-const { fetchCsrf, login, logout, readSignal, clearCsrf, AuthError } = await import(authClientUrl);
+const { fetchCsrf, login, loginDemo, logout, readSignal, clearCsrf, AuthError } = await import(authClientUrl);
 
 const originalFetch = globalThis.fetch;
 afterEach(() => {
@@ -344,4 +344,28 @@ test('CSRF acquisition honours cancellation before publishing the token', async 
   };
   await assert.rejects(fetchCsrf(controller.signal), { name: 'AbortError' });
   assert.equal(receivedSignal, controller.signal);
+});
+
+
+test('guest login uses CSRF, sends no credentials and refreshes token after session change', async () => {
+  let csrfCalls = 0;
+  globalThis.fetch = async (url, options) => {
+    if (url === '/api/auth/csrf') return new Response(`csrf-${++csrfCalls}`, { status: 200 });
+    assert.equal(url, '/api/auth/demo');
+    assert.equal(options.method, 'POST');
+    assert.equal(options.headers['X-XSRF-TOKEN'], 'csrf-1');
+    assert.equal(options.body, undefined);
+    return new Response(null, { status: 204 });
+  };
+  await loginDemo();
+  assert.equal(csrfCalls, 2);
+});
+
+test('guest capacity refusal is shown without retrying login', async () => {
+  let logins = 0;
+  globalThis.fetch = async (url) => url === '/api/auth/csrf'
+    ? new Response('csrf', { status: 200 })
+    : (++logins, new Response(null, { status: 429 }));
+  await assert.rejects(loginDemo(), /Демо временно занято/);
+  assert.equal(logins, 1);
 });
