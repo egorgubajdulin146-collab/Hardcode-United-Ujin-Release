@@ -6,6 +6,63 @@
 
 ## Проверенная граница
 
+### Актуальная граница V7 — 01.11.2026
+
+Текущий проверенный релиз c0dc8667dc5a789a56795c21300553fa024d253e,
+резерв30f866a1469e692c9ab2b54db9e5cd2bd182fa48. Оба используют V1–V7.
+Проверка проведена в отдельном Compose на восстановленной копии PostgreSQL17:
+restart БД/backend, current→reserve→current, A/B-запреты, квитанции, state,
+UNKNOWN publication, история task и fingerprint всех public-таблиц.
+Рабочие контейнеры этой проверкой не переключались.
+
+Резерв не содержит гостевого демо и внешнего Python-адаптера: при аварийном
+откате эти функции недоступны. Закройте гостевой вход, потребуйте повторный
+login и зафиксируйте ограничение для команды. Не обещайте полный набор функций
+нового релиза. Схема и owner-изоляция сохраняются, downgrade Flyway не нужен.
+
+Архив проверенных образов и compose-снимок без env находятся в
+`/var/backups/ujin/releases/30f866a1469e692c9ab2b54db9e5cd2bd182fa48`:
+images.tar.gz, images.sha256, compose.tar.gz, manifest.json. Каталог700/файлы600.
+Архив SHA256 и IDs указаны в rollback-baseline.json. Сохраните отдельный backup
+рабочей БД перед каждым реальным переключением. Новая миграция V8+ требует
+новой проверки; резерв e5fea66 для V7 не принят.
+
+Используйте операторские шаги ниже с изменениями: UJIN_IMAGE_TAG=30f866a1469e692c9ab2b54db9e5cd2bd182fa48,
+release=/opt/ujin/releases/c0dc8667dc5a789a56795c21300553fa024d253e,
+архивный каталог30f866a. Подготовьте и проверьте эти значения до выполнения
+команд; старые буквальные команды V3 ниже для текущего V7 запускать нельзя.
+Сохраните реальные флаги и дополнительные overlay, восстановите их при возврате
+на current. При выключении демо через UJIN_DEMO_ENABLED=false верните прежнее
+значение перед up текущего релиза. Автодеплой и rollback используют один lock.
+
+Пример V7 после backup и сверки схемы/флагов:
+
+```bash
+exec 9>/run/lock/ujin-deploy.lock
+flock -w 600 9
+reserve=/var/backups/ujin/releases/30f866a1469e692c9ab2b54db9e5cd2bd182fa48
+cd "$reserve"
+sha256sum -c images.sha256
+# Если принятых образов нет: gzip -dc images.tar.gz | docker load
+export UJIN_IMAGE_TAG=30f866a1469e692c9ab2b54db9e5cd2bd182fa48
+export UJIN_DEMO_ENABLED=false
+release=/opt/ujin/releases/c0dc8667dc5a789a56795c21300553fa024d253e
+cd "$release"
+compose=(docker compose --project-directory "$release" --env-file /etc/ujin/local.env
+  -f infra/compose.yaml -f infra/compose.runtime.yaml -f infra/compose.catalog.yaml)
+"${compose[@]}" config --quiet
+docker image inspect "ujin-backend:$UJIN_IMAGE_TAG" "ujin-frontend:$UJIN_IMAGE_TAG" \
+  --format '{{.Id}} {{index .Config.Labels "org.opencontainers.image.revision"}}'
+# Сверить обе строки с manifest; при несовпадении остановиться.
+"${compose[@]}" up -d --no-build --wait --wait-timeout 180
+python3 /usr/local/lib/ujin/check-static.py http://127.0.0.1:8088
+```
+
+После этого выполните A/B и LOCAL-проверки из операторских шагов6–7 ниже.
+Возврат на current — с тегом c0dc866 и восстановленными исходными флагами.
+
+### Историческая граница V3 — не применять к текущей V7
+
 [Manifest принятой пары образов](rollback-baseline.json) содержит точные imageID.
 Повторная сборка той же ревизии не заменяет принятый образ: если ID отличается,
 повторите приёмку и выпустите новый manifest.
