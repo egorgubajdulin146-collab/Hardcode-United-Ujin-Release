@@ -18,16 +18,19 @@ public class CatalogService {
     private final com.shastage.ujin.datasource.repository.jpa.PublicationJpaRepository publications;
     private final com.shastage.ujin.datasource.repository.jpa.CommandJpaRepository commands;
     private final com.shastage.ujin.datasource.repository.jpa.RunJpaRepository runs;
+    private final ScenarioObservationProperties observation;
 
     public CatalogService(CatalogStore repository, LocalSignalStateJpaRepository stateRepo,
             com.shastage.ujin.datasource.repository.jpa.PublicationJpaRepository publications,
             com.shastage.ujin.datasource.repository.jpa.CommandJpaRepository commands,
-            com.shastage.ujin.datasource.repository.jpa.RunJpaRepository runs) {
+            com.shastage.ujin.datasource.repository.jpa.RunJpaRepository runs,
+            ScenarioObservationProperties observation) {
         this.repository = repository;
         this.stateRepo = stateRepo;
         this.publications = publications;
         this.commands = commands;
         this.runs = runs;
+        this.observation = observation;
     }
 
     public Page<Device> devices(int page, int size, String owner) {
@@ -235,7 +238,7 @@ public class CatalogService {
                         && Set.of("LOCAL", "UJIN")
                                 .contains(Objects.toString(data.executionMode(), "")),
                 "Invalid enabled or executionMode");
-        if (data.enabled() && "UJIN".equals(data.executionMode()))
+        if (data.enabled() && "UJIN".equals(data.executionMode()) && !observation.isObservationEnabled())
             throw new CatalogException(503, "MODE_UNAVAILABLE", "Ujin scenario execution is not connected; save a disabled draft or use LOCAL");
         require(data.trigger() != null && data.action() != null, "trigger and action are required");
         var t = data.trigger();

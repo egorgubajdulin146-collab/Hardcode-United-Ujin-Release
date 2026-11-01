@@ -16,6 +16,7 @@ import type {
   RunPage,
   Scenario,
   ScenarioPage,
+  ScenarioPollResult,
   ScenarioUpdate,
   ScenarioWrite,
   Stimulus,
@@ -105,6 +106,8 @@ export const endpoints = {
       api.post<Scenario>("/api/v1/scenarios", data),
     update: (id: string, data: ScenarioUpdate) =>
       api.put<Scenario>(`/api/v1/scenarios/${id}`, data),
+    poll: (id: string, pollId: string) =>
+      api.post<ScenarioPollResult>(`/api/v1/scenarios/${id}/poll`, { pollId }),
   },
   runs: {
     list: (
