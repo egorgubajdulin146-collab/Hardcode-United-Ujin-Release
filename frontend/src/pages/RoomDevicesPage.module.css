@@ -55,6 +55,27 @@
   background: var(--color-primary-hover);
 }
 
+@media (max-width: 480px) {
+  .header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--space-sm);
+  }
+
+  .headerAction {
+    align-items: stretch;
+  }
+
+  .addButton {
+    justify-content: center;
+    min-height: 40px;
+  }
+
+  .addHint {
+    text-align: left;
+  }
+}
+
 /* Комнаты */
 .roomsBar {
   display: flex;

@@ -27,6 +27,31 @@
   gap: var(--space-sm);
 }
 
+@media (max-width: 480px) {
+  .header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--space-sm);
+  }
+
+  .headerActions {
+    width: 100%;
+  }
+
+  .headerActions > .iconBtn {
+    flex: 0 0 40px;
+    height: 40px;
+  }
+
+  .headerActions > .primaryBtn {
+    flex: 1;
+    justify-content: center;
+    min-width: 0;
+    min-height: 40px;
+    white-space: nowrap;
+  }
+}
+
 .primaryBtn {
   display: flex;
   align-items: center;

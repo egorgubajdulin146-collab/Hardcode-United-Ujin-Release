@@ -258,10 +258,6 @@ export function ScenariosCrudPage() {
         <div className={styles.headerLeft}>
           <h1 className={styles.title}>Сценарии</h1>
           {mock && <MockBadge />}
-          <p className={styles.cardMeta}>
-            Исполнение правил выполняет наш backend. Закрытая страница не наблюдает показания Ujin —
-            проверка запускается кнопкой или переключателем наблюдения на открытой странице.
-          </p>
         </div>
         <div className={styles.headerActions}>
           <button
@@ -284,6 +280,10 @@ export function ScenariosCrudPage() {
           </button>
         </div>
       </div>
+      <p className={styles.cardMeta}>
+        Исполнение правил выполняет наш backend. Закрытая страница не наблюдает показания Ujin —
+        проверка запускается кнопкой или переключателем наблюдения на открытой странице.
+      </p>
 
       {mock && (
         <div className={styles.mockNotice}>

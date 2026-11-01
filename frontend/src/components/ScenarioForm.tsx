@@ -32,11 +32,11 @@ export function ScenarioForm({
   useEffect(() => {
     if (typeof document === "undefined") return;
     const handler = (event: KeyboardEvent) => {
-      if (event.key === "Escape") onCancel();
+      if (event.key === "Escape" && !loading) onCancel();
     };
     document.addEventListener("keydown", handler);
     return () => document.removeEventListener("keydown", handler);
-  }, [onCancel]);
+  }, [loading, onCancel]);
   const [enabled, setEnabled] = useState(initial?.enabled ?? true);
   const [executionMode, setExecutionMode] = useState(initial?.executionMode ?? "LOCAL");
   const [triggerDeviceId, setTriggerDeviceId] = useState(initial?.trigger?.deviceId ?? "");

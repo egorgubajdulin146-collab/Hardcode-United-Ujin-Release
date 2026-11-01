@@ -77,11 +77,11 @@ export function DeviceForm({ initial, onSubmit, onCancel, loading, error, confli
   useEffect(() => {
     if (typeof document === "undefined") return;
     const handler = (event: KeyboardEvent) => {
-      if (event.key === "Escape") onCancel();
+      if (event.key === "Escape" && !loading) onCancel();
     };
     document.addEventListener("keydown", handler);
     return () => document.removeEventListener("keydown", handler);
-  }, [onCancel]);
+  }, [loading, onCancel]);
 
   const templateAvailable = !loading && !title && !family && signals.length === 0 && events.length === 0;
   const applyTemplate = (template: DeviceWrite) => {
@@ -177,7 +177,7 @@ export function DeviceForm({ initial, onSubmit, onCancel, loading, error, confli
         <h2 className={styles.title}>
           {initial?.expectedVersion ? "Редактировать устройство" : "Новое устройство"}
         </h2>
-        <button type="button" className={styles.closeBtn} onClick={onCancel} aria-label="Закрыть">
+        <button type="button" className={styles.closeBtn} onClick={onCancel} aria-label="Закрыть" disabled={loading}>
           <X size={16} />
         </button>
       </div>

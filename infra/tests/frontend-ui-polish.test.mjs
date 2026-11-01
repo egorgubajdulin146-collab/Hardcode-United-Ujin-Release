@@ -146,6 +146,23 @@ test('Escape closes the device form like the close button', async () => {
   act(() => root.unmount());
 });
 
+test('saving device cannot be closed by Escape or the close button', async () => {
+  const formPath = fileURLToPath(new URL('../../frontend/src/components/DeviceForm.tsx', import.meta.url));
+  let cancelled = 0;
+  const { DeviceForm } = loadComponent(formPath, {});
+  let root;
+  act(() => {
+    root = create(React.createElement(DeviceForm, {
+      onSubmit: async () => {}, onCancel: () => { cancelled += 1; }, loading: true,
+    }));
+  });
+  await act(async () => { document.dispatchEvent(escapeKey()); });
+  assert.equal(cancelled, 0);
+  const close = root.root.findAllByType('button').find(b => b.props['aria-label'] === 'Закрыть');
+  assert.equal(close?.props.disabled, true);
+  act(() => root.unmount());
+});
+
 test('Escape closes the runtime panel when not busy', async () => {
   const panelPath = fileURLToPath(new URL('../../frontend/src/components/DeviceRuntimePanel.tsx', import.meta.url));
   const deviceObj = device();
