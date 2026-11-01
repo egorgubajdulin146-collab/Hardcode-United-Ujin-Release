@@ -108,7 +108,7 @@ jobs:
         run: bash infra/test-postgres.sh
 
   deploy:
-    if: github.event_name == 'push' && github.ref == 'refs/heads/develop'
+    if: github.event_name == 'push' && github.ref == 'refs/heads/develop' && vars.DEPLOY_HOST != '' && vars.DEPLOY_USER != ''
     needs: [backend, infrastructure]
     runs-on: ubuntu-24.04
     timeout-minutes: 15
