@@ -8,5 +8,6 @@ import java.util.Optional;
 import java.util.UUID;
 
 public interface ScenarioPollJpaRepository extends JpaRepository<ScenarioPollEntity, UUID> {
+    java.util.List<ScenarioPollEntity> findByRunId(UUID runId);
     Optional<ScenarioPollEntity> findByPollIdAndOwner(UUID pollId, String owner);
 }

@@ -24,6 +24,19 @@ public class ScenarioObservationEntity {
     @Column(name = "updated_at", nullable = false, length = 40)
     private String updatedAt;
 
+    @Column(name = "source_identity", length = 64)
+    private String sourceIdentity;
+    @Column(name = "accepted_read_order", nullable = false)
+    private long acceptedReadOrder;
+    @Column(name = "measured_at", length = 40)
+    private String measuredAt;
+    public String getSourceIdentity() { return sourceIdentity; }
+    public void setSourceIdentity(String value) { sourceIdentity = value; }
+    public long getAcceptedReadOrder() { return acceptedReadOrder; }
+    public void setAcceptedReadOrder(long value) { acceptedReadOrder = value; }
+    public String getMeasuredAt() { return measuredAt; }
+    public void setMeasuredAt(String value) { measuredAt = value; }
+
     public ScenarioObservationEntity() {}
 
     public UUID getScenarioId() {

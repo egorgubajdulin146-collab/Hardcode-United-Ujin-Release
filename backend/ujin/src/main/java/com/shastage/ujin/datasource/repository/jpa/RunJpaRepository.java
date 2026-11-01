@@ -17,4 +17,5 @@ public interface RunJpaRepository extends JpaRepository<RunEntity, UUID> {
     java.util.List<RunEntity> findByCommandId(UUID commandId);
     java.util.List<RunEntity> findByScenarioIdAndOwnerAndStatusAndReason(
             UUID scenarioId, String owner, String status, String reason);
+    java.util.List<RunEntity> findByScenarioIdAndOwnerAndStatusIn(UUID scenarioId, String owner, java.util.List<String> statuses);
 }

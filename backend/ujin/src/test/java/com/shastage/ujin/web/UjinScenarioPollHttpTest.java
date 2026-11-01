@@ -38,6 +38,9 @@ class UjinScenarioPollHttpTest {
     private static volatile String infoBody = "{\"error\":0,\"data\":{\"signals\":[]}}";
     private static volatile String snapshotMode = "normal";
     private static final AtomicInteger sendCalls = new AtomicInteger();
+    private static final java.util.concurrent.atomic.AtomicBoolean reviewCaptureNext = new java.util.concurrent.atomic.AtomicBoolean();
+    private static volatile java.util.concurrent.CountDownLatch reviewReadEntered;
+    private static volatile java.util.concurrent.CountDownLatch reviewReadRelease;
 
     private static final HttpServer upstream;
 
@@ -55,6 +58,12 @@ class UjinScenarioPollHttpTest {
                     "/api/apartment/get-device-signals/",
                     exchange -> {
                         exchange.getRequestBody().readAllBytes();
+                        String capturedBody = snapshotBody;
+                        if (reviewCaptureNext.getAndSet(false)) {
+                            reviewReadEntered.countDown();
+                            try { reviewReadRelease.await(5, java.util.concurrent.TimeUnit.SECONDS); }
+                            catch (InterruptedException interrupted) { Thread.currentThread().interrupt(); }
+                        }
                         if (snapshotMode.equals("slow")) {
                             try {
                                 Thread.sleep(600);
@@ -66,7 +75,7 @@ class UjinScenarioPollHttpTest {
                             exchange.close();
                             return;
                         }
-                        respond(exchange, snapshotBody);
+                        respond(exchange, capturedBody);
                     });
             upstream.createContext(
                     "/api/apartment/send-signal/",
@@ -543,4 +552,81 @@ class UjinScenarioPollHttpTest {
         assertFalse(foreign.body().contains("sn-src"));
         assertEquals(0, sendCalls.get());
     }
+    @Autowired org.springframework.jdbc.core.JdbcTemplate reviewJdbc;
+
+    @Test
+    void reviewRebindingBeforeNextPollMustEstablishNewBaseline() throws Exception {
+        login(userA, "review-baseline");
+        String[] setup = setupScenario(userA, "Review baseline");
+        assertEquals("BASELINE_STORED", JSON.readTree(poll(userA, setup[0], UUID.randomUUID().toString()).body()).path("status").asString());
+        snapshotBody = """
+                {"error":0,"data":{"devices":[
+                  {"id":"sn-src","signals":[{"name":"leak","value":0}]},
+                  {"id":"sn-alt","signals":[{"name":"leak","value":1}]},
+                  {"id":"sn-tgt","signals":[{"name":"lamp","value":0}]}]}}
+                """;
+        var rebind = request(userA, "/api/v1/devices/" + setup[1] + "/platform-binding", "PUT",
+                "{\"serialNumber\":\"sn-alt\",\"signalMappings\":[{\"signalKey\":\"leak\",\"platformName\":\"leak\"}],\"expectedVersion\":1}", csrf(userA));
+        assertEquals(200, rebind.statusCode(), rebind.body());
+        var firstNewDevice = JSON.readTree(poll(userA, setup[0], UUID.randomUUID().toString()).body());
+        assertEquals("BASELINE_STORED", firstNewDevice.path("status").asString(), firstNewDevice.toString());
+        assertEquals(0, sendCalls.get(), "first observation of a different device must not send a command");
+    }
+
+    @Test
+    void reviewInterruptedDispatchMustExpireEvenWhenInputNeverChanges() throws Exception {
+        login(userA, "review-interrupted");
+        String[] setup = setupScenario(userA, "Review interrupted");
+        poll(userA, setup[0], UUID.randomUUID().toString());
+        setValue("sn-src", "leak", "1");
+        var changed = JSON.readTree(poll(userA, setup[0], UUID.randomUUID().toString()).body());
+        UUID runId = UUID.fromString(changed.path("runId").asString());
+        // Reproduce the persisted state of a crash after accept() commits but before dispatch() reserves the command.
+        reviewJdbc.update("DELETE FROM runtime_commands WHERE command_id=(SELECT command_id FROM runtime_runs WHERE id=?)", runId);
+        reviewJdbc.update("UPDATE runtime_runs SET reason='DISPATCHING',created_at=? WHERE id=?", java.time.Instant.now().minusSeconds(120).toString(), runId);
+        poll(userA, setup[0], UUID.randomUUID().toString());
+        var staleRun = JSON.readTree(request(userA, "/api/v1/runs/" + runId, "GET", null, null).body());
+        assertEquals("UNKNOWN", staleRun.path("status").asString(), staleRun.toString());
+    }
+
+    @Test
+    void reviewOlderReadCannotOverwriteNewerUnchangedObservation() throws Exception {
+        login(userA, "review-order");
+        String[] setup = setupScenario(userA, "Review order");
+        poll(userA, setup[0], UUID.randomUUID().toString());
+        setValue("sn-src", "leak", "1");
+        reviewReadEntered = new java.util.concurrent.CountDownLatch(1);
+        reviewReadRelease = new java.util.concurrent.CountDownLatch(1);
+        reviewCaptureNext.set(true);
+        var older = CompletableFuture.supplyAsync(() -> {
+            try { return poll(userA, setup[0], UUID.randomUUID().toString()); }
+            catch (Exception failure) { throw new RuntimeException(failure); }
+        });
+        assertTrue(reviewReadEntered.await(5, java.util.concurrent.TimeUnit.SECONDS));
+        try {
+            setValue("sn-src", "leak", "0");
+            assertEquals("NO_CHANGE", JSON.readTree(poll(userA, setup[0], UUID.randomUUID().toString()).body()).path("status").asString());
+        } finally { reviewReadRelease.countDown(); }
+        var stale = JSON.readTree(older.get().body());
+        assertEquals("REJECTED", stale.path("status").asString(), stale.toString());
+        assertEquals(0, sendCalls.get(), "a late old reading must not create an action after a newer observation");
+    }
+
+    @Test
+    void reviewUnchangedPollReconcilesExistingCommandWithoutResending() throws Exception {
+        login(userA, "review-reconcile");
+        String[] setup = setupScenario(userA, "Review reconcile");
+        poll(userA, setup[0], UUID.randomUUID().toString());
+        setValue("sn-src", "leak", "1");
+        var changed = JSON.readTree(poll(userA, setup[0], UUID.randomUUID().toString()).body());
+        String runId = changed.path("runId").asString();
+        infoBody = """
+                {"error":0,"data":{"signals":[{"name":"lamp","task":1,"signal_task_dt":"review-new-task","state":{"value":0}}]}}
+                """;
+        poll(userA, setup[0], UUID.randomUUID().toString());
+        var run = JSON.readTree(request(userA, "/api/v1/runs/" + runId, "GET", null, null).body());
+        assertEquals("SUCCEEDED", run.path("status").asString(), run.toString());
+        assertEquals(1, sendCalls.get(), "reconciliation must only check the existing command");
+    }
+
 }

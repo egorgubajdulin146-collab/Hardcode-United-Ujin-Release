@@ -33,6 +33,11 @@ public class ScenarioPollEntity {
     @Column(name = "created_at", nullable = false, length = 40)
     private String createdAt;
 
+    @Column(name = "read_order")
+    private Long readOrder;
+    public Long getReadOrder() { return readOrder; }
+    public void setReadOrder(Long value) { readOrder = value; }
+
     public ScenarioPollEntity() {}
 
     public UUID getPollId() {

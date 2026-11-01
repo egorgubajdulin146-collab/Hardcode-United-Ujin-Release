@@ -36,9 +36,10 @@ public class ScenarioObservationService {
             Catalog.Trigger trigger,
             Catalog.Action action,
             String serialNumber,
-            String platformName) {}
+            String platformName,
+            long bindingVersion) {}
 
-    private record ReadOutcome(boolean ok, Double value, String reason) {}
+    private record ReadOutcome(boolean ok, Double value, String reason, String measuredAt) {}
 
     private record DispatchPlan(
             UUID pollId,
@@ -58,6 +59,8 @@ public class ScenarioObservationService {
     private final UjinCommandService commands;
     private final ScenarioObservationProperties config;
     private final TransactionTemplate tx;
+    private final org.springframework.jdbc.core.JdbcTemplate jdbc;
+    private final com.shastage.ujin.datasource.repository.jpa.CommandJpaRepository commandRows;
 
     public ScenarioObservationService(
             ScenarioPollJpaRepository polls,
@@ -69,7 +72,9 @@ public class ScenarioObservationService {
             PlatformBindingService binding,
             UjinCommandService commands,
             ScenarioObservationProperties config,
-            PlatformTransactionManager transactions) {
+            PlatformTransactionManager transactions,
+            org.springframework.jdbc.core.JdbcTemplate jdbc,
+            com.shastage.ujin.datasource.repository.jpa.CommandJpaRepository commandRows) {
         this.polls = polls;
         this.observations = observations;
         this.events = events;
@@ -80,6 +85,8 @@ public class ScenarioObservationService {
         this.commands = commands;
         this.config = config;
         this.tx = new TransactionTemplate(transactions);
+        this.jdbc = jdbc;
+        this.commandRows = commandRows;
     }
 
     // ===== POST /api/v1/scenarios/{scenarioId}/poll =====
@@ -94,7 +101,10 @@ public class ScenarioObservationService {
         // Резерв результата до сети; блокировка каталога не держится на чтении.
         Object[] reserved = new Object[2];
         ScenarioPollEntity replay = tx.execute(status -> reserve(scenarioId, pollId, owner, reserved));
-        if (replay != null) return view(replay);
+        // Existing commands are checked, never re-sent, including on unchanged input/replay.
+        // This happens outside the reservation transaction and global catalogue lock.
+        reconcile(scenarioId, owner, ujinToken);
+        if (replay != null) return view(owned(pollId, owner));
         Snapshot snapshot = (Snapshot) reserved[0];
         ReadOutcome read = readInput(snapshot, owner, ujinToken);
         DispatchPlan plan = tx.execute(status -> accept(snapshot, read, pollId, owner));
@@ -105,6 +115,7 @@ public class ScenarioObservationService {
     private ScenarioPollEntity reserve(
             UUID scenarioId, UUID pollId, String owner, Object[] snapshotOut) {
         store.lock();
+        expireStaleDispatches(scenarioId, owner, Instant.now().toString());
         var existing = polls.findById(pollId);
         if (existing.isPresent()) {
             var old = existing.get();
@@ -139,6 +150,7 @@ public class ScenarioObservationService {
         pollRow.setOwner(owner);
         pollRow.setStatus("PROCESSING");
         pollRow.setCreatedAt(now);
+        pollRow.setReadOrder(jdbc.queryForObject("SELECT nextval('scenario_poll_read_order_seq')", Long.class));
         polls.saveAndFlush(pollRow);
         snapshotOut[0] =
                 new Snapshot(
@@ -148,7 +160,8 @@ public class ScenarioObservationService {
                         trigger,
                         scenario.action(),
                         bound.serialNumber(),
-                        platformName);
+                        platformName,
+                        bound.version());
         return null;
     }
 
@@ -159,7 +172,7 @@ public class ScenarioObservationService {
             var issues = (List<Map<String, Object>>) state.getOrDefault("signalIssues", List.of());
             for (Map<String, Object> issue : issues) {
                 if (snapshot.trigger().signalKey().equals(issue.get("signalKey")))
-                    return new ReadOutcome(false, null, String.valueOf(issue.get("status")));
+                    return new ReadOutcome(false, null, String.valueOf(issue.get("status")), null);
             }
             @SuppressWarnings("unchecked")
             var values = (List<Map<String, Object>>) state.get("values");
@@ -167,13 +180,13 @@ public class ScenarioObservationService {
                 if (snapshot.trigger().signalKey().equals(value.get("signalKey"))) {
                     Object raw = value.get("value");
                     if (raw instanceof Number number && Double.isFinite(number.doubleValue()))
-                        return new ReadOutcome(true, number.doubleValue(), null);
-                    return new ReadOutcome(false, null, "BAD_SCHEMA");
+                        return new ReadOutcome(true, number.doubleValue(), null, value.get("measuredAt") instanceof String dt ? dt : null);
+                    return new ReadOutcome(false, null, "BAD_SCHEMA", null);
                 }
             }
-            return new ReadOutcome(false, null, "MISSING_SIGNAL");
+            return new ReadOutcome(false, null, "MISSING_SIGNAL", null);
         } catch (CatalogException failure) {
-            return new ReadOutcome(false, null, failure.code);
+            return new ReadOutcome(false, null, failure.code, null);
         }
     }
 
@@ -202,7 +215,8 @@ public class ScenarioObservationService {
         try {
             var bound = binding.getBinding(snapshot.trigger().deviceId(), owner);
             boolean sameMapping =
-                    bound.serialNumber().equals(snapshot.serialNumber())
+                    bound.version() == snapshot.bindingVersion()
+                            && bound.serialNumber().equals(snapshot.serialNumber())
                             && bound.signalMappings().stream()
                                     .anyMatch(m ->
                                             m.signalKey().equals(snapshot.trigger().signalKey())
@@ -214,29 +228,46 @@ public class ScenarioObservationService {
         String now = Instant.now().toString();
         var baseline =
                 observations.findByScenarioIdAndOwner(snapshot.scenarioId(), owner).orElse(null);
-        if (baseline == null) {
-            var row = new ScenarioObservationEntity();
+        String identity = sourceIdentity(snapshot);
+        long order = Objects.requireNonNullElse(pollRow.getReadOrder(), 0L);
+        if (baseline == null || !identity.equals(baseline.getSourceIdentity())) {
+            var row = baseline == null ? new ScenarioObservationEntity() : baseline;
             row.setScenarioId(snapshot.scenarioId());
             row.setOwner(owner);
             row.setInputSignalKey(snapshot.trigger().signalKey());
+            row.setSourceIdentity(identity);
             row.setBaselineValue(read.value());
+            row.setAcceptedReadOrder(order);
+            row.setMeasuredAt(read.measuredAt());
             row.setUpdatedAt(now);
             observations.saveAndFlush(row);
             pollRow.setStatus("BASELINE_STORED");
-            pollRow.setReason("FIRST_READ");
+            pollRow.setReason(baseline == null ? "FIRST_READ" : "SOURCE_CHANGED");
             polls.saveAndFlush(pollRow);
             return null;
         }
+        if (order <= baseline.getAcceptedReadOrder()) {
+            // Equal stale values are harmless, but must not move the watermark backwards.
+            pollRow.setStatus(Double.compare(baseline.getBaselineValue(), read.value()) == 0 ? "NO_CHANGE" : "REJECTED");
+            pollRow.setReason("STALE_OBSERVATION");
+            polls.saveAndFlush(pollRow);
+            return null;
+        }
+        if (read.measuredAt() != null && baseline.getMeasuredAt() != null
+                && Instant.parse(read.measuredAt()).isBefore(Instant.parse(baseline.getMeasuredAt())))
+            return reject(pollRow, "STALE_MEASUREMENT");
+        baseline.setAcceptedReadOrder(order);
+        baseline.setUpdatedAt(now);
+        if (read.measuredAt() != null) baseline.setMeasuredAt(read.measuredAt());
         if (Double.compare(baseline.getBaselineValue(), read.value()) == 0) {
+            observations.saveAndFlush(baseline);
             pollRow.setStatus("NO_CHANGE");
             pollRow.setReason("VALUE_UNCHANGED");
             polls.saveAndFlush(pollRow);
             return null;
         }
         baseline.setBaselineValue(read.value());
-        baseline.setUpdatedAt(now);
         observations.saveAndFlush(baseline);
-        expireStaleDispatches(snapshot.scenarioId(), owner, now);
 
         var event = new EventEntity();
         event.setEventId(UUID.randomUUID());
@@ -368,8 +399,65 @@ public class ScenarioObservationService {
                 run.setReason("DISPATCH_INTERRUPTED");
                 run.addEntry("RESULT", "Отправка не была завершена; повтор не выполняется", now);
                 runs.saveAndFlush(run);
+                updatePollReason(run, "DISPATCH_INTERRUPTED");
             }
         }
+    }
+
+    private void updatePollReason(RunEntity run, String reason) {
+        for (var poll : polls.findByRunId(run.getId())) {
+            if (run.getOwner().equals(poll.getOwner())) {
+                poll.setReason(reason);
+                polls.saveAndFlush(poll);
+            }
+        }
+    }
+
+    private void reconcile(UUID scenarioId, String owner, String token) {
+        for (var candidate : runs.findByScenarioIdAndOwnerAndStatusIn(scenarioId, owner, List.of("PENDING", "UNKNOWN"))) {
+            if (candidate.getCommandId() == null) continue;
+            var command = commandRows.findByCommandIdAndOwner(candidate.getCommandId(), owner).orElse(null);
+            // No row means reservation may still be in progress. Expiry handles an orphan; never resend it.
+            if (command == null || command.getResolutionNote() != null) continue;
+            if (Set.of("PENDING", "UNKNOWN").contains(command.getStatus())) {
+                try { commands.check(command.getCommandId(), owner, token); }
+                catch (CatalogException unavailable) { continue; }
+            }
+            tx.execute(status -> {
+                store.lock();
+                var current = commandRows.findByCommandIdAndOwner(candidate.getCommandId(), owner).orElse(null);
+                var run = runs.findById(candidate.getId()).filter(r -> owner.equals(r.getOwner())).orElse(null);
+                if (current == null || run == null || "SUCCEEDED".equals(run.getStatus())) return null;
+                String actual = switch (current.getStatus()) {
+                    case "CONFIRMED" -> "SUCCEEDED";
+                    case "FAILED" -> "FAILED";
+                    case "UNKNOWN" -> "UNKNOWN";
+                    default -> "PENDING";
+                };
+                // A late pending receipt must not erase known uncertainty.
+                if ("UNKNOWN".equals(run.getStatus()) && "PENDING".equals(actual)) return null;
+                if (!actual.equals(run.getStatus()) || !Objects.equals(current.getReason(), run.getReason())) {
+                    run.setStatus(actual); run.setReason(current.getReason());
+                    run.addEntry("RESULT", "Команда: " + actual + " (" + current.getReason() + ")", Instant.now().toString());
+                    runs.saveAndFlush(run);
+                }
+                updatePollReason(run, current.getReason());
+                return null;
+            });
+        }
+    }
+
+    private static String sourceIdentity(Snapshot snapshot) {
+        // Length prefixes make arbitrary platform names unambiguous without retaining identifiers in logs.
+        String data = List.of(snapshot.scenarioId().toString(), Long.toString(snapshot.version()),
+                snapshot.trigger().deviceId().toString(), snapshot.trigger().signalKey(), snapshot.trigger().eventKey(),
+                snapshot.trigger().operator(), Double.toString(snapshot.trigger().value()), snapshot.serialNumber(),
+                snapshot.platformName(), Long.toString(snapshot.bindingVersion())).stream()
+                .map(value -> value.length() + ":" + value).collect(java.util.stream.Collectors.joining());
+        try {
+            return HexFormat.of().formatHex(java.security.MessageDigest.getInstance("SHA-256")
+                    .digest(data.getBytes(java.nio.charset.StandardCharsets.UTF_8)));
+        } catch (java.security.NoSuchAlgorithmException impossible) { throw new IllegalStateException(impossible); }
     }
 
     private ScenarioPollEntity owned(UUID pollId, String owner) {
