@@ -56,7 +56,9 @@
   display: flex;
   align-items: center;
   gap: var(--space-sm);
+  min-height: 36px;
   padding: var(--space-sm) var(--space-md);
+  white-space: nowrap;
   background: var(--color-primary);
   color: white;
   border: none;
@@ -76,11 +78,15 @@
 }
 
 .iconBtn {
-  display: flex;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 32px;
-  height: 32px;
+  gap: var(--space-xs);
+  min-width: 36px;
+  height: 36px;
+  padding: 0 12px;
+  white-space: nowrap;
+  flex-shrink: 0;
   background: var(--color-bg);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
@@ -322,4 +328,25 @@
   to {
     transform: rotate(360deg);
   }
+}
+.pollRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-sm);
+  margin-top: var(--space-xs);
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+}
+
+.pollRow label {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-xs);
+  white-space: nowrap;
+}
+
+.pollRow [role="status"] {
+  flex-basis: 100%;
+  overflow-wrap: anywhere;
 }

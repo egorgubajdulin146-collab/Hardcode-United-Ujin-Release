@@ -196,3 +196,101 @@ test('Escape closes the runtime panel when not busy', async () => {
   assert.equal(closed, 1);
   act(() => root.unmount());
 });
+
+// —— Регрессии обрезки кнопок и неровных размеров —
+
+function readCss(relative) {
+  return readFileSync(fileURLToPath(new URL('../../frontend/src/' + relative, import.meta.url)), 'utf8');
+}
+
+function ruleBody(css, selector) {
+  // Якорь по началу строки: внутри @media встречаются похожие селекторы.
+  const at = css.indexOf('\n' + selector + ' {');
+  if (at < 0) return '';
+  return css.slice(at, css.indexOf('}', at));
+}
+
+test('regression: action buttons fit their label and keep one height', () => {
+  for (const file of ['pages/DevicesCrudPage.module.css', 'pages/ScenariosCrudPage.module.css']) {
+    const icon = ruleBody(readCss(file), '.iconBtn');
+    assert.ok(!/width:\s*32px/.test(icon), `${file}: фиксированная ширина вернулась`);
+    assert.match(icon, /white-space:\s*nowrap/, `${file}: текст снова может обрезаться`);
+    assert.match(icon, /height:\s*36px/, `${file}: высота кнопки не 36px`);
+    assert.match(icon, /flex-shrink:\s*0/, `${file}: кнопку снова можно сжать`);
+    const primary = ruleBody(readCss(file), '.primaryBtn');
+    assert.match(primary, /min-height:\s*36px/, `${file}: основная кнопка другого размера`);
+  }
+});
+
+test('regression: journal and panel controls share the 36px height', () => {
+  const journal = ruleBody(readCss('pages/Pages.module.css'), '.journalFilters input, .journalFilters button, .journalPagination button');
+  assert.match(journal, /height:\s*36px/);
+  const panel = ruleBody(readCss('components/DeviceRuntimePanel.module.css'), '.panel button, .panel input, .panel select');
+  assert.match(panel, /height:\s*36px/);
+  const rooms = readCss('pages/RoomDevicesPage.module.css');
+  for (const selector of ['.addButton', '.emulateButton', '.roomTab']) {
+    assert.match(ruleBody(rooms, selector), /min-height:\s*36px/, `${selector} без общей высоты`);
+  }
+});
+
+test('regression: disabled controls keep a visible disabled look', () => {
+  const rooms = readCss('pages/RoomDevicesPage.module.css');
+  assert.match(rooms, /\.addButton:disabled/, 'кнопка комнат без стиля disabled');
+  const journal = readCss('pages/Pages.module.css');
+  assert.match(journal, /\.journalFilters button:disabled/, 'фильтры журнала без стиля disabled');
+});
+
+function mountRuns({ isFetching = false } = {}) {
+  const pagePath = fileURLToPath(new URL('../../frontend/src/pages/RunsPage.tsx', import.meta.url));
+  const mocks = {
+    '../mocks/data': { mockRunPage: { items: [], total: 0 }, mockDevices: [], mockScenarioPage: { items: [], total: 0 }, mockDevicePage: { items: [], total: 0 } },
+    '../api/client': {
+      ApiError: class extends Error { constructor() { super('err'); this.status = 500; } },
+      NetworkError: class extends Error {}, TimeoutError: class extends Error {},
+    },
+    '../api/endpoints': {
+      endpoints: {
+        runs: { list: async () => ({ items: [], total: 0 }) },
+        devices: { list: async () => ({ items: [], total: 0 }) },
+      },
+    },
+    '../api/dataSource': { isMock: () => false, getDataSource: () => 'api' },
+    '../api/sessionContext': { useSession: () => ({ terminateSession() {}, demo: false }) },
+    'react-router-dom': {
+      Link: (props) => React.createElement('a', props),
+      useSearchParams: () => [new URLSearchParams(), () => {}],
+    },
+    '@tanstack/react-query': {
+      useQuery: () => ({ data: { items: [], total: 0 }, error: undefined, isLoading: false, isFetching, refetch() {}, isPending: false }),
+      useQueryClient: () => ({ invalidateQueries() {} }),
+    },
+  };
+  const { RunsPage } = loadComponent(pagePath, mocks);
+  let root;
+  act(() => { root = create(React.createElement(RunsPage)); });
+  return { root };
+}
+
+test('journal filter buttons are disabled while fetching', async () => {
+  const { root } = mountRuns({ isFetching: true });
+  for (const label of ['Применить', 'Сбросить']) {
+    const button = root.root.findAllByType('button').find(b => textOf(b).includes(label));
+    assert.ok(button, `кнопка «${label}» не найдена`);
+    assert.equal(button.props.disabled, true, `«${label}» выключена во время загрузки`);
+  }
+  const refresh = root.root.findAllByType('button').find(b => b.props['aria-label'] === 'Обновить журнал');
+  assert.ok(refresh, 'кнопка обновления журнала не найдена');
+  assert.equal(refresh.props.disabled, true, 'обновление выключено во время загрузки');
+  assert.ok(textOf(refresh).includes('Обновление…'), 'нет индикации загрузки');
+  act(() => root.unmount());
+});
+
+test('poll row on the scenarios screen wraps instead of clipping', async () => {
+  const css = readCss('pages/ScenariosCrudPage.module.css');
+  const row = ruleBody(css, '.pollRow');
+  assert.match(row, /flex-wrap:\s*wrap/, 'строка наблюдения не переносится');
+  assert.match(ruleBody(css, '.pollRow [role="status"]'), /overflow-wrap:\s*anywhere/);
+  const pagePath = fileURLToPath(new URL('../../frontend/src/pages/ScenariosCrudPage.tsx', import.meta.url));
+  const source = readFileSync(pagePath, 'utf8');
+  assert.match(source, /className=\{styles\.pollRow\}/, 'кнопки наблюдения вне переносимой строки');
+});

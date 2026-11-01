@@ -325,7 +325,7 @@ export function ScenariosCrudPage() {
                     {scenario.executionMode} · {scenario.enabled ? "Включён" : "Выключен — черновик"} · v{scenario.version}
                   </span>
                   {scenario.executionMode === "UJIN" && !mock && !demo && (
-                    <div className={styles.cardMeta}>
+                    <div className={styles.pollRow}>
                       <button
                         type="button"
                         className={styles.iconBtn}

@@ -284,7 +284,23 @@
 
 .journalFilters, .journalPagination { display: flex; flex-wrap: wrap; align-items: end; gap: var(--space-sm); margin: var(--space-md) 0; }
 .journalFilters label { display: grid; gap: var(--space-xs); font-size: var(--font-size-sm); }
-.journalFilters input, .journalFilters button, .journalPagination button { font: inherit; padding: 8px 12px; border: 1px solid var(--color-border); border-radius: var(--radius-sm); background: var(--color-surface); color: var(--color-text); }
+.journalFilters input, .journalFilters button, .journalPagination button {
+  font: inherit;
+  font-size: var(--font-size-sm);
+  height: 36px;
+  padding: 0 12px;
+  box-sizing: border-box;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  color: var(--color-text);
+}
+.journalFilters button, .journalPagination button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  white-space: nowrap;
+}
 .journalFilters input { width: min(100%, 330px); }
-.journalPagination button:disabled { opacity: .5; cursor: not-allowed; }
+.journalFilters button:disabled, .journalPagination button:disabled { opacity: .5; cursor: not-allowed; }
 .runIdentifiers { color: var(--color-text-secondary); font-size: var(--font-size-xs); overflow-wrap: anywhere; margin: var(--space-sm) 0; }
