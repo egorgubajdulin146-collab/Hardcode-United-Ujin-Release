@@ -201,8 +201,27 @@ export interface Run {
   entries: RunEntry[];
   input?: SignalValue;
   action?: Action;
+  commandId?: string;
   reason?: string;
   resolution?: UnknownResolution;
+}
+
+export type ScenarioPollStatus =
+  | "PROCESSING"
+  | "BASELINE_STORED"
+  | "NO_CHANGE"
+  | "RUN_CREATED"
+  | "READ_ERROR"
+  | "REJECTED"
+  | "UNKNOWN";
+
+export interface ScenarioPollResult {
+  pollId: string;
+  scenarioId: string;
+  status: ScenarioPollStatus;
+  reason?: string;
+  observedValue?: number;
+  runId?: string;
 }
 
 export interface RunPage {

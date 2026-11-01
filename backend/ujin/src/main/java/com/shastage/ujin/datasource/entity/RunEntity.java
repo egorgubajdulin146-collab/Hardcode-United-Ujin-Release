@@ -51,6 +51,9 @@ public class RunEntity {
     @Column(name = "action_value")
     private Double actionValue;
 
+    @Column(name = "command_id")
+    private UUID commandId;
+
     // Журнал записей
     @OneToMany(mappedBy = "run", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
     @OrderBy("at ASC")
@@ -87,6 +90,8 @@ public class RunEntity {
     public void setActionSignalKey(String actionSignalKey) { this.actionSignalKey = actionSignalKey; }
     public Double getActionValue() { return actionValue; }
     public void setActionValue(Double actionValue) { this.actionValue = actionValue; }
+    public UUID getCommandId() { return commandId; }
+    public void setCommandId(UUID commandId) { this.commandId = commandId; }
     public List<RunEntryEntity> getEntries() { return entries; }
     public String getOwner() { return owner; }
     public void setOwner(String owner) { this.owner = owner; }

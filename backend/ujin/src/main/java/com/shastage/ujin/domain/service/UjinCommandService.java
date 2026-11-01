@@ -46,6 +46,7 @@ public class UjinCommandService {
     private final CommandJpaRepository commands;
     private final TaskAckJpaRepository acks;
     private final com.shastage.ujin.datasource.repository.TaskHistoryStore history;
+    private final com.shastage.ujin.datasource.repository.jpa.RunJpaRepository runs;
     private final CatalogService catalog;
     private final CatalogStore store;
     private final PlatformBindingService binding;
@@ -59,6 +60,7 @@ public class UjinCommandService {
             CommandJpaRepository commands,
             TaskAckJpaRepository acks,
             com.shastage.ujin.datasource.repository.TaskHistoryStore history,
+            com.shastage.ujin.datasource.repository.jpa.RunJpaRepository runs,
             CatalogService catalog,
             CatalogStore store,
             PlatformBindingService binding,
@@ -70,6 +72,7 @@ public class UjinCommandService {
         this.commands = commands;
         this.acks = acks;
         this.history = history;
+        this.runs = runs;
         this.catalog = catalog;
         this.store = store;
         this.binding = binding;
@@ -294,6 +297,29 @@ public class UjinCommandService {
             command.setConfirmedAt(Instant.now().toString());
             command.setUpdatedAt(Instant.now().toString());
             commands.saveAndFlush(command);
+            syncLinkedRuns(command);
+        }
+    }
+
+    /** Run связан с командой: SUCCEEDED только после CONFIRMED; статус не откатывается. */
+    private void syncLinkedRuns(CommandEntity command) {
+        for (com.shastage.ujin.datasource.entity.RunEntity run : runs.findByCommandId(command.getCommandId())) {
+            if ("SUCCEEDED".equals(run.getStatus()) || "SKIPPED".equals(run.getStatus())) continue;
+            String status =
+                    switch (command.getStatus()) {
+                        case "CONFIRMED" -> "SUCCEEDED";
+                        case "FAILED" -> "FAILED";
+                        case "UNKNOWN" -> "UNKNOWN";
+                        default -> "PENDING";
+                    };
+            if ("PENDING".equals(status) && !"DISPATCHING".equals(run.getReason())) continue;
+            run.setStatus(status);
+            run.setReason(command.getReason());
+            run.addEntry(
+                    "RESULT",
+                    "Команда: " + command.getStatus() + " (" + command.getReason() + ")",
+                    Instant.now().toString());
+            runs.saveAndFlush(run);
         }
     }
 
@@ -371,6 +397,7 @@ public class UjinCommandService {
                             command.setResolvedAt(Instant.now().toString());
                         }
                         commands.saveAndFlush(command);
+                        syncLinkedRuns(command);
                     }
                     return receipt(command);
                 });
