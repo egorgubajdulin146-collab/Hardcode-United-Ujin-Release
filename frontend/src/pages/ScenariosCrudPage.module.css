@@ -350,3 +350,25 @@
   flex-basis: 100%;
   overflow-wrap: anywhere;
 }
+
+
+/* Узкие экраны: заголовок не сжимается кнопками — действия переносятся в свою строку */
+@media (max-width: 640px) {
+  .card {
+    flex-wrap: wrap;
+    align-items: flex-start;
+  }
+
+  .cardInfo {
+    flex: 1 1 calc(100% - 56px);
+  }
+
+  .cardTitle {
+    white-space: normal;
+  }
+
+  .cardActions {
+    flex-basis: 100%;
+    justify-content: flex-end;
+  }
+}
