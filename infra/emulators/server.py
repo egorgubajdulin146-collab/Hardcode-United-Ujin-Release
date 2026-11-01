@@ -56,7 +56,7 @@ class Handler(BaseHTTPRequestHandler):
                 return self.reply(422, {"code": "INVALID_VALUE"})
             with lock:
                 if path == "/stimuli":
-                    if family != "leak" or body.get("kind") != "WET" or value not in (0, 1):
+                    if family != "leak" or body.get("signalKey") != "leak" or value not in (0, 1):
                         return self.reply(422, {"code": "STIMULUS_UNSUPPORTED"})
                     device.set_wet(bool(value))
                     device.step(0)

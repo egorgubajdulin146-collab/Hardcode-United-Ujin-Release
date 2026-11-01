@@ -33,12 +33,13 @@ serial local-leak/local-light — локальные метки, не SN пла�
 ```bash
 # Воздействие на датчик: 0 — сухо, 1 — протечка.
 curl --fail -H 'Content-Type: application/json' \
-  -d '{"kind":"WET","value":1}' http://127.0.0.1:18191/stimuli
+  -d '{"signalKey":"leak","value":1}' http://127.0.0.1:18191/stimuli
 # Команда свету; 0 выключает, 1 включает.
 curl --fail -H 'Content-Type: application/json' \
   -d '{"signalKey":"lamp","value":1}' http://127.0.0.1:18192/command
 ```
 
+В /stimuli signalKey должен быть leak; прежний формат kind=WET не принимается.
 Успешный POST200 возвращает текущее состояние модели. Некорректный JSON400,
 неподдерживаемая команда/значение422, неизвестный путь404. Ноль передаётся как0,
 wire_value0.001 из пакета в этом bridge не применяется. Автоматических тиков
