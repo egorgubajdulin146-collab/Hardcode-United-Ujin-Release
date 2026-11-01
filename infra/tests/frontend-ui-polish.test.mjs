@@ -229,7 +229,7 @@ test('regression: journal and panel controls share the 36px height', () => {
   assert.match(panel, /height:\s*36px/);
   const rooms = readCss('pages/RoomDevicesPage.module.css');
   for (const selector of ['.addButton', '.emulateButton', '.roomTab']) {
-    assert.match(ruleBody(rooms, selector), /min-height:\s*36px/, `${selector} без общей высоты`);
+    assert.match(ruleBody(rooms, selector), /(?:min-)?height:\s*36px/, `${selector} без общей высоты`);
   }
 });
 
@@ -293,4 +293,22 @@ test('poll row on the scenarios screen wraps instead of clipping', async () => {
   const pagePath = fileURLToPath(new URL('../../frontend/src/pages/ScenariosCrudPage.tsx', import.meta.url));
   const source = readFileSync(pagePath, 'utf8');
   assert.match(source, /className=\{styles\.pollRow\}/, 'кнопки наблюдения вне переносимой строки');
+});
+
+test('regression: form, sidebar and login buttons keep the 36px family', () => {
+  for (const [file, selectors] of [
+    ['components/DeviceForm.module.css', ['.closeBtn', '.removeBtn', '.addBtn', '.cancelBtn', '.submitBtn']],
+    ['components/ScenarioForm.module.css', ['.closeBtn', '.cancelBtn', '.submitBtn', '.confirmBtn', '.keepBtn']],
+    ['pages/LoginPage.module.css', ['.submitButton', '.demoButton']],
+    ['components/Layout.module.css', ['.sourceToggle']],
+  ]) {
+    const css = readCss(file);
+    for (const selector of selectors) {
+      const body = ruleBody(css, selector);
+      assert.match(body, /(?:min-)?height:\s*36px/, `${file} ${selector} выпал из общей высоты`);
+    }
+  }
+  const rooms = readCss('pages/RoomDevicesPage.module.css');
+  assert.match(ruleBody(rooms, '.roomTab'), /height:\s*36px/, 'вкладка комнат не 36px');
+  assert.match(ruleBody(rooms, '.panelClose'), /(?:min-)?height:\s*36px/, 'закрытие панели комнат не 36px');
 });

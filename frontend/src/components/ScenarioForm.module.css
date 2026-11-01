@@ -24,8 +24,8 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 28px;
-  height: 28px;
+  width: 36px;
+  height: 36px;
   background: var(--color-bg);
   border: none;
   border-radius: var(--radius-sm);
@@ -198,6 +198,7 @@
 }
 
 .reloadBtn {
+  min-height: 36px;
   display: inline-flex;
   align-items: center;
   gap: 4px;
@@ -222,6 +223,7 @@
 }
 
 .cancelBtn {
+  min-height: 36px;
   padding: var(--space-sm) var(--space-md);
   background: var(--color-bg);
   color: var(--color-text-secondary);
@@ -236,6 +238,7 @@
 }
 
 .submitBtn {
+  min-height: 36px;
   display: flex;
   align-items: center;
   gap: var(--space-sm);
@@ -301,6 +304,7 @@
 }
 
 .confirmBtn {
+  min-height: 36px;
   padding: var(--space-xs) var(--space-sm);
   background: var(--color-primary);
   color: white;
@@ -311,6 +315,7 @@
 }
 
 .keepBtn {
+  min-height: 36px;
   padding: var(--space-xs) var(--space-sm);
   background: var(--color-bg);
   color: var(--color-text-secondary);
