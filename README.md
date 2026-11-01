@@ -65,8 +65,8 @@ Python 3, curl и OpenSSL. JDK 25 используется внутри конт
 Для первой сборки нужен интернет. Из чистого checkout:
 
 ```sh
-git clone git@github.com:egorgubajdulin146-collab/Hardcode-United-Ujin.git
-cd Hardcode-United-Ujin
+git clone https://github.com/egorgubajdulin146-collab/Hardcode-United-Ujin-Release.git
+cd Hardcode-United-Ujin-Release
 git switch develop
 cp .env.example .env
 chmod 600 .env
@@ -186,3 +186,8 @@ CI/deploy не заменяют приёмку фактического runtime 
 Она выключена по умолчанию. Наличие кода и зелёный CI не подтверждают live roundtrip.
 
 Порядок работы: [CONTRIBUTING.md](CONTRIBUTING.md).
+
+История разработки сохранена из
+[исходного репозитория команды](https://github.com/egorgubajdulin146-collab/Hardcode-United-Ujin).
+Настройки CI и сервера при копировании Git требуют отдельной настройки:
+[порядок переноса](docs/REPOSITORY_TRANSFER.md).
