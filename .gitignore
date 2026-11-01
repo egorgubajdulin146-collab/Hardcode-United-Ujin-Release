@@ -31,3 +31,6 @@ coverage/
 # Python tooling
 .venv/
 __pycache__/
+
+.idea
+.env

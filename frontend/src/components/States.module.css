@@ -1,0 +1,58 @@
+.state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-md);
+  padding: var(--space-xl);
+  text-align: center;
+  min-height: 200px;
+}
+
+.spinner {
+  animation: spin 1s linear infinite;
+  color: var(--color-primary);
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.stateTitle {
+  font-size: var(--font-size-lg);
+  font-weight: 600;
+}
+
+.stateDescription {
+  color: var(--color-text-secondary);
+  max-width: 360px;
+}
+
+.retryButton {
+  padding: var(--space-sm) var(--space-md);
+  min-height: 36px;
+  background: var(--color-primary);
+  color: white;
+  border: none;
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-sm);
+  transition: background var(--transition-fast);
+}
+
+.retryButton:hover {
+  background: var(--color-primary-hover);
+}
+
+.mockBadge {
+  display: inline-block;
+  padding: 2px 8px;
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  color: var(--color-mock);
+  background: color-mix(in srgb, var(--color-mock) 12%, transparent);
+  border: 1px solid var(--color-mock);
+  border-radius: var(--radius-sm);
+}

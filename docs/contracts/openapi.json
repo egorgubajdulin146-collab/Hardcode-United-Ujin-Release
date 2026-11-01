@@ -1,0 +1,3534 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Ujin scenario editor API — review draft",
+    "version": "0.1.2-draft",
+    "description": "Proposed application API, not the external Ujin platform API. Not implemented or jointly approved. See MVP.md for semantics, access and open decisions."
+  },
+  "x-review-status": "DRAFT_PENDING_BACKEND_REVIEW",
+  "paths": {
+    "/api/v1/system": {
+      "get": {
+        "operationId": "getSystem",
+        "summary": "getSystem",
+        "responses": {
+          "200": {
+            "description": "Draft contract response; implementation pending",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SystemStatus"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Problem400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Problem401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Problem403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Problem404"
+          },
+          "409": {
+            "$ref": "#/components/responses/Problem409"
+          },
+          "422": {
+            "$ref": "#/components/responses/Problem422"
+          },
+          "503": {
+            "$ref": "#/components/responses/Problem503"
+          }
+        }
+      }
+    },
+    "/api/v1/devices": {
+      "get": {
+        "operationId": "listDevices",
+        "summary": "listDevices",
+        "responses": {
+          "200": {
+            "description": "Draft contract response; implementation pending",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DevicePage"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Problem400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Problem401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Problem403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Problem404"
+          },
+          "409": {
+            "$ref": "#/components/responses/Problem409"
+          },
+          "422": {
+            "$ref": "#/components/responses/Problem422"
+          },
+          "503": {
+            "$ref": "#/components/responses/Problem503"
+          }
+        },
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0
+            }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20
+            }
+          }
+        ]
+      },
+      "post": {
+        "operationId": "createDevice",
+        "summary": "createDevice",
+        "responses": {
+          "201": {
+            "description": "Draft contract response; implementation pending",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Device"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Problem400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Problem401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Problem403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Problem404"
+          },
+          "409": {
+            "$ref": "#/components/responses/Problem409"
+          },
+          "422": {
+            "$ref": "#/components/responses/Problem422"
+          },
+          "503": {
+            "$ref": "#/components/responses/Problem503"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DeviceWrite"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/devices/{deviceId}": {
+      "get": {
+        "operationId": "getDevice",
+        "summary": "getDevice",
+        "responses": {
+          "200": {
+            "description": "Draft contract response; implementation pending",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Device"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Problem400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Problem401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Problem403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Problem404"
+          },
+          "409": {
+            "$ref": "#/components/responses/Problem409"
+          },
+          "422": {
+            "$ref": "#/components/responses/Problem422"
+          },
+          "503": {
+            "$ref": "#/components/responses/Problem503"
+          }
+        },
+        "parameters": [
+          {
+            "name": "deviceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ]
+      },
+      "put": {
+        "operationId": "updateDevice",
+        "summary": "updateDevice",
+        "responses": {
+          "200": {
+            "description": "Draft contract response; implementation pending",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Device"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Problem400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Problem401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Problem403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Problem404"
+          },
+          "409": {
+            "$ref": "#/components/responses/Problem409"
+          },
+          "422": {
+            "$ref": "#/components/responses/Problem422"
+          },
+          "503": {
+            "$ref": "#/components/responses/Problem503"
+          }
+        },
+        "parameters": [
+          {
+            "name": "deviceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DeviceUpdate"
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "operationId": "deleteDevice",
+        "summary": "Delete an unreferenced local device",
+        "parameters": [
+          {
+            "name": "deviceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "expectedVersion",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Deleted locally; external Ujin device unchanged"
+          },
+          "400": {
+            "$ref": "#/components/responses/Problem400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Problem401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Problem403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Problem404"
+          },
+          "409": {
+            "$ref": "#/components/responses/Problem409"
+          },
+          "422": {
+            "$ref": "#/components/responses/Problem422"
+          },
+          "503": {
+            "$ref": "#/components/responses/Problem503"
+          }
+        }
+      }
+    },
+    "/api/v1/devices/{deviceId}/state": {
+      "get": {
+        "operationId": "getDeviceState",
+        "summary": "getDeviceState",
+        "description": "mode=LOCAL читает локальное состояние. mode=UJIN выполняет один upstream snapshot apartment/get-device-signals и возвращает значения сигналов привязанного SN; LOCAL-состояние не перезаписывается. Состояние availability для UJIN — UNKNOWN. Для явно назначенной LOCAL-Python пары читает values.leak/lamp из отдельных процессов; provider=PYTHON. GET не запускает сценарий; для этого POST /local-python/poll.",
+        "responses": {
+          "200": {
+            "description": "Наблюдаемое состояние устройства",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeviceState"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Problem400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Problem401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Problem403"
+          },
+          "404": {
+            "description": "DEVICE_NOT_FOUND — устройство недоступно владельцу; UJIN_DEVICE_NOT_VISIBLE — привязанный SN не виден в snapshot",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "PLATFORM_NOT_BOUND — устройство не привязано; VERSION/IDEMPOTENCY — конфликт",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "$ref": "#/components/responses/Problem422"
+          },
+          "502": {
+            "$ref": "#/components/responses/Problem502"
+          },
+          "503": {
+            "$ref": "#/components/responses/Problem503"
+          }
+        },
+        "parameters": [
+          {
+            "name": "deviceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "mode",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/ExecutionMode"
+            }
+          }
+        ]
+      }
+    },
+    "/api/v1/devices/{deviceId}/platform-binding": {
+      "get": {
+        "operationId": "getPlatformBinding",
+        "summary": "Привязка локального устройства к SN Ujin и mapping сигналов",
+        "responses": {
+          "200": {
+            "description": "Сохранённая привязка",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlatformBinding"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Problem400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Problem401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Problem403"
+          },
+          "404": {
+            "description": "DEVICE_NOT_FOUND — устройство недоступно владельцу; PLATFORM_NOT_BOUND — привязки нет",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "deviceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ]
+      },
+      "put": {
+        "operationId": "putPlatformBinding",
+        "summary": "Сохранить привязку local UUID → platform SN и mapping сигналов",
+        "description": "Перед сохранением BOUND сервер проверяет, что текущая resident-сессия Ujin видит точный SN. SN хранится строкой. Owner определяется сервером; токены и пароли в привязке не хранятся. BOUND означает только проверенное сопоставление, не доступность publication/downlink.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PlatformBindingWrite"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Привязка заменена",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlatformBinding"
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "Привязка создана",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlatformBinding"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Problem400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Problem401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Problem403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Problem404"
+          },
+          "409": {
+            "$ref": "#/components/responses/Problem409"
+          },
+          "422": {
+            "description": "VALIDATION_ERROR — неверный или неоднозначный mapping; UJIN_SN_NOT_VISIBLE — SN не виден resident-сессии",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "502": {
+            "$ref": "#/components/responses/Problem502"
+          },
+          "503": {
+            "$ref": "#/components/responses/Problem503"
+          }
+        },
+        "parameters": [
+          {
+            "name": "deviceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ]
+      }
+    },
+    "/api/v1/devices/{deviceId}/commands": {
+      "post": {
+        "operationId": "sendCommand",
+        "summary": "sendCommand",
+        "description": "LOCAL исполняется в локальном контуре сразу. UJIN отправляет apartment/send-signal (флаг ujin.commands.enabled, по умолчанию выключен); HTTP 200/error=0 означает приём запроса платформой и оставляет PENDING — исполнение подтверждается только применением задачи. Повтор commandId с тем же payload возвращает квитанцию без отправки, с иным — 409. При сетевой неопределённости статус UNKNOWN без автоматического повтора.",
+        "responses": {
+          "202": {
+            "description": "Draft contract response; implementation pending",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CommandReceipt"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Problem400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Problem401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Problem403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Problem404"
+          },
+          "409": {
+            "$ref": "#/components/responses/Problem409"
+          },
+          "422": {
+            "$ref": "#/components/responses/Problem422"
+          },
+          "503": {
+            "$ref": "#/components/responses/Problem503"
+          }
+        },
+        "parameters": [
+          {
+            "name": "deviceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Command"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/commands/{commandId}": {
+      "get": {
+        "operationId": "getCommand",
+        "summary": "getCommand",
+        "responses": {
+          "200": {
+            "description": "Draft contract response; implementation pending",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CommandReceipt"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Problem400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Problem401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Problem403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Problem404"
+          },
+          "409": {
+            "$ref": "#/components/responses/Problem409"
+          },
+          "422": {
+            "$ref": "#/components/responses/Problem422"
+          },
+          "503": {
+            "$ref": "#/components/responses/Problem503"
+          }
+        },
+        "parameters": [
+          {
+            "name": "commandId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ]
+      }
+    },
+    "/api/v1/commands/{commandId}/check": {
+      "post": {
+        "operationId": "checkCommand",
+        "summary": "Опросить задачи Ujin и оценить результат команды",
+        "description": "Применяет новые задачи task/task_dt к локальному эмулятору и подтверждает команду только по факту применения. Приём запроса платформой и старое совпавшее значение исполнение не подтверждают. Автоматический повтор команды не выполняется.",
+        "responses": {
+          "200": {
+            "description": "Актуальная квитанция команды",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CommandReceipt"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Problem400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Problem401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Problem403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Problem404"
+          },
+          "503": {
+            "$ref": "#/components/responses/Problem503"
+          }
+        },
+        "parameters": [
+          {
+            "name": "commandId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ]
+      }
+    },
+    "/api/v1/devices/{deviceId}/stimuli": {
+      "post": {
+        "operationId": "applyLocalStimulus",
+        "summary": "applyLocalStimulus",
+        "responses": {
+          "202": {
+            "description": "Draft contract response; implementation pending",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EventReceipt"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Problem400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Problem401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Problem403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Problem404"
+          },
+          "409": {
+            "$ref": "#/components/responses/Problem409"
+          },
+          "422": {
+            "$ref": "#/components/responses/Problem422"
+          },
+          "503": {
+            "$ref": "#/components/responses/Problem503"
+          }
+        },
+        "parameters": [
+          {
+            "name": "deviceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Stimulus"
+              }
+            }
+          }
+        },
+        "description": "LOCAL WET CHANGE: first observation evaluates rules; new eventId with unchanged value returns PROCESSED and matching runs SKIPPED/NO_STATE_CHANGE without action. Existing eventId replay returns original receipt; changed payload conflicts. Prior state persists across restart."
+      }
+    },
+    "/api/v1/events/{eventId}": {
+      "get": {
+        "operationId": "getEventReceipt",
+        "summary": "getEventReceipt",
+        "responses": {
+          "200": {
+            "description": "Draft contract response; implementation pending",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EventReceipt"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Problem400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Problem401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Problem403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Problem404"
+          },
+          "409": {
+            "$ref": "#/components/responses/Problem409"
+          },
+          "422": {
+            "$ref": "#/components/responses/Problem422"
+          },
+          "503": {
+            "$ref": "#/components/responses/Problem503"
+          }
+        },
+        "parameters": [
+          {
+            "name": "eventId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ]
+      }
+    },
+    "/api/v1/scenarios": {
+      "get": {
+        "operationId": "listScenarios",
+        "summary": "listScenarios",
+        "responses": {
+          "200": {
+            "description": "Draft contract response; implementation pending",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScenarioPage"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Problem400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Problem401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Problem403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Problem404"
+          },
+          "409": {
+            "$ref": "#/components/responses/Problem409"
+          },
+          "422": {
+            "$ref": "#/components/responses/Problem422"
+          },
+          "503": {
+            "$ref": "#/components/responses/Problem503"
+          }
+        },
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0
+            }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20
+            }
+          }
+        ]
+      },
+      "post": {
+        "operationId": "createScenario",
+        "summary": "createScenario",
+        "responses": {
+          "201": {
+            "description": "Draft contract response; implementation pending",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Scenario"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Problem400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Problem401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Problem403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Problem404"
+          },
+          "409": {
+            "$ref": "#/components/responses/Problem409"
+          },
+          "422": {
+            "$ref": "#/components/responses/Problem422"
+          },
+          "503": {
+            "$ref": "#/components/responses/Problem503"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ScenarioWrite"
+              }
+            }
+          }
+        },
+        "description": "Enabled UJIN scenarios require the server flag ujin.scenarios.observation-enabled (off by default) and are then rejected with 503 MODE_UNAVAILABLE. Disabled UJIN drafts are always supported; saving a draft and running observation are separate actions."
+      }
+    },
+    "/api/v1/scenarios/{scenarioId}": {
+      "get": {
+        "operationId": "getScenario",
+        "summary": "getScenario",
+        "responses": {
+          "200": {
+            "description": "Draft contract response; implementation pending",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Scenario"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Problem400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Problem401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Problem403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Problem404"
+          },
+          "409": {
+            "$ref": "#/components/responses/Problem409"
+          },
+          "422": {
+            "$ref": "#/components/responses/Problem422"
+          },
+          "503": {
+            "$ref": "#/components/responses/Problem503"
+          }
+        },
+        "parameters": [
+          {
+            "name": "scenarioId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ]
+      },
+      "put": {
+        "operationId": "updateScenario",
+        "summary": "updateScenario",
+        "responses": {
+          "200": {
+            "description": "Draft contract response; implementation pending",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Scenario"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Problem400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Problem401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Problem403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Problem404"
+          },
+          "409": {
+            "$ref": "#/components/responses/Problem409"
+          },
+          "422": {
+            "$ref": "#/components/responses/Problem422"
+          },
+          "503": {
+            "$ref": "#/components/responses/Problem503"
+          }
+        },
+        "parameters": [
+          {
+            "name": "scenarioId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ScenarioUpdate"
+              }
+            }
+          }
+        },
+        "description": "Enabled UJIN scenarios require the server flag ujin.scenarios.observation-enabled (off by default) and are then rejected with 503 MODE_UNAVAILABLE. Disabled UJIN drafts are always supported; saving a draft and running observation are separate actions."
+      }
+    },
+    "/api/v1/scenarios/{scenarioId}/poll": {
+      "post": {
+        "operationId": "pollScenarioObservation",
+        "summary": "Проверить показание Ujin по сценарию",
+        "description": "Одно чтение привязанного входа сценария текущей сессией резидента. Первое корректное чтение устанавливает baseline, изменение создаёт событие и запускает правило, одинаковое значение действие не повторяет. Идемпотентно по pollId: повтор возвращает прежний результат, иной сценарий с тем же ID — 409. SN и токен от браузера не принимаются. Исполнение выполняет наш backend; закрытая страница не наблюдает.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "pollId": {
+                    "type": "string",
+                    "format": "uuid"
+                  }
+                },
+                "required": [
+                  "pollId"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Результат наблюдения",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScenarioPollResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Problem400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Problem401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Problem403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Problem404"
+          },
+          "409": {
+            "$ref": "#/components/responses/Problem409"
+          },
+          "422": {
+            "$ref": "#/components/responses/Problem422"
+          },
+          "503": {
+            "$ref": "#/components/responses/Problem503"
+          }
+        },
+        "parameters": [
+          {
+            "name": "scenarioId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ]
+      }
+    },
+    "/api/v1/runs": {
+      "get": {
+        "operationId": "listRuns",
+        "summary": "listRuns",
+        "responses": {
+          "200": {
+            "description": "Draft contract response; implementation pending",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RunPage"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Problem400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Problem401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Problem403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Problem404"
+          },
+          "409": {
+            "$ref": "#/components/responses/Problem409"
+          },
+          "422": {
+            "$ref": "#/components/responses/Problem422"
+          },
+          "503": {
+            "$ref": "#/components/responses/Problem503"
+          }
+        },
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0
+            }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20
+            }
+          },
+          {
+            "name": "eventId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "scenarioId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ]
+      }
+    },
+    "/api/v1/runs/{runId}": {
+      "get": {
+        "operationId": "getRun",
+        "summary": "getRun",
+        "responses": {
+          "200": {
+            "description": "Draft contract response; implementation pending",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Run"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Problem400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Problem401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Problem403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Problem404"
+          },
+          "409": {
+            "$ref": "#/components/responses/Problem409"
+          },
+          "422": {
+            "$ref": "#/components/responses/Problem422"
+          },
+          "503": {
+            "$ref": "#/components/responses/Problem503"
+          }
+        },
+        "parameters": [
+          {
+            "name": "runId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ]
+      }
+    },
+    "/api/v1/integrations/ujin/status": {
+      "get": {
+        "operationId": "getUjinStatus",
+        "summary": "getUjinStatus",
+        "responses": {
+          "200": {
+            "description": "Implemented local capability report; does not probe platform or claim checkedAt. Read UNKNOWN; other capabilities BLOCKED.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UjinStatus"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Problem400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Problem401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Problem403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Problem404"
+          },
+          "409": {
+            "$ref": "#/components/responses/Problem409"
+          },
+          "422": {
+            "$ref": "#/components/responses/Problem422"
+          },
+          "503": {
+            "$ref": "#/components/responses/Problem503"
+          }
+        }
+      }
+    },
+    "/api/v1/devices/{deviceId}/dependencies": {
+      "get": {
+        "operationId": "getDeviceDependencies",
+        "summary": "Inspect deletion blockers",
+        "parameters": [
+          {
+            "name": "deviceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Snapshot; deletion rechecks dependencies atomically",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeviceDependencies"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Problem400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Problem401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Problem403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Problem404"
+          },
+          "409": {
+            "$ref": "#/components/responses/Problem409"
+          },
+          "422": {
+            "$ref": "#/components/responses/Problem422"
+          },
+          "503": {
+            "$ref": "#/components/responses/Problem503"
+          }
+        }
+      }
+    },
+    "/api/v1/commands/{commandId}/resolution": {
+      "post": {
+        "operationId": "resolveUnknownCommandReceipt",
+        "summary": "Acknowledge UNKNOWN and release deletion hold without retry",
+        "description": "Only UNKNOWN may be resolved. Status remains UNKNOWN. Atomically record an immutable note/time and release its deletion hold; never send a command. Linked run/command holds are released together. Same note retry returns existing result; conflicting note or non-UNKNOWN returns 409. Requires command-management permission when auth is configured.",
+        "parameters": [
+          {
+            "name": "commandId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UnknownResolutionRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Existing receipt with immutable resolution; execution status remains UNKNOWN",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CommandReceipt"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Problem400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Problem401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Problem403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Problem404"
+          },
+          "409": {
+            "$ref": "#/components/responses/Problem409"
+          },
+          "422": {
+            "$ref": "#/components/responses/Problem422"
+          }
+        }
+      }
+    },
+    "/api/v1/runs/{runId}/resolution": {
+      "post": {
+        "operationId": "resolveUnknownRun",
+        "summary": "Acknowledge UNKNOWN and release deletion hold without retry",
+        "description": "Only UNKNOWN may be resolved. Status remains UNKNOWN. Atomically record an immutable note/time and release its deletion hold; never send a command. Linked run/command holds are released together. Same note retry returns existing result; conflicting note or non-UNKNOWN returns 409. Requires command-management permission when auth is configured.",
+        "parameters": [
+          {
+            "name": "runId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UnknownResolutionRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Existing receipt with immutable resolution; execution status remains UNKNOWN",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Run"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Problem400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Problem401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Problem403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Problem404"
+          },
+          "409": {
+            "$ref": "#/components/responses/Problem409"
+          },
+          "422": {
+            "$ref": "#/components/responses/Problem422"
+          }
+        }
+      }
+    },
+    "/api/auth/csrf": {
+      "get": {
+        "operationId": "getUjinCsrf",
+        "tags": [
+          "Ujin adapter"
+        ],
+        "security": [],
+        "summary": "Получить CSRF перед входом и выходом",
+        "description": "Сохранить cookies, использовать тело как X-XSRF-TOKEN. После login перед logout получить токен снова.",
+        "responses": {
+          "200": {
+            "description": "Маскированный CSRF-токен; Set-Cookie: XSRF-TOKEN",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/login": {
+      "post": {
+        "operationId": "loginUjin",
+        "tags": [
+          "Ujin adapter"
+        ],
+        "security": [],
+        "summary": "Войти через Ujin и создать серверную cookie-сессию",
+        "parameters": [
+          {
+            "name": "X-XSRF-TOKEN",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Тело GET /api/auth/csrf для той же cookie-сессии; возвращается маскированный CSRF-токен. Значение cookie XSRF-TOKEN напрямую в этот заголовок не копировать."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UjinCredentials"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "Вход выполнен; сохранить Set-Cookie JSESSIONID. Пароль не сохраняется, токен Ujin остаётся на сервере."
+          },
+          "400": {
+            "description": "Неверные или пустые параметры"
+          },
+          "401": {
+            "description": "Нет сессии или HTTP 401 от Ujin"
+          },
+          "403": {
+            "description": "Некорректный CSRF или явный HTTP 403 от Ujin"
+          },
+          "502": {
+            "description": "HTTP upstream кроме 200/401/403, невалидный JSON, ответ > 1 MiB, неизвестный error либо отсутствие ожидаемых данных/токена"
+          },
+          "503": {
+            "description": "Ошибка соединения или таймаут Ujin"
+          }
+        }
+      }
+    },
+    "/api/auth/logout": {
+      "post": {
+        "operationId": "logoutUjin",
+        "tags": [
+          "Ujin adapter"
+        ],
+        "security": [
+          {
+            "UjinSession": []
+          }
+        ],
+        "summary": "Закрыть локальную сессию",
+        "parameters": [
+          {
+            "name": "X-XSRF-TOKEN",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Тело GET /api/auth/csrf для той же cookie-сессии; возвращается маскированный CSRF-токен. Значение cookie XSRF-TOKEN напрямую в этот заголовок не копировать."
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Сессия инвалидирована; чтение с прежней cookie даст 401. Повторный выход с корректным CSRF также допустим."
+          },
+          "403": {
+            "description": "Некорректный CSRF или явный HTTP 403 от Ujin"
+          }
+        }
+      }
+    },
+    "/api/v1/ujin/devices/{serialnumber}/signals": {
+      "get": {
+        "operationId": "readUjinAdapterSignal",
+        "tags": [
+          "Ujin adapter"
+        ],
+        "security": [
+          {
+            "UjinSession": []
+          }
+        ],
+        "summary": "Прочитать один сигнал через Ujin",
+        "description": "Resident snapshot adapter; exact platform SN and signal name. Does not implement UUID state or binding. Safe UJIN_* Problem codes; no upstream messages.",
+        "parameters": [
+          {
+            "name": "serialnumber",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          {
+            "name": "name",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Скалярный сигнал",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UjinAdapterSignalValue"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Неверные или пустые параметры"
+          },
+          "401": {
+            "description": "Нет сессии или HTTP 401 от Ujin"
+          },
+          "403": {
+            "description": "Некорректный CSRF или явный HTTP 403 от Ujin",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Сигнал не найден",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "UJIN_PLATFORM_ERROR or UJIN_BAD_RESPONSE",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Ошибка соединения или таймаут Ujin",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/devices/{deviceId}/availability": {
+      "put": {
+        "operationId": "setLocalAvailability",
+        "summary": "Set local emulator availability; does not control platform connectivity",
+        "parameters": [
+          {
+            "name": "deviceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "availability",
+                  "executionMode"
+                ],
+                "properties": {
+                  "availability": {
+                    "type": "string",
+                    "enum": [
+                      "ONLINE",
+                      "OFFLINE"
+                    ]
+                  },
+                  "executionMode": {
+                    "type": "string",
+                    "enum": [
+                      "LOCAL"
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated local state",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeviceState"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Problem400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Problem401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Problem403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Problem404"
+          },
+          "422": {
+            "$ref": "#/components/responses/Problem422"
+          },
+          "503": {
+            "$ref": "#/components/responses/Problem503"
+          }
+        }
+      }
+    },
+    "/api/v1/devices/{deviceId}/publications": {
+      "get": {
+        "operationId": "listPublications",
+        "summary": "Последние квитанции владельца",
+        "parameters": [
+          {
+            "name": "deviceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Сохранённая квитанция; CONFIRMED только после отдельного чтения значения",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/PublicationReceipt"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Problem400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Problem401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Problem403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Problem404"
+          },
+          "409": {
+            "$ref": "#/components/responses/Problem409"
+          },
+          "422": {
+            "$ref": "#/components/responses/Problem422"
+          },
+          "502": {
+            "$ref": "#/components/responses/Problem502"
+          },
+          "503": {
+            "$ref": "#/components/responses/Problem503"
+          }
+        }
+      },
+      "post": {
+        "operationId": "publishReading",
+        "summary": "Опубликовать текущее LOCAL-показание читаемого сигнала",
+        "parameters": [
+          {
+            "name": "deviceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Сохранённая квитанция; CONFIRMED только после отдельного чтения значения",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicationReceipt"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Problem400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Problem401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Problem403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Problem404"
+          },
+          "409": {
+            "$ref": "#/components/responses/Problem409"
+          },
+          "422": {
+            "$ref": "#/components/responses/Problem422"
+          },
+          "502": {
+            "$ref": "#/components/responses/Problem502"
+          },
+          "503": {
+            "$ref": "#/components/responses/Problem503"
+          }
+        },
+        "description": "Session + CSRF. Назначение и UST задаёт оператор на сервере. Проверяется видимость SN. Перед внешней записью квитанция сохраняется в БД. Одинаковый publicationId возвращает прежний результат без отправки; другой payload или новая публикация при незакрытой PENDING/UNKNOWN дают 409. error=0 без значения остаётся UNKNOWN. Не является downlink.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PublicationWrite"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/devices/{deviceId}/publications/{publicationId}": {
+      "get": {
+        "operationId": "getPublication",
+        "summary": "Сохранённая квитанция владельца",
+        "parameters": [
+          {
+            "name": "deviceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "publicationId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Сохранённая квитанция; CONFIRMED только после отдельного чтения значения",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicationReceipt"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Problem400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Problem401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Problem403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Problem404"
+          },
+          "409": {
+            "$ref": "#/components/responses/Problem409"
+          },
+          "422": {
+            "$ref": "#/components/responses/Problem422"
+          },
+          "502": {
+            "$ref": "#/components/responses/Problem502"
+          },
+          "503": {
+            "$ref": "#/components/responses/Problem503"
+          }
+        }
+      }
+    },
+    "/api/v1/devices/{deviceId}/publications/{publicationId}/readback": {
+      "post": {
+        "operationId": "readbackPublication",
+        "summary": "Проверить результат отдельным чтением без повторной публикации",
+        "parameters": [
+          {
+            "name": "deviceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "publicationId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Сохранённая квитанция; CONFIRMED только после отдельного чтения значения",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicationReceipt"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Problem400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Problem401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Problem403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Problem404"
+          },
+          "409": {
+            "$ref": "#/components/responses/Problem409"
+          },
+          "422": {
+            "$ref": "#/components/responses/Problem422"
+          },
+          "502": {
+            "$ref": "#/components/responses/Problem502"
+          },
+          "503": {
+            "$ref": "#/components/responses/Problem503"
+          }
+        },
+        "description": "Session + CSRF. Первые 90 секунд PENDING не проверяется, пока отправка может ещё исполняться. После сбоя процесса выполняется только чтение. CONFIRMED/FAILED не понижаются."
+      }
+    },
+    "/api/v1/local-python/poll": {
+      "post": {
+        "operationId": "pollPythonLocal",
+        "summary": "Проверить изменение отдельного LOCAL-Python датчика",
+        "description": "Только назначенный сервером владелец и фиксированная пара UUID. Guest demo запрещено. Сетевые команды не повторяются после неопределённости.",
+        "responses": {
+          "200": {
+            "description": "Сохранённая квитанция",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EventReceipt"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Problem400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Problem401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Problem403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Problem404"
+          },
+          "409": {
+            "$ref": "#/components/responses/Problem409"
+          },
+          "422": {
+            "$ref": "#/components/responses/Problem422"
+          },
+          "502": {
+            "$ref": "#/components/responses/Problem502"
+          },
+          "503": {
+            "$ref": "#/components/responses/Problem503"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "eventId"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "eventId": {
+                    "type": "string",
+                    "format": "uuid"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/local-python/commands/{id}/check": {
+      "post": {
+        "operationId": "checkPythonCommand",
+        "summary": "Проверить результат без повторной команды Python",
+        "description": "Только назначенный сервером владелец и фиксированная пара UUID. Guest demo запрещено. Сетевые команды не повторяются после неопределённости.",
+        "responses": {
+          "200": {
+            "description": "Сохранённая квитанция",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CommandReceipt"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Problem400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Problem401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Problem403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Problem404"
+          },
+          "409": {
+            "$ref": "#/components/responses/Problem409"
+          },
+          "422": {
+            "$ref": "#/components/responses/Problem422"
+          },
+          "502": {
+            "$ref": "#/components/responses/Problem502"
+          },
+          "503": {
+            "$ref": "#/components/responses/Problem503"
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ]
+      }
+    },
+    "/api/v1/local-python/events/{id}/check": {
+      "post": {
+        "operationId": "checkPythonEvent",
+        "summary": "Проверить результаты действий события Python",
+        "description": "Только назначенный сервером владелец и фиксированная пара UUID. Guest demo запрещено. Сетевые команды не повторяются после неопределённости.",
+        "responses": {
+          "200": {
+            "description": "Сохранённая квитанция",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EventReceipt"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Problem400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Problem401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Problem403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Problem404"
+          },
+          "409": {
+            "$ref": "#/components/responses/Problem409"
+          },
+          "422": {
+            "$ref": "#/components/responses/Problem422"
+          },
+          "502": {
+            "$ref": "#/components/responses/Problem502"
+          },
+          "503": {
+            "$ref": "#/components/responses/Problem503"
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ]
+      }
+    },
+    "/api/auth/session": {
+      "get": {
+        "operationId": "getSessionMetadata",
+        "summary": "Тип сессии и доступность гостевого демо",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Без персональных данных и токенов",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "authenticated",
+                    "demo",
+                    "demoAvailable",
+                    "demoLifetimeMinutes"
+                  ],
+                  "properties": {
+                    "authenticated": {
+                      "type": "boolean"
+                    },
+                    "demo": {
+                      "type": "boolean"
+                    },
+                    "demoAvailable": {
+                      "type": "boolean"
+                    },
+                    "demoLifetimeMinutes": {
+                      "type": "integer",
+                      "enum": [
+                        30
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/demo": {
+      "post": {
+        "operationId": "startGuestDemo",
+        "summary": "Изолированное LOCAL-демо без Ujin credentials",
+        "description": "Нужен свежий CSRF. Создаёт отдельный server-side owner и cookie-сессию на 30 минут, без Ujin token. До 8 устройств/8 сценариев, ограничение записей/частоты. Гостям запрещены Ujin и /local-python/**. Выход/истечение удаляет только собственные гостевые данные.",
+        "parameters": [
+          {
+            "name": "X-XSRF-TOKEN",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "security": [],
+        "responses": {
+          "204": {
+            "description": "Гостевая сессия создана"
+          },
+          "403": {
+            "description": "Нет CSRF"
+          },
+          "404": {
+            "description": "Демо выключено"
+          },
+          "409": {
+            "description": "Уже открыта настоящая сессия"
+          },
+          "429": {
+            "description": "Лимит гостевого демо"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "SignalDefinition": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "key": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_]*$",
+            "maxLength": 64
+          },
+          "title": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 120
+          },
+          "group": {
+            "type": "string",
+            "enum": [
+              "property",
+              "capability",
+              "setting"
+            ]
+          },
+          "management": {
+            "type": "string",
+            "enum": [
+              "r",
+              "rw",
+              "w"
+            ]
+          },
+          "valueType": {
+            "type": "string",
+            "enum": [
+              "NUMBER"
+            ]
+          },
+          "control": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 40
+          },
+          "unit": {
+            "type": "string",
+            "maxLength": 24
+          },
+          "min": {
+            "type": "number"
+          },
+          "max": {
+            "type": "number"
+          },
+          "enumValues": {
+            "type": "array",
+            "items": {
+              "type": "number"
+            },
+            "minItems": 1,
+            "uniqueItems": true
+          }
+        },
+        "required": [
+          "key",
+          "title",
+          "group",
+          "management",
+          "valueType",
+          "control"
+        ]
+      },
+      "DeviceWrite": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "title": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 120
+          },
+          "family": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_]*$",
+            "maxLength": 64
+          },
+          "signals": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SignalDefinition"
+            },
+            "minItems": 1,
+            "maxItems": 100
+          },
+          "events": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/EventDefinition"
+            },
+            "maxItems": 100
+          }
+        },
+        "required": [
+          "title",
+          "family",
+          "signals",
+          "events"
+        ]
+      },
+      "DeviceUpdate": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "title": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 120
+          },
+          "family": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_]*$",
+            "maxLength": 64
+          },
+          "signals": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SignalDefinition"
+            },
+            "minItems": 1,
+            "maxItems": 100
+          },
+          "expectedVersion": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "events": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/EventDefinition"
+            },
+            "maxItems": 100
+          }
+        },
+        "required": [
+          "title",
+          "family",
+          "signals",
+          "expectedVersion",
+          "events"
+        ]
+      },
+      "Device": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "title": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 120
+          },
+          "family": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_]*$",
+            "maxLength": 64
+          },
+          "signals": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SignalDefinition"
+            },
+            "minItems": 1,
+            "maxItems": 100
+          },
+          "platformLink": {
+            "type": "string",
+            "enum": [
+              "NOT_CONFIGURED",
+              "BOUND",
+              "BLOCKED"
+            ]
+          },
+          "events": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/EventDefinition"
+            },
+            "maxItems": 100
+          }
+        },
+        "required": [
+          "id",
+          "version",
+          "title",
+          "family",
+          "signals",
+          "platformLink",
+          "events"
+        ]
+      },
+      "SignalValue": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "signalKey": {
+            "type": "string"
+          },
+          "value": {
+            "type": "number",
+            "description": "Конечное число по декларации NUMBER; настоящий 0 сохраняется как 0."
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Время наблюдения backend, а не время измерения устройством."
+          },
+          "measuredAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Исходное время измерения с платформы, если оно передано; иначе поле отсутствует."
+          }
+        },
+        "required": [
+          "signalKey",
+          "value",
+          "updatedAt"
+        ]
+      },
+      "DeviceState": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "deviceId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "executionMode": {
+            "$ref": "#/components/schemas/ExecutionMode"
+          },
+          "values": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SignalValue"
+            }
+          },
+          "availability": {
+            "type": "string",
+            "enum": [
+              "ONLINE",
+              "OFFLINE",
+              "UNKNOWN"
+            ],
+            "description": "Только подтверждённая семантика доступности. Для mode=UJIN — UNKNOWN: успешный login или ответ платформы не подтверждают ONLINE."
+          },
+          "observedAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Время наблюдения backend; для mode=UJIN — время upstream snapshot."
+          },
+          "signalIssues": {
+            "type": "array",
+            "description": "Причины, по которым сигналы не попали в values. Отсутствующий сигнал не подменяется нулём.",
+            "items": {
+              "$ref": "#/components/schemas/SignalReadIssue"
+            }
+          },
+          "provider": {
+            "type": "string",
+            "enum": [
+              "JAVA",
+              "PYTHON"
+            ],
+            "description": "Источник LOCAL-состояния. PYTHON — отдельный назначенный процесс, не платформа Ujin."
+          }
+        },
+        "required": [
+          "deviceId",
+          "executionMode",
+          "values",
+          "availability"
+        ]
+      },
+      "SignalReadIssue": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "signalKey": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "MISSING_SIGNAL",
+              "MISSING_VALUE",
+              "BAD_SCHEMA",
+              "OUT_OF_RANGE"
+            ]
+          },
+          "detail": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "signalKey",
+          "status",
+          "detail"
+        ]
+      },
+      "ExecutionMode": {
+        "type": "string",
+        "enum": [
+          "LOCAL",
+          "UJIN"
+        ]
+      },
+      "Command": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "commandId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "signalKey": {
+            "type": "string"
+          },
+          "value": {
+            "type": "number"
+          },
+          "executionMode": {
+            "$ref": "#/components/schemas/ExecutionMode"
+          }
+        },
+        "required": [
+          "commandId",
+          "signalKey",
+          "value",
+          "executionMode"
+        ]
+      },
+      "CommandReceipt": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "commandId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "deviceId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "PENDING",
+              "CONFIRMED",
+              "FAILED",
+              "UNKNOWN"
+            ],
+            "description": "CONFIRMED выставляется только после применения задачи Ujin; приём платформой запроса оставляет PENDING."
+          },
+          "reason": {
+            "type": "string",
+            "maxLength": 80,
+            "description": "Безопасный код причины статуса: ACCEPTED_AWAITING_APPLY, TASK_APPLIED, TASK_SOURCE_BLOCKED, OBSERVATION_WINDOW_EXPIRED, UJIN_* и подобные."
+          },
+          "executionMode": {
+            "$ref": "#/components/schemas/ExecutionMode"
+          },
+          "resolution": {
+            "$ref": "#/components/schemas/UnknownResolution"
+          }
+        },
+        "required": [
+          "commandId",
+          "deviceId",
+          "status",
+          "executionMode"
+        ]
+      },
+      "Stimulus": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "eventId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "WET"
+            ]
+          },
+          "value": {
+            "type": "integer",
+            "enum": [
+              0,
+              1
+            ]
+          }
+        },
+        "required": [
+          "eventId",
+          "kind",
+          "value"
+        ]
+      },
+      "EventReceipt": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "eventId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "ACCEPTED",
+              "PROCESSED",
+              "FAILED"
+            ]
+          },
+          "runIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        },
+        "required": [
+          "eventId",
+          "status",
+          "runIds"
+        ]
+      },
+      "Trigger": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "deviceId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "signalKey": {
+            "type": "string"
+          },
+          "operator": {
+            "type": "string",
+            "enum": [
+              "EQ"
+            ]
+          },
+          "value": {
+            "type": "number"
+          },
+          "eventKey": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "deviceId",
+          "signalKey",
+          "operator",
+          "value",
+          "eventKey"
+        ]
+      },
+      "Action": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "deviceId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "signalKey": {
+            "type": "string"
+          },
+          "value": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "deviceId",
+          "signalKey",
+          "value"
+        ]
+      },
+      "ScenarioWrite": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "title": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 120
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "executionMode": {
+            "$ref": "#/components/schemas/ExecutionMode"
+          },
+          "trigger": {
+            "$ref": "#/components/schemas/Trigger"
+          },
+          "action": {
+            "$ref": "#/components/schemas/Action"
+          }
+        },
+        "required": [
+          "title",
+          "enabled",
+          "executionMode",
+          "trigger",
+          "action"
+        ]
+      },
+      "ScenarioUpdate": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "title": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 120
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "executionMode": {
+            "$ref": "#/components/schemas/ExecutionMode"
+          },
+          "trigger": {
+            "$ref": "#/components/schemas/Trigger"
+          },
+          "action": {
+            "$ref": "#/components/schemas/Action"
+          },
+          "expectedVersion": {
+            "type": "integer",
+            "minimum": 1
+          }
+        },
+        "required": [
+          "title",
+          "enabled",
+          "executionMode",
+          "trigger",
+          "action",
+          "expectedVersion"
+        ]
+      },
+      "Scenario": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "title": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 120
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "executionMode": {
+            "$ref": "#/components/schemas/ExecutionMode"
+          },
+          "trigger": {
+            "$ref": "#/components/schemas/Trigger"
+          },
+          "action": {
+            "$ref": "#/components/schemas/Action"
+          }
+        },
+        "required": [
+          "id",
+          "version",
+          "title",
+          "enabled",
+          "executionMode",
+          "trigger",
+          "action"
+        ]
+      },
+      "ScenarioPollResult": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "pollId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "scenarioId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "PROCESSING",
+              "BASELINE_STORED",
+              "NO_CHANGE",
+              "RUN_CREATED",
+              "READ_ERROR",
+              "REJECTED",
+              "UNKNOWN"
+            ],
+            "description": "BASELINE_STORED — первое корректное чтение; NO_CHANGE — значение не изменилось; RUN_CREATED — событие и запуск правила; READ_ERROR — чтение не удалось (событие не создаётся); REJECTED — сценарий/привязка изменились во время чтения."
+          },
+          "reason": {
+            "type": "string",
+            "maxLength": 80
+          },
+          "observedValue": {
+            "type": "number"
+          },
+          "runId": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "required": [
+          "pollId",
+          "scenarioId",
+          "status"
+        ]
+      },
+      "RunEntry": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "stage": {
+            "type": "string",
+            "enum": [
+              "EVENT",
+              "CONDITION",
+              "ACTION",
+              "RESULT"
+            ]
+          },
+          "message": {
+            "type": "string",
+            "maxLength": 1000
+          }
+        },
+        "required": [
+          "at",
+          "stage",
+          "message"
+        ]
+      },
+      "Run": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "eventId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "scenarioId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "scenarioVersion": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "executionMode": {
+            "$ref": "#/components/schemas/ExecutionMode"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "PENDING",
+              "SUCCEEDED",
+              "SKIPPED",
+              "FAILED",
+              "BLOCKED",
+              "UNKNOWN"
+            ]
+          },
+          "reason": {
+            "type": "string",
+            "maxLength": 120
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "input": {
+            "$ref": "#/components/schemas/SignalValue"
+          },
+          "action": {
+            "$ref": "#/components/schemas/Action"
+          },
+          "commandId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Команда UJIN, связанная с запуском. SUCCEEDED выставляется только после CONFIRMED команды."
+          },
+          "entries": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RunEntry"
+            }
+          },
+          "resolution": {
+            "$ref": "#/components/schemas/UnknownResolution"
+          }
+        },
+        "required": [
+          "id",
+          "eventId",
+          "scenarioId",
+          "scenarioVersion",
+          "executionMode",
+          "status",
+          "createdAt",
+          "entries"
+        ]
+      },
+      "IntegrationCapability": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "UNKNOWN",
+              "AVAILABLE",
+              "BLOCKED"
+            ]
+          },
+          "reason": {
+            "type": "string",
+            "maxLength": 500
+          },
+          "checkedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "status",
+          "reason"
+        ]
+      },
+      "UjinStatus": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "publish": {
+            "$ref": "#/components/schemas/IntegrationCapability"
+          },
+          "read": {
+            "$ref": "#/components/schemas/IntegrationCapability"
+          },
+          "downlink": {
+            "$ref": "#/components/schemas/IntegrationCapability"
+          },
+          "autoscripts": {
+            "$ref": "#/components/schemas/IntegrationCapability"
+          }
+        },
+        "required": [
+          "publish",
+          "read",
+          "downlink",
+          "autoscripts"
+        ]
+      },
+      "SystemStatus": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "contractVersion": {
+            "type": "string",
+            "enum": [
+              "0.1.2-draft"
+            ]
+          },
+          "supportedModes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ExecutionMode"
+            },
+            "minItems": 1
+          },
+          "runtimeSha": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "contractVersion",
+          "supportedModes"
+        ]
+      },
+      "Problem": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "type": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "status": {
+            "type": "integer",
+            "minimum": 400,
+            "maximum": 599
+          },
+          "code": {
+            "type": "string"
+          },
+          "detail": {
+            "type": "string"
+          },
+          "errors": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "field": {
+                  "type": "string"
+                },
+                "message": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "field",
+                "message"
+              ]
+            }
+          }
+        },
+        "required": [
+          "type",
+          "title",
+          "status",
+          "code",
+          "detail"
+        ]
+      },
+      "DevicePage": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Device"
+            }
+          },
+          "page": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "size": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100
+          },
+          "total": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "items",
+          "page",
+          "size",
+          "total"
+        ]
+      },
+      "ScenarioPage": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Scenario"
+            }
+          },
+          "page": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "size": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100
+          },
+          "total": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "items",
+          "page",
+          "size",
+          "total"
+        ]
+      },
+      "RunPage": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Run"
+            }
+          },
+          "page": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "size": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100
+          },
+          "total": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "items",
+          "page",
+          "size",
+          "total"
+        ]
+      },
+      "EventDefinition": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "key": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_]*$",
+            "maxLength": 64
+          },
+          "title": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 120
+          },
+          "signalKey": {
+            "type": "string"
+          },
+          "emission": {
+            "type": "string",
+            "enum": [
+              "CHANGE"
+            ]
+          }
+        },
+        "required": [
+          "key",
+          "title",
+          "signalKey",
+          "emission"
+        ]
+      },
+      "DeviceDependencies": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "deviceId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "scenarioIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          "pendingOperationIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Unresolved PENDING/UNKNOWN commandId or runId values. Acknowledged UNKNOWN operations are excluded; scenario dependencies still block deletion."
+          }
+        },
+        "required": [
+          "deviceId",
+          "scenarioIds",
+          "pendingOperationIds"
+        ]
+      },
+      "PlatformBindingMapping": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "signalKey": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_]*$",
+            "maxLength": 64,
+            "description": "Ключ сигнала из локальной декларации устройства."
+          },
+          "platformName": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 255,
+            "description": "Точное имя сигнала платформы (signals[].name). Хранится строкой."
+          }
+        },
+        "required": [
+          "signalKey",
+          "platformName"
+        ]
+      },
+      "PlatformBinding": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "deviceId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "serialNumber": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128,
+            "description": "Платформенный SN (devices[].id). Строка, не число."
+          },
+          "signalMappings": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 100,
+            "items": {
+              "$ref": "#/components/schemas/PlatformBindingMapping"
+            }
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "Версия привязки для expectedVersion."
+          }
+        },
+        "required": [
+          "deviceId",
+          "serialNumber",
+          "signalMappings",
+          "version"
+        ]
+      },
+      "PlatformBindingWrite": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "serialNumber": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128,
+            "description": "Платформенный SN строкой; сопоставление только по точному совпадению."
+          },
+          "signalMappings": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 100,
+            "items": {
+              "$ref": "#/components/schemas/PlatformBindingMapping"
+            },
+            "description": "Уникальные пары local signalKey → platform name; неоднозначный mapping отклоняется."
+          },
+          "expectedVersion": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "Текущая версия привязки из GET. Для первой привязки не передаётся; для замены обязательна."
+          }
+        },
+        "required": [
+          "serialNumber",
+          "signalMappings"
+        ]
+      },
+      "UnknownResolutionRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "note": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1000,
+            "description": "Non-blank operator note; acknowledge uncertainty, never claim confirmed execution."
+          }
+        },
+        "required": [
+          "note"
+        ]
+      },
+      "UnknownResolution": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "note": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1000
+          },
+          "resolvedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "ACKNOWLEDGED_UNKNOWN"
+            ]
+          }
+        },
+        "required": [
+          "note",
+          "resolvedAt",
+          "kind"
+        ]
+      },
+      "UjinCredentials": {
+        "type": "object",
+        "required": [
+          "login",
+          "password"
+        ],
+        "properties": {
+          "login": {
+            "type": "string",
+            "minLength": 1
+          },
+          "password": {
+            "type": "string",
+            "minLength": 1,
+            "writeOnly": true
+          }
+        }
+      },
+      "UjinAdapterSignalValue": {
+        "type": "object",
+        "required": [
+          "name",
+          "value"
+        ],
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "value": {
+            "type": "string",
+            "description": "Скаляр Ujin, преобразованный в строку; отдельный DTO адаптера, не SignalValue основного API."
+          }
+        }
+      },
+      "PublicationReceipt": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "publicationId",
+          "deviceId",
+          "signalKey",
+          "value",
+          "status",
+          "reason",
+          "createdAt"
+        ],
+        "properties": {
+          "publicationId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "deviceId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "signalKey": {
+            "type": "string"
+          },
+          "value": {
+            "type": "number"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "PENDING",
+              "CONFIRMED",
+              "FAILED",
+              "UNKNOWN"
+            ]
+          },
+          "reason": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "observedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true,
+            "description": "Время чтения backend, не время измерения"
+          }
+        }
+      },
+      "PublicationWrite": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "publicationId",
+          "signalKey",
+          "value"
+        ],
+        "properties": {
+          "publicationId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "signalKey": {
+            "type": "string",
+            "maxLength": 64
+          },
+          "value": {
+            "type": "number"
+          }
+        }
+      }
+    },
+    "responses": {
+      "Problem400": {
+        "description": "Malformed request",
+        "content": {
+          "application/problem+json": {
+            "schema": {
+              "$ref": "#/components/schemas/Problem"
+            }
+          }
+        }
+      },
+      "Problem401": {
+        "description": "Authentication required when deployment auth is configured",
+        "content": {
+          "application/problem+json": {
+            "schema": {
+              "$ref": "#/components/schemas/Problem"
+            }
+          }
+        }
+      },
+      "Problem403": {
+        "description": "Operation not permitted",
+        "content": {
+          "application/problem+json": {
+            "schema": {
+              "$ref": "#/components/schemas/Problem"
+            }
+          }
+        }
+      },
+      "Problem404": {
+        "description": "Not found",
+        "content": {
+          "application/problem+json": {
+            "schema": {
+              "$ref": "#/components/schemas/Problem"
+            }
+          }
+        }
+      },
+      "Problem409": {
+        "description": "Version or idempotency conflict",
+        "content": {
+          "application/problem+json": {
+            "schema": {
+              "$ref": "#/components/schemas/Problem"
+            }
+          }
+        }
+      },
+      "Problem422": {
+        "description": "Semantic validation failed",
+        "content": {
+          "application/problem+json": {
+            "schema": {
+              "$ref": "#/components/schemas/Problem"
+            }
+          }
+        }
+      },
+      "Problem502": {
+        "description": "Invalid or unprocessable upstream response",
+        "content": {
+          "application/problem+json": {
+            "schema": {
+              "$ref": "#/components/schemas/Problem"
+            }
+          }
+        }
+      },
+      "Problem503": {
+        "description": "Integration unavailable",
+        "content": {
+          "application/problem+json": {
+            "schema": {
+              "$ref": "#/components/schemas/Problem"
+            }
+          }
+        }
+      }
+    },
+    "securitySchemes": {
+      "UjinSession": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "JSESSIONID",
+        "description": "Серверная сессия после POST /api/auth/login; токен Ujin клиенту не передаётся."
+      }
+    }
+  }
+}

@@ -1,0 +1,28 @@
+spring:
+  jackson:
+    deserialization:
+      fail-on-unknown-properties: true
+      accept-float-as-int: false
+    mapper:
+      allow-coercion-of-scalars: false
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+  datasource:
+    url: ${UJIN_DB_URL:jdbc:postgresql://localhost:5432/ujin}
+    username: ${UJIN_DB_USER:ujin}
+    password: ${UJIN_DB_PASSWORD:ujin}
+  application:
+    name: ujin
+ujin:
+  api:
+    base-url: ${UJIN_API_BASE_URL:https://api-uae-test.ujin.tech/api}
+    app: ${UJIN_AUTH_APP:}
+  local-python:
+    enabled: ${UJIN_LOCAL_PYTHON_ENABLED:false}
+    owner: ${UJIN_LOCAL_PYTHON_OWNER:}
+    source-device-id: ${UJIN_LOCAL_PYTHON_SOURCE_DEVICE_ID:}
+    target-device-id: ${UJIN_LOCAL_PYTHON_TARGET_DEVICE_ID:}
+    leak-url: ${UJIN_LOCAL_PYTHON_LEAK_URL:http://leak:8080}
+    light-url: ${UJIN_LOCAL_PYTHON_LIGHT_URL:http://light:8080}

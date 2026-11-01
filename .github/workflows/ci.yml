@@ -1,0 +1,139 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [develop, main]
+  push:
+    branches: [develop, main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  # Never interrupt an active deployment on a new push.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  backend:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+      - uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6
+        with:
+          distribution: temurin
+          java-version: '25'
+          cache: gradle
+          cache-dependency-path: |
+            backend/ujin/*.gradle.kts
+            backend/ujin/gradle/wrapper/gradle-wrapper.properties
+      - name: Build and test backend
+        working-directory: backend/ujin
+        run: bash gradlew --no-daemon --max-workers=2 --console=plain clean test bootJar
+      - name: Require executed tests
+        run: python3 infra/verify_junit.py backend/ujin/build/test-results/test
+      - name: Save test reports
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: backend-test-reports
+          path: |
+            backend/ujin/build/test-results/test/
+            backend/ujin/build/reports/tests/test/
+          if-no-files-found: error
+          retention-days: 7
+      - name: Save backend JAR
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: backend-jar
+          path: backend/ujin/build/libs/*.jar
+          if-no-files-found: error
+          retention-days: 7
+      - name: Build runtime image
+        run: docker build -f backend/ujin/Dockerfile --build-arg VCS_REF="$GITHUB_SHA" -t ujin-backend:ci .
+      - name: Check unprivileged runtime
+        run: |
+          # Expand id inside the container.
+          # shellcheck disable=SC2016
+          docker run --rm --network none --read-only --cap-drop ALL \
+            --security-opt no-new-privileges --entrypoint sh ujin-backend:ci \
+            -c 'test "$(id -u)" != 0 && test -r /app/app.jar && java -version'
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Build frontend for combined smoke
+        run: |
+          npm --prefix frontend ci --ignore-scripts --no-audit --no-fund
+          npm --prefix frontend run lint
+          node --test infra/tests/frontend-*.test.mjs
+          npm --prefix frontend run build
+          docker build -f frontend/Dockerfile --build-arg VCS_REF="$GITHUB_SHA" -t "ujin-frontend:$GITHUB_SHA" .
+          docker tag ujin-backend:ci "ujin-backend:$GITHUB_SHA"
+      - name: Check isolated combined runtime
+        env:
+          UJIN_IMAGE_TAG: ${{ github.sha }}
+        run: bash infra/test-runtime.sh
+      - name: Package tested release
+        if: github.event_name == 'push' && github.ref == 'refs/heads/develop'
+        run: |
+          tar -czf release.tar.gz .dockerignore backend/ujin/Dockerfile backend/ujin/build/libs/*.jar frontend/Dockerfile frontend/dist infra/nginx.conf infra/backend-health.sh infra/compose.yaml infra/compose.runtime.yaml infra/compose.catalog.yaml infra/check-static.py
+      - name: Save tested release
+        if: github.event_name == 'push' && github.ref == 'refs/heads/develop'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: deploy-release
+          path: release.tar.gz
+          retention-days: 7
+          if-no-files-found: error
+
+  infrastructure:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+      - name: Check scripts
+        run: |
+          for script in infra/*.sh; do bash -n "$script"; done
+          shellcheck infra/*.sh
+          python3 -m unittest discover -s infra/tests -v
+      - name: Verify PostgreSQL health, persistence and restore
+        run: bash infra/test-postgres.sh
+
+  deploy:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/develop' && vars.DEPLOY_HOST != '' && vars.DEPLOY_USER != ''
+    needs: [backend, infrastructure]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    concurrency:
+      group: ujin-deploy
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: deploy-release
+      - name: Skip superseded revision
+        id: revision
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          head=$(curl --fail --silent --show-error -H "Authorization: Bearer $GH_TOKEN" "https://api.github.com/repos/$GITHUB_REPOSITORY/git/ref/heads/develop" | python3 -c 'import json,sys; print(json.load(sys.stdin)["object"]["sha"])')
+          if [[ "$head" == "$GITHUB_SHA" ]]; then echo 'current=true' >> "$GITHUB_OUTPUT"; fi
+      - name: Deploy tested artifact
+        if: steps.revision.outputs.current == 'true'
+        env:
+          DEPLOY_HOST: ${{ vars.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ vars.DEPLOY_USER }}
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          DEPLOY_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+        run: bash infra/deploy-send.sh release.tar.gz "$GITHUB_SHA"

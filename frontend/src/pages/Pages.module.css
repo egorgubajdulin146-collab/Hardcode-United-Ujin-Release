@@ -1,0 +1,306 @@
+.pageHeader {
+  margin-bottom: var(--space-lg);
+}
+
+.pageTitle {
+  font-size: var(--font-size-xl);
+  font-weight: 700;
+  margin-bottom: var(--space-xs);
+}
+
+.pageDescription {
+  color: var(--color-text-secondary);
+}
+
+.cardGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: var(--space-md);
+}
+
+.card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-md);
+  box-shadow: var(--shadow-sm);
+}
+
+.cardHeader {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  margin-bottom: var(--space-sm);
+}
+
+.cardTitle {
+  font-size: var(--font-size-md);
+  font-weight: 600;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cardMeta {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  flex-wrap: wrap;
+  margin-bottom: var(--space-sm);
+}
+
+.badge {
+  display: inline-block;
+  padding: 2px 8px;
+  font-size: var(--font-size-xs);
+  border-radius: var(--radius-sm);
+  background: var(--color-bg);
+  color: var(--color-text-secondary);
+}
+
+.badgeOutline {
+  background: transparent;
+  border: 1px solid var(--color-border);
+}
+
+.badgeSuccess {
+  background: color-mix(in srgb, var(--color-success) 12%, transparent);
+  color: var(--color-success);
+}
+
+.badgeError {
+  background: color-mix(in srgb, var(--color-error) 12%, transparent);
+  color: var(--color-error);
+}
+
+.badgeSmall {
+  font-size: 0.7rem;
+  padding: 1px 6px;
+}
+
+.signalList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+}
+
+.signalItem {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: var(--space-xs) 0;
+  border-top: 1px solid var(--color-border);
+  font-size: var(--font-size-sm);
+}
+
+.signalKey {
+  font-family: var(--font-mono);
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+  min-width: 80px;
+}
+
+.signalTitle {
+  flex: 1;
+}
+
+.scenarioFlow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: var(--space-sm);
+  background: var(--color-bg);
+  border-radius: var(--radius-md);
+}
+
+.flowStep {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.flowLabel {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.flowValue {
+  font-family: var(--font-mono);
+  font-size: var(--font-size-sm);
+}
+
+.flowArrow {
+  color: var(--color-text-secondary);
+  flex-shrink: 0;
+}
+
+.timestamp {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+  margin-left: auto;
+}
+
+.statusSuccess {
+  color: var(--color-success);
+}
+
+.statusError {
+  color: var(--color-error);
+}
+
+.statusPending {
+  color: var(--color-warning);
+}
+
+.statusUnknown {
+  color: var(--color-text-secondary);
+}
+
+.errorDetail {
+  margin-top: var(--space-sm);
+  padding: var(--space-sm);
+  background: color-mix(in srgb, var(--color-error) 8%, transparent);
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-sm);
+  color: var(--color-error);
+}
+
+.skipReason {
+  margin-top: var(--space-sm);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+}
+
+.primaryButton {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: var(--space-sm) var(--space-md);
+  background: var(--color-primary);
+  color: white;
+  border: none;
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  transition: background var(--transition-fast);
+}
+
+.primaryButton:hover {
+  background: var(--color-primary-hover);
+}
+
+@media (max-width: 480px) {
+  .cardGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .scenarioFlow {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .flowArrow {
+    transform: rotate(90deg);
+  }
+}
+
+.statusBlocked {
+  color: var(--color-error);
+}
+
+.statusSkipped {
+  color: var(--color-text-secondary);
+}
+
+.badgeBlocked {
+  background: color-mix(in srgb, var(--color-error) 12%, transparent);
+  color: var(--color-error);
+}
+
+.reasonLine {
+  margin-top: var(--space-sm);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+}
+
+.resolutionLine {
+  margin-top: var(--space-sm);
+  padding: var(--space-sm);
+  background: color-mix(in srgb, var(--color-warning) 8%, transparent);
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-sm);
+}
+
+.entriesDetails {
+  margin-top: var(--space-sm);
+}
+
+.entriesDetails summary {
+  cursor: pointer;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+}
+
+.entriesList {
+  list-style: none;
+  margin-top: var(--space-xs);
+  padding-left: var(--space-sm);
+}
+
+.entryItem {
+  display: flex;
+  gap: var(--space-sm);
+  padding: 2px 0;
+  font-size: var(--font-size-xs);
+}
+
+.entryStage {
+  font-weight: 600;
+  min-width: 80px;
+  color: var(--color-text-secondary);
+}
+
+.entryMessage {
+  flex: 1;
+}
+
+.eventList {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  flex-wrap: wrap;
+  margin-top: var(--space-sm);
+  padding-top: var(--space-sm);
+  border-top: 1px solid var(--color-border);
+}
+
+.eventLabel {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+}
+
+.journalFilters, .journalPagination { display: flex; flex-wrap: wrap; align-items: end; gap: var(--space-sm); margin: var(--space-md) 0; }
+.journalFilters label { display: grid; gap: var(--space-xs); font-size: var(--font-size-sm); }
+.journalFilters input, .journalFilters button, .journalPagination button {
+  font: inherit;
+  font-size: var(--font-size-sm);
+  height: 36px;
+  padding: 0 12px;
+  box-sizing: border-box;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  color: var(--color-text);
+}
+.journalFilters button, .journalPagination button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  white-space: nowrap;
+}
+.journalFilters input { width: min(100%, 330px); }
+.journalFilters button:disabled, .journalPagination button:disabled { opacity: .5; cursor: not-allowed; }
+.runIdentifiers { color: var(--color-text-secondary); font-size: var(--font-size-xs); overflow-wrap: anywhere; margin: var(--space-sm) 0; }

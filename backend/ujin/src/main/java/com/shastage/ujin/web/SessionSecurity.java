@@ -1,0 +1,35 @@
+package com.shastage.ujin.web;
+
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpStatus;
+import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
+
+@Configuration
+public class SessionSecurity {
+    @Bean
+    SecurityFilterChain securityFilterChain(HttpSecurity http, com.shastage.ujin.web.demo.GuestDemoService guests) throws Exception {
+        return http.addFilterBefore(new com.shastage.ujin.web.demo.GuestDemoFilter(guests), org.springframework.security.web.authentication.logout.LogoutFilter.class).csrf(csrf ->
+                        csrf.csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse()))
+                .authorizeHttpRequests(auth ->
+                        auth.dispatcherTypeMatchers(jakarta.servlet.DispatcherType.ERROR)
+                                .permitAll()
+                                .requestMatchers(
+                                        "/api/auth/login", "/api/auth/csrf", "/api/auth/demo", "/api/auth/session", "/actuator/health")
+                                .permitAll()
+                                .anyRequest()
+                                .authenticated())
+                .formLogin(form -> form.disable())
+                .httpBasic(basic -> basic.disable())
+                .logout(logout ->
+                        logout.logoutUrl("/api/auth/logout")
+                                .logoutSuccessHandler((request, response, authentication) ->
+                                        response.setStatus(HttpStatus.NO_CONTENT.value())))
+                .exceptionHandling(errors ->
+                        errors.authenticationEntryPoint((request, response, exception) ->
+                                response.sendError(HttpStatus.UNAUTHORIZED.value())))
+                .build();
+    }
+}
