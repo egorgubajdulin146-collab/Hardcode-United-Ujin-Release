@@ -1,0 +1,35 @@
+name: ujin-emulators
+x-common: &common
+  image: ujin-python-emulator:${EMULATOR_IMAGE_TAG:-local}
+  pull_policy: never
+  restart: unless-stopped
+  read_only: true
+  cap_drop: [ALL]
+  security_opt: [no-new-privileges:true]
+  mem_limit: 96m
+  cpus: 0.25
+  pids_limit: 32
+  networks: [emulators]
+  logging:
+    driver: json-file
+    options: {max-size: 2m, max-file: "2"}
+services:
+  leak:
+    <<: *common
+    build:
+      context: .
+      args:
+        SOURCE_REVISION: ${EMULATOR_IMAGE_TAG:-local}
+    environment:
+      EMULATOR_FAMILY: leak
+      EMULATOR_SERIAL: local-leak
+    ports: ["127.0.0.1:18191:8080"]
+  light:
+    <<: *common
+    environment:
+      EMULATOR_FAMILY: light
+      EMULATOR_SERIAL: local-light
+    ports: ["127.0.0.1:18192:8080"]
+networks:
+  emulators:
+    name: ujin-emulators
