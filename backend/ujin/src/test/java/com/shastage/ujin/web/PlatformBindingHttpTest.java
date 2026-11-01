@@ -371,6 +371,9 @@ class PlatformBindingHttpTest {
         assertEquals(2, issues.size(), state.body());
         for (int i = 0; i < 2; i++) {
             assertEquals("MISSING_SIGNAL", issues.get(i).path("status").asString());
+            String key = issues.get(i).path("signalKey").asString();
+            assertEquals(key, issues.get(i).path("expectedPlatformName").asString());
+            assertEquals("ver", issues.get(i).path("availablePlatformNames").get(0).asString());
         }
     }
 

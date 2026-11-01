@@ -89,6 +89,8 @@ export interface SignalReadIssue {
   signalKey: string;
   status: SignalIssueStatus;
   detail: string;
+  expectedPlatformName?: string;
+  availablePlatformNames?: string[];
 }
 
 export interface DeviceState {

@@ -293,7 +293,13 @@ export function DeviceRuntimePanel({ device, onClose }: { device: Device; onClos
         <h3>{signal.title}</h3><p>{signal.management === "w" ? "Команда" : value ? `${value.value}${signal.unit ? ` ${signal.unit}` : ""}` : "Нет данных"}</p>
         {value && <small>Обновлено: {new Date(value.updatedAt).toLocaleString("ru-RU")}</small>}
         {value?.measuredAt && <small>Измерено устройством: {new Date(value.measuredAt).toLocaleString("ru-RU")}</small>}
-        {!value && issue && <small role="status">{ISSUE_LABEL[issue.status] ?? issue.detail}</small>}
+        {!value && issue && <>
+          <small role="status">{ISSUE_LABEL[issue.status] ?? issue.detail}</small>
+          {mode === "UJIN" && issue.status === "MISSING_SIGNAL" && issue.expectedPlatformName &&
+            <small>Ищем имя «{issue.expectedPlatformName}». Ujin вернул: {issue.availablePlatformNames?.length
+              ? issue.availablePlatformNames.join(", ")
+              : "в ответе нет имён сигналов"}.</small>}
+        </>}
         {mode === "LOCAL" && signal.management !== "w" && device.platformLink === "BOUND" && value &&
           <button type="button" disabled={busy || !online || publications.isPending || !!publications.error ||
             publicationReceipts.some(p => p.signalKey === signal.key && (p.status === "PENDING" || p.status === "UNKNOWN"))}
