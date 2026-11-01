@@ -10,6 +10,7 @@ services:
     environment:
       UJIN_API_BASE_URL: ${UJIN_API_BASE_URL:-https://localhost/api}
       UJIN_AUTH_APP: ${UJIN_AUTH_APP:-}
+      UJIN_DEMO_ENABLED: ${UJIN_DEMO_ENABLED:-true}
       UJIN_DB_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-ujin}
       UJIN_DB_USER: ${POSTGRES_USER:-ujin}
       UJIN_DB_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD outside Git}

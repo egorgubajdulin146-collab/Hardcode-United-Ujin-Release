@@ -30,7 +30,7 @@ export function DevicesCrudPage() {
   const deleteEpochRef = useRef(0);
 
   const mock = isMock();
-  const { terminateSession } = useSession();
+  const { terminateSession, demo } = useSession();
   const queryClient = useQueryClient();
   const pageSize = 20;
 
@@ -239,7 +239,7 @@ export function DevicesCrudPage() {
           conflictType={conflictType}
           onReloadFresh={handleReloadFresh}
         />
-        {mode === "edit" && editing && (
+        {mode === "edit" && editing && !demo && (
           <PlatformBindingSection
             deviceId={editing.id}
             signals={editing.signals}

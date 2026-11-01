@@ -67,7 +67,7 @@ export function DeviceRuntimePanel({ device, onClose }: { device: Device; onClos
   const [eventLookupId, setEventLookupId] = useState<string | null>(null);
   const [event, setEvent] = useState<EventReceipt | null>(null);
   const [publication, setPublication] = useState<PublicationReceipt | null>(null);
-  const { terminateSession } = useSession();
+  const { terminateSession, demo } = useSession();
   const active = useRef(true);
   const queryClient = useQueryClient();
   useEffect(() => { active.current = true; return () => { active.current = false; }; }, []);
@@ -245,7 +245,7 @@ export function DeviceRuntimePanel({ device, onClose }: { device: Device; onClos
     <header><div><h2>{device.title}</h2><p>Состояние и управление</p></div><button onClick={onClose} type="button" disabled={busy}>Закрыть</button></header>
     <div className={styles.toolbar}>
       <label>Контур <select value={mode} disabled={busy || !!unresolved} onChange={e => { setMode(e.target.value as ExecutionMode); setError(null); setCommand(null); setEvent(null); setEventLookupId(null); }}>
-        <option value="LOCAL">Локальный</option><option value="UJIN">Ujin</option>
+        <option value="LOCAL">Локальный</option><option value="UJIN" disabled={demo}>Ujin{demo ? " — недоступно в гостевом демо" : ""}</option>
       </select></label>
       <button type="button" onClick={() => { void state.refetch(); }} disabled={state.isFetching}>Обновить состояние</button>
       <span>{state.isLoading ? "Загрузка…" : state.error ? "Состояние недоступно" : state.data?.availability === "ONLINE" ? "На связи" : state.data?.availability === "OFFLINE" ? "Не на связи" : "Состояние неизвестно"}</span>

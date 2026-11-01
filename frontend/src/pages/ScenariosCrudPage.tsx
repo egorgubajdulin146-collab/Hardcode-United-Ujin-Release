@@ -39,7 +39,7 @@ export function ScenariosCrudPage() {
   const [conflictType, setConflictType] = useState<"version" | "cycle" | "read_only" | "validation" | null>(null);
 
   const mock = isMock();
-  const { terminateSession } = useSession();
+  const { terminateSession, demo } = useSession();
   const queryClient = useQueryClient();
   const pageSize = 20;
 
@@ -175,6 +175,7 @@ export function ScenariosCrudPage() {
     return (
       <div className={styles.page}>
         <ScenarioForm
+          localOnly={demo}
           initial={mode === "edit" && editing ? {
             title: editing.title,
             enabled: editing.enabled,

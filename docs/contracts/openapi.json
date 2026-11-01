@@ -2027,6 +2027,83 @@
           }
         ]
       }
+    },
+    "/api/auth/session": {
+      "get": {
+        "operationId": "getSessionMetadata",
+        "summary": "Тип сессии и доступность гостевого демо",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Без персональных данных и токенов",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "authenticated",
+                    "demo",
+                    "demoAvailable",
+                    "demoLifetimeMinutes"
+                  ],
+                  "properties": {
+                    "authenticated": {
+                      "type": "boolean"
+                    },
+                    "demo": {
+                      "type": "boolean"
+                    },
+                    "demoAvailable": {
+                      "type": "boolean"
+                    },
+                    "demoLifetimeMinutes": {
+                      "type": "integer",
+                      "enum": [
+                        30
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/demo": {
+      "post": {
+        "operationId": "startGuestDemo",
+        "summary": "Изолированное LOCAL-демо без Ujin credentials",
+        "description": "Нужен свежий CSRF. Создаёт отдельный server-side owner и cookie-сессию на 30 минут, без Ujin token. До 8 устройств/8 сценариев, ограничение записей/частоты. Гостям запрещены Ujin и /local-python/**. Выход/истечение удаляет только собственные гостевые данные.",
+        "parameters": [
+          {
+            "name": "X-XSRF-TOKEN",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "security": [],
+        "responses": {
+          "204": {
+            "description": "Гостевая сессия создана"
+          },
+          "403": {
+            "description": "Нет CSRF"
+          },
+          "404": {
+            "description": "Демо выключено"
+          },
+          "409": {
+            "description": "Уже открыта настоящая сессия"
+          },
+          "429": {
+            "description": "Лимит гостевого демо"
+          }
+        }
+      }
     }
   },
   "components": {
