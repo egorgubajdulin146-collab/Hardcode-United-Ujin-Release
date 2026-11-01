@@ -257,7 +257,7 @@ export function DeviceRuntimePanel({ device, onClose }: { device: Device; onClos
     </label>}
     {python && <p role="status">Внешний LOCAL-Python эмулятор. Это отдельный процесс, без подключения к Ujin.</p>}
     {python && device.family === "leak" && <div>
-      <p>Измените протечку в Python-эмуляторе, затем проверьте показание. При первом чтении устанавливается исходное состояние без запуска действия.</p>
+      <p>Измените протечку в Python-эмуляторе, затем проверьте показание. Если сохранённого состояния ещё нет, первое чтение задаёт исходное значение без запуска действия.</p>
       <button type="button" disabled={busy || !!unresolved || !online} onClick={() => void pollPython()}>Проверить показание Python</button>
       <label><input type="checkbox" checked={watchPython} onChange={e => setWatchPython(e.target.checked)} /> Наблюдать Python, пока открыта карточка</label>
       {watchPython && <p>Проверка каждые 3 секунды после предыдущего запроса. При закрытии карточки наблюдение останавливается.</p>}
