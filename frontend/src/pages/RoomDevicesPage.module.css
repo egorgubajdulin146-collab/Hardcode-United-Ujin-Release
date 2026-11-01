@@ -39,6 +39,18 @@
   transition: background var(--transition-fast);
 }
 
+.headerAction {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: var(--space-xs);
+}
+
+.addHint {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+}
+
 .addButton:hover {
   background: var(--color-primary-hover);
 }

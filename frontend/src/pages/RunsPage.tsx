@@ -122,7 +122,7 @@ export function RunsPage() {
   const mock = isMock();
   const source = getDataSource();
 
-  const { data, isLoading, error, refetch } = useQuery({
+  const { data, isLoading, error, refetch, isFetching } = useQuery({
     queryKey: ["runs", source, eventId, scenarioId, pageIndex],
     queryFn: ({ signal }) => endpoints.runs.list({ page: pageIndex, size: 20, eventId: eventId || undefined, scenarioId: scenarioId || undefined }, signal),
     enabled: !mock && valid,
@@ -176,9 +176,16 @@ export function RunsPage() {
       }}>
         <label>Событие<input value={eventInput} onChange={e => setEventInput(e.target.value)} placeholder="UUID события" pattern="[0-9a-fA-F-]{36}" /></label>
         <label>Сценарий<input value={scenarioInput} onChange={e => setScenarioInput(e.target.value)} placeholder="UUID сценария" pattern="[0-9a-fA-F-]{36}" /></label>
-        <button type="submit">Применить</button>
-        <button type="button" onClick={() => setParams({})}>Сбросить</button>
-        <button type="button" disabled={!valid} onClick={() => { void refetch(); }}>Обновить</button>
+        <button type="submit" disabled={isFetching}>Применить</button>
+        <button type="button" disabled={isFetching} onClick={() => setParams({})}>Сбросить</button>
+        <button
+          type="button"
+          disabled={!valid || isFetching}
+          onClick={() => { void refetch(); }}
+          aria-label="Обновить журнал"
+        >
+          {isFetching ? "Обновление…" : "Обновить"}
+        </button>
       </form>}
       {!valid && !mock ? <p role="alert">Проверьте UUID фильтров и номер страницы.</p> : runs.length === 0 ? (
         <EmptyState

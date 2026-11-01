@@ -15,6 +15,14 @@ import styles from "./DevicesCrudPage.module.css";
 
 type Mode = "list" | "create" | "edit";
 
+function plural(n: number, one: string, few: string, many: string): string {
+  const mod10 = n % 10;
+  const mod100 = n % 100;
+  if (mod10 === 1 && mod100 !== 11) return one;
+  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) return few;
+  return many;
+}
+
 export function DevicesCrudPage() {
   const [selected, setSelected] = useState<Device | null>(null);
   const [mode, setMode] = useState<Mode>("list");
@@ -34,7 +42,7 @@ export function DevicesCrudPage() {
   const queryClient = useQueryClient();
   const pageSize = 20;
 
-  const { data, isLoading, error, refetch } = useQuery({
+  const { data, isLoading, error, refetch, isFetching } = useQuery({
     queryKey: ["devices", page, pageSize],
     queryFn: ({ signal }) => endpoints.devices.list({ page, size: pageSize }, signal),
     enabled: !mock,
@@ -262,7 +270,14 @@ export function DevicesCrudPage() {
           {mock && <MockBadge />}
         </div>
         <div className={styles.headerActions}>
-          <button type="button" className={styles.iconBtn} onClick={() => refetch()} title="Обновить">
+          <button
+            type="button"
+            className={`${styles.iconBtn} ${isFetching ? styles.iconBtnBusy : ""}`}
+            onClick={() => void refetch()}
+            disabled={isFetching}
+            title="Обновить"
+            aria-label="Обновить список устройств"
+          >
             <RefreshCw size={16} />
           </button>
           <button
@@ -297,8 +312,10 @@ export function DevicesCrudPage() {
               <div className={styles.cardInfo}>
                 <span className={styles.cardTitle}>{device.title}</span>
                 <span className={styles.cardMeta}>
-                  {device.family} · v{device.version} · {device.signals.length} сигналов
-                  {device.events.length > 0 && ` · ${device.events.length} событий`}
+                  {device.family} · v{device.version} · {device.signals.length}{" "}
+                  {plural(device.signals.length, "сигнал", "сигнала", "сигналов")}
+                  {device.events.length > 0 &&
+                    ` · ${device.events.length} ${plural(device.events.length, "событие", "события", "событий")}`}
                 </span>
               </div>
               <div className={styles.cardActions}>

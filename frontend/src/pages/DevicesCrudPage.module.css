@@ -64,6 +64,21 @@
   transition: all var(--transition-fast);
 }
 
+.iconBtn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.iconBtnBusy svg {
+  animation: ujin-spin 0.9s linear infinite;
+}
+
+@keyframes ujin-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 .iconBtn:hover:not(:disabled) {
   background: var(--color-border);
   color: var(--color-text);

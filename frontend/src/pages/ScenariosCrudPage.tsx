@@ -91,7 +91,7 @@ export function ScenariosCrudPage() {
   const queryClient = useQueryClient();
   const pageSize = 20;
 
-  const { data, isLoading, error, refetch } = useQuery({
+  const { data, isLoading, error, refetch, isFetching } = useQuery({
     queryKey: ["scenarios", page, pageSize],
     queryFn: ({ signal }) => endpoints.scenarios.list({ page, size: pageSize }, signal),
     enabled: !mock,
@@ -264,7 +264,14 @@ export function ScenariosCrudPage() {
           </p>
         </div>
         <div className={styles.headerActions}>
-          <button type="button" className={styles.iconBtn} onClick={() => refetch()} title="Обновить">
+          <button
+            type="button"
+            className={`${styles.iconBtn} ${isFetching ? styles.iconBtnBusy : ""}`}
+            onClick={() => void refetch()}
+            disabled={isFetching}
+            title="Обновить"
+            aria-label="Обновить список сценариев"
+          >
             <RefreshCw size={16} />
           </button>
           <button
