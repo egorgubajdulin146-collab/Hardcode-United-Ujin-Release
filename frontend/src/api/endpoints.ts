@@ -39,6 +39,10 @@ function pageQuery(params?: PageParams): string {
 }
 
 export const endpoints = {
+  localPython: {
+    poll: (eventId: string) => api.post<EventReceipt>("/local-python/poll", { eventId }),
+    check: (commandId: string) => api.post<CommandReceipt>(`/local-python/commands/${commandId}/check`, {}),
+  },
   system: {
     getStatus: (signal?: AbortSignal) =>
       api.get<SystemStatus>("/api/v1/system", signal),

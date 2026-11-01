@@ -92,6 +92,7 @@ export interface SignalReadIssue {
 }
 
 export interface DeviceState {
+  provider?: "JAVA" | "PYTHON";
   deviceId: string;
   executionMode: ExecutionMode;
   values: SignalValue[];

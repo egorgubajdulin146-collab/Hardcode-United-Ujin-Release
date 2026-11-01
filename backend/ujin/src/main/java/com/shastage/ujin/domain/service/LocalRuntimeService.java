@@ -39,6 +39,25 @@ public class LocalRuntimeService {
         this.catalogStore = catalogStore;
     }
 
+    private PythonEmulatorProperties python;
+    @org.springframework.beans.factory.annotation.Autowired
+    public void setPythonEmulatorProperties(PythonEmulatorProperties properties) { python = properties; }
+    private boolean pythonTarget(UUID id, String owner) { return python != null && python.target(id, owner); }
+    private void requireNoPendingPython(UUID id, String owner) {
+        if (commandRepo.findByDeviceIdAndOwnerAndStatusIn(id, owner, List.of("PENDING", "UNKNOWN")).stream()
+                .anyMatch(c -> c.getResolutionNote() == null))
+            throw new CatalogException(409, "COMMAND_UNRESOLVED", "Есть незавершённая команда Python-эмулятору");
+    }
+    private void queuePython(UUID id, UUID commandId, String signalKey, double value, String owner, String now) {
+        if (!"lamp".equals(signalKey) || (value != 0 && value != 1))
+            throw new CatalogException(422, "PYTHON_SIGNAL_UNSUPPORTED", "Python-стенд поддерживает только lamp 0/1");
+        requireNoPendingPython(id, owner);
+        var command = new CommandEntity(); command.setCommandId(commandId); command.setDeviceId(id);
+        command.setSignalKey(signalKey); command.setValue(value); command.setExecutionMode("LOCAL");
+        command.setStatus("PENDING"); command.setReason("PYTHON_QUEUED"); command.setCreatedAt(now);command.setUpdatedAt(now);command.setOwner(owner);
+        commandRepo.saveAndFlush(command);
+    }
+
     // ===== GET /devices/{id}/state =====
     @Transactional(readOnly = true)
     public Map<String, Object> getDeviceState(UUID deviceId, String mode, String owner) {
@@ -196,6 +215,9 @@ public class LocalRuntimeService {
 
         var device = catalogService.device(deviceId, owner);
 
+        if (python != null && python.source(deviceId, owner))
+            throw new CatalogException(422, "PYTHON_SIGNAL_UNSUPPORTED", "Python-датчик не принимает команды");
+
         // Проверка глобальной коллизии commandId
         if (commandRepo.existsByCommandId(commandId)) {
             var existing = commandRepo.findByCommandIdAndOwner(commandId, owner);
@@ -234,6 +256,10 @@ public class LocalRuntimeService {
             }
         }
 
+        if (pythonTarget(deviceId, owner)) {
+            queuePython(deviceId, commandId, signalKey, value, owner, Instant.now().toString());
+            return buildCommandReceipt(commandRepo.findByCommandIdAndOwner(commandId, owner).orElseThrow());
+        }
         // Создаём команду
         var command = new CommandEntity();
         command.setCommandId(commandId);
@@ -356,6 +382,10 @@ public class LocalRuntimeService {
                 run.addEntry("ACTION", "Сигнал " + action.signalKey() + " доступен только для чтения", now);
                 run.setStatus("FAILED");
                 run.setReason("SIGNAL_READ_ONLY");
+            } else if (pythonTarget(action.deviceId(), owner)) {
+                queuePython(action.deviceId(), run.getId(), action.signalKey(), action.value(), owner, now);
+                run.addEntry("ACTION", "Команда ожидает отправки внешнему Python-эмулятору", now);
+                run.setStatus("PENDING");run.setReason("PYTHON_PENDING");
             } else {
                 run.addEntry("ACTION", "Команда " + action.signalKey() + "=" + action.value(), now);
                 updateSignalState(action.deviceId(), action.signalKey(), action.value(), owner);

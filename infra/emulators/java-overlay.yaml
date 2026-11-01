@@ -1,0 +1,15 @@
+# Optional overlay after infra/compose.runtime.yaml. The Python pair is separate.
+services:
+  backend:
+    environment:
+      UJIN_LOCAL_PYTHON_ENABLED: "true"
+      UJIN_LOCAL_PYTHON_OWNER: ${UJIN_LOCAL_PYTHON_OWNER:?Set the designated owner outside Git}
+      UJIN_LOCAL_PYTHON_SOURCE_DEVICE_ID: ${UJIN_LOCAL_PYTHON_SOURCE_DEVICE_ID:?Set the local leak UUID}
+      UJIN_LOCAL_PYTHON_TARGET_DEVICE_ID: ${UJIN_LOCAL_PYTHON_TARGET_DEVICE_ID:?Set the local light UUID}
+      UJIN_LOCAL_PYTHON_LEAK_URL: http://leak:8080
+      UJIN_LOCAL_PYTHON_LIGHT_URL: http://light:8080
+    networks: [application, database, emulators]
+networks:
+  emulators:
+    external: true
+    name: ${UJIN_LOCAL_PYTHON_NETWORK:-ujin-emulators}
