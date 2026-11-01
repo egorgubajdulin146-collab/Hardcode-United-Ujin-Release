@@ -47,6 +47,10 @@ function bindingErrorMessage(error: unknown): string {
   return error instanceof Error ? error.message : "Не удалось выполнить запрос.";
 }
 
+function isNumericSignalName(value: string): boolean {
+  return /^\d+$/.test(value.trim());
+}
+
 export function PlatformBindingSection({ deviceId, signals, platformLink }: Props) {
   const queryClient = useQueryClient();
   const binding = useQuery({
@@ -80,6 +84,12 @@ export function PlatformBindingSection({ deviceId, signals, platformLink }: Prop
     const signalMappings: PlatformBindingMapping[] = [];
     for (const signal of signals) {
       const platformName = (mappingTexts[signal.key] ?? "").trim();
+      if (platformName && isNumericSignalName(platformName)) {
+        setError(
+          `Для «${signal.title}» указано число. Здесь нужно точное имя сигнала из Ujin, а не числовой идентификатор.`
+        );
+        return;
+      }
       if (platformName) signalMappings.push({ signalKey: signal.key, platformName });
     }
     if (!sn) {
@@ -165,6 +175,12 @@ export function PlatformBindingSection({ deviceId, signals, platformLink }: Prop
                 disabled={saving || binding.isLoading}
                 placeholder="Точное имя из Ujin, например leak"
               />
+              {isNumericSignalName(mappingTexts[signal.key] ?? "") && (
+                <small className={styles.hint}>
+                  Похоже на числовой ID, а не имя сигнала. Скопируйте техническое имя из Ujin;
+                  например, leak — только если оно действительно есть в ответе платформы.
+                </small>
+              )}
             </div>
           ))}
         </div>

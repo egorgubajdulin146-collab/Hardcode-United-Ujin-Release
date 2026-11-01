@@ -151,3 +151,21 @@ test('empty mappings are rejected locally before saving', async () => {
   );
   act(() => root.unmount());
 });
+
+test('numeric platform signal identifier is rejected before saving', async () => {
+  const { root, calls } = mount({
+    binding: {
+      deviceId: 'device-1',
+      serialNumber: 'sn-target',
+      signalMappings: [{ signalKey: 'leak', platformName: '1704887761001995898' }],
+      version: 1,
+    },
+  });
+  await act(async () => {
+    root.root.findByType('form').props.onSubmit({ preventDefault() {} });
+  });
+  assert.equal(calls.filter(c => c[0] === 'putBinding').length, 0);
+  assert.ok(root.root.findAllByType('p').some(p => String(p.children).includes('число')));
+  assert.ok(root.root.findAllByType('small').some(p => String(p.children).includes('числовой ID')));
+  act(() => root.unmount());
+});
