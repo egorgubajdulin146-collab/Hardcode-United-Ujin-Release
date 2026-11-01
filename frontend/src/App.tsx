@@ -27,7 +27,7 @@ function AppRoutes() {
   if (checking) {
     return (
       <div style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "100vh" }}>
-        <p style={{ color: "#6b7280" }}>Проверка сессии…</p>
+        <p style={{ color: "var(--color-text-secondary)" }}>Проверка сессии…</p>
       </div>
     );
   }
@@ -36,11 +36,11 @@ function AppRoutes() {
   if (checkFailed && !authed) {
     return (
       <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", minHeight: "100vh", gap: 16 }}>
-        <p style={{ color: "#6b7280" }}>Не удалось проверить сессию. Сервер недоступен.</p>
+        <p style={{ color: "var(--color-text-secondary)" }}>Не удалось проверить сессию. Сервер недоступен.</p>
         <button
           type="button"
           onClick={() => checkSession()}
-          style={{ padding: "8px 16px", background: "#00b4b4", color: "white", border: "none", borderRadius: 6, cursor: "pointer" }}
+          style={{ padding: "8px 16px", background: "var(--color-primary)", color: "white", border: "none", borderRadius: 6, cursor: "pointer" }}
         >
           Повторить
         </button>

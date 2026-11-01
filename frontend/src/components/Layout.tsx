@@ -38,8 +38,16 @@ export function Layout({ children }: { children: ReactNode }) {
     <div className={styles.layout}>
       <nav className={styles.sidebar} aria-label="Основная навигация">
         <div className={styles.logo}>
-          <span className={styles.logoText}>Ujin Editor</span>
-          <span className={styles.logoBadge}>Hardcode United</span>
+          <svg className={styles.logoMark} viewBox="0 0 64 64" aria-hidden="true">
+            <rect x="4" y="4" width="56" height="56" rx="14" fill="currentColor" />
+            <path d="M20 40 V26 a4 4 0 0 1 4-4 h4" fill="none" stroke="#fff" strokeWidth="5" strokeLinecap="round" />
+            <path d="M44 24 V38 a4 4 0 0 1-4 4 h-4" fill="none" stroke="#fff" strokeWidth="5" strokeLinecap="round" />
+            <circle cx="32" cy="32" r="5" fill="#fff" />
+          </svg>
+          <div>
+            <span className={styles.logoText}>Редактор сценариев</span>
+            <span className={styles.logoBadge}>Hardcode United · Ujin</span>
+          </div>
         </div>
         <ul className={styles.navList}>
           {navItems.filter(item => !demo || item.to !== "/adapter").map(({ to, label, icon: Icon }) => (
@@ -57,6 +65,7 @@ export function Layout({ children }: { children: ReactNode }) {
           ))}
         </ul>
         <div className={styles.sidebarFooter}>
+          <p className={styles.disclaimer}>Неофициальный инструмент команды. Не является продуктом Ujin.</p>
           {authed ? (
             <button
               type="button"
