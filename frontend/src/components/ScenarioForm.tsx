@@ -153,7 +153,6 @@ export function ScenarioForm({
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    if (executionMode === "UJIN" && enabled) return;
     const trigger: Trigger = {
       deviceId: triggerDeviceId,
       signalKey: triggerSignalKey,
@@ -258,7 +257,7 @@ export function ScenarioForm({
             disabled={loading}
           >
             <option value="LOCAL">Локально — на эмуляторах</option>
-            <option value="UJIN">Через Ujin — пока только черновик</option>
+            <option value="UJIN">Через Ujin — по показанию платформы</option>
           </select>
         </div>
         <div className={styles.field}>
@@ -268,7 +267,7 @@ export function ScenarioForm({
               type="checkbox"
               checked={enabled}
               onChange={(e) => setEnabled(e.target.checked)}
-              disabled={loading || (executionMode === "UJIN" && !enabled)}
+              disabled={loading}
             />
             <span>{enabled ? "Да — реагировать на события" : "Нет — сохранить без запуска"}</span>
           </label>
@@ -279,8 +278,8 @@ export function ScenarioForm({
       <p className={styles.enumHint}>Пример: когда изменится «Протечка», если значение — «1 — Протечка», включить свет на лампе.</p>
 
       {executionMode === "UJIN" && <p role="status">
-        Исполнение Ujin ещё не подключено. Сохраните выключенный черновик или выберите LOCAL.
-        {enabled && " Ранее включённый сценарий не исполняется; выключите его перед сохранением."}
+        Исполнение Ujin запускается наблюдением показания на сервере; сохранение черновика и запуск наблюдения — разные действия.
+        Включённое правило требует серверного разрешения исполнения; при его отсутствии сохранение отклоняется с понятной причиной.
       </p>}
       {devices.length === 0 && <p role="status">Сначала добавьте устройства в разделе «Устройства». Для первого сценария подойдут шаблоны датчика протечки и лампы.</p>}
       {/* Когда → Если → Тогда */}

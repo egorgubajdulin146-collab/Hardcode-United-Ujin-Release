@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from "react";
+import { useState, useCallback, useMemo, useEffect, useRef } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Workflow, Plus, Pencil, ChevronLeft, ChevronRight, RefreshCw, ArrowRight } from "lucide-react";
 import { endpoints } from "../api/endpoints";
@@ -8,10 +8,20 @@ import { isMock } from "../api/dataSource";
 import { mockScenarioPage, mockDevices } from "../mocks/data";
 import { ScenarioForm } from "../components/ScenarioForm";
 import { LoadingState, EmptyState, ErrorState, MockBadge } from "../components/States";
-import type { Scenario, ScenarioWrite, Device } from "../api/types";
+import type { Scenario, ScenarioWrite, Device, ScenarioPollResult } from "../api/types";
 import styles from "./ScenariosCrudPage.module.css";
 
 type Mode = "list" | "create" | "edit";
+
+const POLL_LABEL: Record<string, string> = {
+  PROCESSING: "Выполняется…",
+  BASELINE_STORED: "Первое чтение сохранено как начальное",
+  NO_CHANGE: "Значение не изменилось",
+  RUN_CREATED: "Изменение — создан запуск",
+  READ_ERROR: "Ошибка чтения показания",
+  REJECTED: "Наблюдение не принято",
+  UNKNOWN: "Результат неизвестен",
+};
 
 // Загрузка всех страниц устройств с поддержкой отмены
 async function fetchAllDevices(signal?: AbortSignal): Promise<Device[]> {
@@ -37,9 +47,47 @@ export function ScenariosCrudPage() {
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [conflictType, setConflictType] = useState<"version" | "cycle" | "read_only" | "validation" | null>(null);
+  const [pollResults, setPollResults] = useState<Record<string, ScenarioPollResult | { error: string }>>({});
+  const [watching, setWatching] = useState<Record<string, boolean>>({});
+  const watchRef = useRef<Set<string>>(new Set());
 
   const mock = isMock();
   const { terminateSession } = useSession();
+
+  // Закрытие страницы и logout останавливают наблюдение.
+  useEffect(() => () => { watchRef.current.clear(); }, []);
+
+  const runPoll = useCallback(async (scenario: Scenario) => {
+    try {
+      const result = await endpoints.scenarios.poll(scenario.id, crypto.randomUUID());
+      setPollResults(current => ({ ...current, [scenario.id]: result }));
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 401) terminateSession();
+      const message = err instanceof ApiError
+        ? (err.problem?.detail ?? `Ошибка ${err.status}`)
+        : err instanceof Error ? err.message : "Ошибка запроса";
+      setPollResults(current => ({ ...current, [scenario.id]: { error: message } }));
+    }
+  }, [terminateSession]);
+
+  const toggleWatch = useCallback((scenario: Scenario) => {
+    if (watchRef.current.has(scenario.id)) {
+      watchRef.current.delete(scenario.id);
+      setWatching(current => ({ ...current, [scenario.id]: false }));
+      return;
+    }
+    watchRef.current.add(scenario.id);
+    setWatching(current => ({ ...current, [scenario.id]: true }));
+    const loop = async () => {
+      // Следующий запрос — только после завершения предыдущего.
+      while (watchRef.current.has(scenario.id)) {
+        await runPoll(scenario);
+        await new Promise(resolve => setTimeout(resolve, 3000));
+      }
+    };
+    void loop();
+  }, [runPoll]);
+
   const queryClient = useQueryClient();
   const pageSize = 20;
 
@@ -209,6 +257,10 @@ export function ScenariosCrudPage() {
         <div className={styles.headerLeft}>
           <h1 className={styles.title}>Сценарии</h1>
           {mock && <MockBadge />}
+          <p className={styles.cardMeta}>
+            Исполнение правил выполняет наш backend. Закрытая страница не наблюдает показания Ujin —
+            проверка запускается кнопкой или переключателем наблюдения на открытой странице.
+          </p>
         </div>
         <div className={styles.headerActions}>
           <button type="button" className={styles.iconBtn} onClick={() => refetch()} title="Обновить">
@@ -262,8 +314,38 @@ export function ScenariosCrudPage() {
                     <span className={styles.flowOp}>= {scenario.action.value}</span>
                   </div>
                   <span className={styles.cardMeta}>
-                    {scenario.executionMode} · {scenario.executionMode === "UJIN" ? "Исполнение ещё не подключено" : scenario.enabled ? "Включён" : "Выключен"} · v{scenario.version}
+                    {scenario.executionMode} · {scenario.enabled ? "Включён" : "Выключен — черновик"} · v{scenario.version}
                   </span>
+                  {scenario.executionMode === "UJIN" && !mock && (
+                    <div className={styles.cardMeta}>
+                      <button
+                        type="button"
+                        className={styles.iconBtn}
+                        onClick={() => void runPoll(scenario)}
+                        title="Проверить показание Ujin"
+                      >
+                        Проверить показание Ujin
+                      </button>
+                      <label>
+                        <input
+                          type="checkbox"
+                          checked={watching[scenario.id] ?? false}
+                          onChange={() => toggleWatch(scenario)}
+                        />{" "}
+                        Наблюдать Ujin
+                      </label>
+                      {pollResults[scenario.id] && (
+                        <span role="status">
+                          {"error" in pollResults[scenario.id]
+                            ? `Проверка: ${(pollResults[scenario.id] as { error: string }).error}`
+                            : `Проверка: ${POLL_LABEL[(pollResults[scenario.id] as ScenarioPollResult).status] ?? (pollResults[scenario.id] as ScenarioPollResult).status}` +
+                              ((pollResults[scenario.id] as ScenarioPollResult).reason
+                                ? ` (${(pollResults[scenario.id] as ScenarioPollResult).reason})`
+                                : "")}
+                        </span>
+                      )}
+                    </div>
+                  )}
                 </div>
                 <div className={styles.cardActions}>
                   <button
