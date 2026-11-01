@@ -140,7 +140,18 @@ public class PlatformBindingService {
                             .filter(sample -> mapping.getPlatformName().equals(sample.name()))
                             .toList();
             if (matches.isEmpty()) {
-                issues.add(issue(signalKey, "MISSING_SIGNAL", "Signal is absent on the platform"));
+                Map<String, Object> missing =
+                        issue(signalKey, "MISSING_SIGNAL", "Signal is absent on the platform");
+                missing.put("expectedPlatformName", mapping.getPlatformName());
+                missing.put(
+                        "availablePlatformNames",
+                        platform.signals().stream()
+                                .map(PlatformDevice.PlatformSignal::name)
+                                .filter(name -> name != null && !name.isBlank())
+                                .distinct()
+                                .limit(50)
+                                .toList());
+                issues.add(missing);
                 continue;
             }
             if (matches.size() > 1) {

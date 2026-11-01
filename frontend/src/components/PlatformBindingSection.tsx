@@ -100,7 +100,7 @@ export function PlatformBindingSection({ deviceId, signals, platformLink }: Prop
         ...(version !== undefined ? { expectedVersion: version } : {}),
       });
       setMessage(
-        `Привязка сохранена: SN ${saved.serialNumber}, версия ${saved.version}. BOUND — только проверенное сопоставление; команды Ujin пока недоступны.`
+        `Привязка сохранена: SN ${saved.serialNumber}, версия ${saved.version}. Видимость устройства проверена; наличие имён сигналов проверяется при чтении. Команды Ujin пока недоступны.`
       );
       void queryClient.invalidateQueries({ queryKey: ["platform-binding", deviceId] });
       void queryClient.invalidateQueries({ queryKey: ["device", deviceId] });
@@ -125,7 +125,7 @@ export function PlatformBindingSection({ deviceId, signals, platformLink }: Prop
             : binding.error
               ? bindingErrorMessage(binding.error)
               : loaded
-                ? `Привязано: SN ${loaded.serialNumber} (версия ${loaded.version}).`
+                ? `Привязан SN ${loaded.serialNumber} (версия ${loaded.version}). При сохранении сессия Ujin видела устройство; имена сигналов проверяются при чтении.`
                 : ""}
       </p>
       <form onSubmit={save}>
@@ -181,9 +181,10 @@ export function PlatformBindingSection({ deviceId, signals, platformLink }: Prop
         </p>
       )}
       <p className={styles.hint}>
-        SN и имена сигналов хранятся как строки и проверяются по точному совпадению. Значения в
-        карточке читаются только с привязанного устройства. Отсутствующий сигнал не подменяется
-        нулём. Управление Ujin остаётся отключённым до подтверждённого канала команд.
+        SN проверяется по списку устройств резидента. Имена сигналов хранятся как строки и
+        сопоставляются по точному совпадению при чтении. Если имя не найдено, карточка покажет
+        имена, которые вернула платформа; отсутствие сигнала не подменяется нулём. Управление Ujin
+        остаётся отключённым до подтверждённого канала команд.
       </p>
     </section>
   );
