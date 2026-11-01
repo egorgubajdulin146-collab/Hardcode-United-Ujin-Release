@@ -97,6 +97,11 @@ export function ScenariosCrudPage() {
     enabled: !mock,
   });
 
+  // Потерянная сессия (401) возвращает на экран входа: «Повторить» её не восстановит.
+  useEffect(() => {
+    if (error instanceof ApiError && error.status === 401) terminateSession();
+  }, [error, terminateSession]);
+
   // Загрузка всех устройств
   const {
     data: devices,

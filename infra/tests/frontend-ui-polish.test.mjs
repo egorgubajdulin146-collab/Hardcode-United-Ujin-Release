@@ -312,3 +312,45 @@ test('regression: form, sidebar and login buttons keep the 36px family', () => {
   assert.match(ruleBody(rooms, '.roomTab'), /height:\s*36px/, 'вкладка комнат не 36px');
   assert.match(ruleBody(rooms, '.panelClose'), /(?:min-)?height:\s*36px/, 'закрытие панели комнат не 36px');
 });
+
+test('regression: lost session on list load returns to login', async () => {
+  const pagePath = fileURLToPath(new URL('../../frontend/src/pages/DevicesCrudPage.tsx', import.meta.url));
+  let terminated = 0;
+  class ApiError extends Error {
+    constructor() { super('unauthorized'); this.status = 401; }
+  }
+  const mocks = {
+    '../mocks/data': { mockDevicePage: { items: [], total: 0 }, mockDevices: [], mockScenarioPage: { items: [], total: 0 } },
+    '../api/client': { ApiError, NetworkError: class extends Error {}, TimeoutError: class extends Error {} },
+    '../api/endpoints': {
+      endpoints: {
+        devices: {
+          list: async () => { throw new ApiError(); },
+          get: async () => ({}), getState: async () => ({}), getDependencies: async () => ({ scenarioIds: [], pendingOperationIds: [] }),
+        },
+      },
+    },
+    '../api/dataSource': { isMock: () => false },
+    '../api/sessionContext': { useSession: () => ({ terminateSession() { terminated += 1; }, demo: false }) },
+    '@tanstack/react-query': {
+      useQuery: () => ({ data: undefined, error: new ApiError(), isLoading: false, isFetching: false, refetch() {}, isPending: false }),
+      useQueryClient: () => ({ invalidateQueries() {}, setQueryData() {} }),
+    },
+  };
+  const { DevicesCrudPage } = loadComponent(pagePath, mocks);
+  let root;
+  await act(async () => { root = create(React.createElement(DevicesCrudPage)); });
+  assert.ok(terminated >= 1, 'terminateSession вызван при 401 загрузки списка');
+  act(() => root.unmount());
+});
+
+test('regression: card title wraps instead of clipping on narrow screens', () => {
+  for (const file of ['pages/DevicesCrudPage.module.css', 'pages/ScenariosCrudPage.module.css']) {
+    const css = readCss(file);
+    const at = css.indexOf('@media (max-width: 640px)');
+    assert.ok(at >= 0, `${file}: нет мобильного правила карточки`);
+    const block = css.slice(at, css.indexOf('}', css.indexOf('.cardActions', at)));
+    assert.match(block, /flex-wrap:\s*wrap/, `${file}: карточка не переносится`);
+    assert.match(block, /white-space:\s*normal/, `${file}: заголовок снова обрезается`);
+  }
+});

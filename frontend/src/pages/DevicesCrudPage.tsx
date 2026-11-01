@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Cpu, Plus, Pencil, Trash2, AlertCircle, Loader2, ChevronLeft, ChevronRight, RefreshCw } from "lucide-react";
 import { endpoints } from "../api/endpoints";
@@ -47,6 +47,11 @@ export function DevicesCrudPage() {
     queryFn: ({ signal }) => endpoints.devices.list({ page, size: pageSize }, signal),
     enabled: !mock,
   });
+
+  // Потерянная сессия (401) возвращает на экран входа: «Повторить» её не восстановит.
+  useEffect(() => {
+    if (error instanceof ApiError && error.status === 401) terminateSession();
+  }, [error, terminateSession]);
 
   const devicePage = mock ? mockDevicePage : data;
 
