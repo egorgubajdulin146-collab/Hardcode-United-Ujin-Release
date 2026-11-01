@@ -18,6 +18,12 @@ public class RuntimeController {
     private final PlatformBindingService bindingService;
     private final UjinCommandService commandService;
 
+    private com.shastage.ujin.domain.service.PythonEmulatorService python;
+    private com.shastage.ujin.domain.service.PythonEmulatorProperties pythonConfig;
+    @org.springframework.beans.factory.annotation.Autowired
+    public void setPythonAdapter(com.shastage.ujin.domain.service.PythonEmulatorService service,
+            com.shastage.ujin.domain.service.PythonEmulatorProperties config) { python=service;pythonConfig=config; }
+
     private String currentOwner() {
         var auth = SecurityContextHolder.getContext().getAuthentication();
         return auth != null ? auth.getName() : "";
@@ -48,6 +54,7 @@ public class RuntimeController {
             return bindingService.readUjinState(
                     deviceId, currentOwner(), token instanceof String value ? value : null);
         }
+        if ("LOCAL".equals(mode) && pythonConfig.selected(deviceId,currentOwner()))return python.state(deviceId,currentOwner());
         return service.getDeviceState(deviceId, mode, currentOwner());
     }
 
@@ -55,7 +62,8 @@ public class RuntimeController {
     public Map<String, Object> availability(@PathVariable UUID deviceId, @RequestBody AvailabilityRequest request) {
         if (request == null)
             throw new com.shastage.ujin.domain.exception.CatalogException(400, "INVALID_REQUEST", "Request body is required");
-        return service.updateAvailability(deviceId, request.availability(), request.executionMode(), currentOwner());
+        var updated = service.updateAvailability(deviceId, request.availability(), request.executionMode(), currentOwner());
+        return pythonConfig.selected(deviceId,currentOwner()) ? python.state(deviceId,currentOwner()) : updated;
     }
 
     @PostMapping("/devices/{deviceId}/stimuli")
@@ -66,7 +74,9 @@ public class RuntimeController {
         if (request == null) {
             throw new com.shastage.ujin.domain.exception.CatalogException(400, "INVALID_REQUEST", "Request body is required");
         }
+        if(pythonConfig.source(deviceId,currentOwner()))throw new com.shastage.ujin.domain.exception.CatalogException(409,"PYTHON_STIMULUS_EXTERNAL","Измените протечку в Python-эмуляторе, затем проверьте его показание");
         var result = service.processStimulus(deviceId, request.eventId(), request.kind(), request.value(), currentOwner());
+        python.dispatchEvent(request.eventId(),currentOwner());
         return ResponseEntity.accepted().body(result);
     }
 
@@ -93,6 +103,7 @@ public class RuntimeController {
         var result = service.processCommand(
                 deviceId, request.commandId(), request.signalKey(), request.value(), request.executionMode(), currentOwner()
         );
+        if(pythonConfig.target(deviceId,currentOwner()))return ResponseEntity.accepted().body(python.dispatch(request.commandId(),currentOwner()));
         return ResponseEntity.accepted().body(result);
     }
 

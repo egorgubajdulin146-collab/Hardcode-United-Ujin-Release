@@ -48,7 +48,7 @@ docker compose --project-directory . --env-file .env -f infra/compose.yaml -f in
 docker compose --project-directory . --env-file .env -f infra/compose.yaml -f infra/compose.runtime.yaml up -d --wait --wait-timeout 180
 ```
 
-Откройте http://127.0.0.1:8088 и войдите выданной тестовой учётной записью.
+Откройте http://127.0.0.1:8088. Для интерактивного LOCAL-демо нажмите «Попробовать без Ujin» — учётка платформы не нужна. Для платформенного чтения войдите выданной тестовой учётной записью.
 Frontend по умолчанию использует API. Backend и БД не публикуют порты на хост.
 Удалённый loopback доступен через SSH-туннель. Публичный HTTPS настраивается
 отдельным host Nginx, Compose сам домен и сертификат не создаёт.
@@ -116,7 +116,8 @@ docker compose --project-directory . --env-file .env -f infra/compose.yaml -f in
 
 [Runtime](infra/RUNTIME.md), [backup/restore](infra/README.md),
 [безопасный rollback](infra/ROLLBACK.md), [контракт](docs/contracts/MVP.md),
-[frontend development](frontend/README.md), [демонстрация и приёмка](docs/DEMO.md).
+[frontend development](frontend/README.md), [демонстрация и приёмка](docs/DEMO.md),
+[гостевое демо](docs/GUEST_DEMO.md), [LOCAL-Python адаптер](docs/PYTHON_LOCAL.md).
 
 CI проверяет backend/frontend/инфраструктуру. Push в develop после успешных
 проверок публикует артефакт и запускает SSH deploy при настроенных vars

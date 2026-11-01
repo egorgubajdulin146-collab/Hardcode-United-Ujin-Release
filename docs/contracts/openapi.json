@@ -317,7 +317,7 @@
       "get": {
         "operationId": "getDeviceState",
         "summary": "getDeviceState",
-        "description": "mode=LOCAL читает локальное состояние. mode=UJIN выполняет один upstream snapshot apartment/get-device-signals и возвращает значения сигналов привязанного SN; LOCAL-состояние не перезаписывается. Состояние availability для UJIN — UNKNOWN.",
+        "description": "mode=LOCAL читает локальное состояние. mode=UJIN выполняет один upstream snapshot apartment/get-device-signals и возвращает значения сигналов привязанного SN; LOCAL-состояние не перезаписывается. Состояние availability для UJIN — UNKNOWN. Для явно назначенной LOCAL-Python пары читает values.leak/lamp из отдельных процессов; provider=PYTHON. GET не запускает сценарий; для этого POST /local-python/poll.",
         "responses": {
           "200": {
             "description": "Наблюдаемое состояние устройства",
@@ -1856,6 +1856,254 @@
         },
         "description": "Session + CSRF. Первые 90 секунд PENDING не проверяется, пока отправка может ещё исполняться. После сбоя процесса выполняется только чтение. CONFIRMED/FAILED не понижаются."
       }
+    },
+    "/api/v1/local-python/poll": {
+      "post": {
+        "operationId": "pollPythonLocal",
+        "summary": "Проверить изменение отдельного LOCAL-Python датчика",
+        "description": "Только назначенный сервером владелец и фиксированная пара UUID. Guest demo запрещено. Сетевые команды не повторяются после неопределённости.",
+        "responses": {
+          "200": {
+            "description": "Сохранённая квитанция",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EventReceipt"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Problem400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Problem401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Problem403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Problem404"
+          },
+          "409": {
+            "$ref": "#/components/responses/Problem409"
+          },
+          "422": {
+            "$ref": "#/components/responses/Problem422"
+          },
+          "502": {
+            "$ref": "#/components/responses/Problem502"
+          },
+          "503": {
+            "$ref": "#/components/responses/Problem503"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "eventId"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "eventId": {
+                    "type": "string",
+                    "format": "uuid"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/local-python/commands/{id}/check": {
+      "post": {
+        "operationId": "checkPythonCommand",
+        "summary": "Проверить результат без повторной команды Python",
+        "description": "Только назначенный сервером владелец и фиксированная пара UUID. Guest demo запрещено. Сетевые команды не повторяются после неопределённости.",
+        "responses": {
+          "200": {
+            "description": "Сохранённая квитанция",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CommandReceipt"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Problem400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Problem401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Problem403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Problem404"
+          },
+          "409": {
+            "$ref": "#/components/responses/Problem409"
+          },
+          "422": {
+            "$ref": "#/components/responses/Problem422"
+          },
+          "502": {
+            "$ref": "#/components/responses/Problem502"
+          },
+          "503": {
+            "$ref": "#/components/responses/Problem503"
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ]
+      }
+    },
+    "/api/v1/local-python/events/{id}/check": {
+      "post": {
+        "operationId": "checkPythonEvent",
+        "summary": "Проверить результаты действий события Python",
+        "description": "Только назначенный сервером владелец и фиксированная пара UUID. Guest demo запрещено. Сетевые команды не повторяются после неопределённости.",
+        "responses": {
+          "200": {
+            "description": "Сохранённая квитанция",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EventReceipt"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Problem400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Problem401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Problem403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Problem404"
+          },
+          "409": {
+            "$ref": "#/components/responses/Problem409"
+          },
+          "422": {
+            "$ref": "#/components/responses/Problem422"
+          },
+          "502": {
+            "$ref": "#/components/responses/Problem502"
+          },
+          "503": {
+            "$ref": "#/components/responses/Problem503"
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ]
+      }
+    },
+    "/api/auth/session": {
+      "get": {
+        "operationId": "getSessionMetadata",
+        "summary": "Тип сессии и доступность гостевого демо",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Без персональных данных и токенов",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "authenticated",
+                    "demo",
+                    "demoAvailable",
+                    "demoLifetimeMinutes"
+                  ],
+                  "properties": {
+                    "authenticated": {
+                      "type": "boolean"
+                    },
+                    "demo": {
+                      "type": "boolean"
+                    },
+                    "demoAvailable": {
+                      "type": "boolean"
+                    },
+                    "demoLifetimeMinutes": {
+                      "type": "integer",
+                      "enum": [
+                        30
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/demo": {
+      "post": {
+        "operationId": "startGuestDemo",
+        "summary": "Изолированное LOCAL-демо без Ujin credentials",
+        "description": "Нужен свежий CSRF. Создаёт отдельный server-side owner и cookie-сессию на 30 минут, без Ujin token. До 8 устройств/8 сценариев, ограничение записей/частоты. Гостям запрещены Ujin и /local-python/**. Выход/истечение удаляет только собственные гостевые данные.",
+        "parameters": [
+          {
+            "name": "X-XSRF-TOKEN",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "security": [],
+        "responses": {
+          "204": {
+            "description": "Гостевая сессия создана"
+          },
+          "403": {
+            "description": "Нет CSRF"
+          },
+          "404": {
+            "description": "Демо выключено"
+          },
+          "409": {
+            "description": "Уже открыта настоящая сессия"
+          },
+          "429": {
+            "description": "Лимит гостевого демо"
+          }
+        }
+      }
     }
   },
   "components": {
@@ -2129,6 +2377,14 @@
             "items": {
               "$ref": "#/components/schemas/SignalReadIssue"
             }
+          },
+          "provider": {
+            "type": "string",
+            "enum": [
+              "JAVA",
+              "PYTHON"
+            ],
+            "description": "Источник LOCAL-состояния. PYTHON — отдельный назначенный процесс, не платформа Ujin."
           }
         },
         "required": [

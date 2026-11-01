@@ -60,12 +60,14 @@ export function DeviceRuntimePanel({ device, onClose }: { device: Device; onClos
   const [mode, setMode] = useState<ExecutionMode>("LOCAL");
   const [values, setValues] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState(false);
+  const [watchPython, setWatchPython] = useState(false);
+  const pythonPollAction = useRef<() => Promise<void>>(async () => {});
   const [error, setError] = useState<string | null>(null);
   const [command, setCommand] = useState<CommandReceipt | null>(null);
   const [eventLookupId, setEventLookupId] = useState<string | null>(null);
   const [event, setEvent] = useState<EventReceipt | null>(null);
   const [publication, setPublication] = useState<PublicationReceipt | null>(null);
-  const { terminateSession } = useSession();
+  const { terminateSession, demo } = useSession();
   const active = useRef(true);
   const queryClient = useQueryClient();
   useEffect(() => { active.current = true; return () => { active.current = false; }; }, []);
@@ -131,6 +133,7 @@ export function DeviceRuntimePanel({ device, onClose }: { device: Device; onClos
     enabled: event?.status === "ACCEPTED" || eventLookupId !== null, retry: false,
     refetchInterval: query => query.state.data?.status === "PROCESSED" || query.state.data?.status === "FAILED" ? false : 3000,
   });
+  const python = mode === "LOCAL" && state.data?.provider === "PYTHON";
   const currentCommand = commandStatus.data ?? command;
   const currentEvent = eventStatus.data ?? event;
   const unresolved = currentCommand?.status === "PENDING" || currentCommand?.status === "UNKNOWN" || currentEvent?.status === "ACCEPTED" || (eventLookupId !== null && !currentEvent);
@@ -146,6 +149,27 @@ export function DeviceRuntimePanel({ device, onClose }: { device: Device; onClos
     void queryClient.invalidateQueries({ queryKey: ["device-state", device.id] });
     void queryClient.invalidateQueries({ queryKey: ["runs"] });
   };
+  const pollPython = async () => {
+    if (busy || unresolved) return;
+    setBusy(true); setError(null);
+    const eventId = crypto.randomUUID();
+    try { const receipt = await endpoints.localPython.poll(eventId); if(active.current){setEvent(receipt);refresh();} }
+    catch(err){if(active.current)setError(errorMessage(err));}
+    finally{if(active.current)setBusy(false);}
+  };
+  const checkPythonEvent = async () => {
+    if(!currentEvent || busy) return;
+    setBusy(true); setError(null);
+    try { const receipt=await endpoints.localPython.checkEvent(currentEvent.eventId);if(active.current){setEvent(receipt);refresh();} }
+    catch(err){if(active.current)setError(errorMessage(err));}
+    finally{if(active.current)setBusy(false);}
+  };
+  pythonPollAction.current = pollPython;
+  useEffect(() => {
+    if (!watchPython || !python || device.family !== "leak" || busy || unresolved || !online) return;
+    const timer = setTimeout(() => { void pythonPollAction.current(); }, 3000);
+    return () => clearTimeout(timer);
+  }, [watchPython, python, device.family, busy, unresolved, online]);
   const setAvailability = async (availability: "ONLINE" | "OFFLINE") => {
     if (mode !== "LOCAL" || busy || unresolved) return;
     setBusy(true); setError(null);
@@ -188,7 +212,7 @@ export function DeviceRuntimePanel({ device, onClose }: { device: Device; onClos
     if (!currentCommand || busy) return;
     setBusy(true); setError(null);
     try {
-      const receipt = await endpoints.commands.check(currentCommand.commandId);
+      const receipt = await (python ? endpoints.localPython.check(currentCommand.commandId) : endpoints.commands.check(currentCommand.commandId));
       if (active.current) setCommand(receipt);
     } catch (err) {
       if (!active.current) return;
@@ -221,7 +245,7 @@ export function DeviceRuntimePanel({ device, onClose }: { device: Device; onClos
     <header><div><h2>{device.title}</h2><p>Состояние и управление</p></div><button onClick={onClose} type="button" disabled={busy}>Закрыть</button></header>
     <div className={styles.toolbar}>
       <label>Контур <select value={mode} disabled={busy || !!unresolved} onChange={e => { setMode(e.target.value as ExecutionMode); setError(null); setCommand(null); setEvent(null); setEventLookupId(null); }}>
-        <option value="LOCAL">Локальный</option><option value="UJIN">Ujin</option>
+        <option value="LOCAL">Локальный</option><option value="UJIN" disabled={demo}>Ujin{demo ? " — недоступно в гостевом демо" : ""}</option>
       </select></label>
       <button type="button" onClick={() => { void state.refetch(); }} disabled={state.isFetching}>Обновить состояние</button>
       <span>{state.isLoading ? "Загрузка…" : state.error ? "Состояние недоступно" : state.data?.availability === "ONLINE" ? "На связи" : state.data?.availability === "OFFLINE" ? "Не на связи" : "Состояние неизвестно"}</span>
@@ -231,6 +255,13 @@ export function DeviceRuntimePanel({ device, onClose }: { device: Device; onClos
         onChange={e => void setAvailability(e.target.checked ? "ONLINE" : "OFFLINE")} />
       Эмулятор онлайн
     </label>}
+    {python && <p role="status">Внешний LOCAL-Python эмулятор. Это отдельный процесс, без подключения к Ujin.</p>}
+    {python && device.family === "leak" && <div>
+      <p>Измените протечку в Python-эмуляторе, затем проверьте показание. Если сохранённого состояния ещё нет, первое чтение задаёт исходное значение без запуска действия.</p>
+      <button type="button" disabled={busy || !!unresolved || !online} onClick={() => void pollPython()}>Проверить показание Python</button>
+      <label><input type="checkbox" checked={watchPython} onChange={e => setWatchPython(e.target.checked)} /> Наблюдать Python, пока открыта карточка</label>
+      {watchPython && <p>Проверка каждые 3 секунды после предыдущего запроса. При закрытии карточки наблюдение останавливается.</p>}
+    </div>}
     {requestError && <p role="alert" className={styles.error}>{errorMessage(requestError)}</p>}
     {mode === "UJIN" && state.data?.observedAt && (
       <p>Наблюдение: {new Date(state.data.observedAt).toLocaleString("ru-RU")} (время чтения backend, не время измерения устройством)</p>
@@ -260,7 +291,7 @@ export function DeviceRuntimePanel({ device, onClose }: { device: Device; onClos
         </form>}
       </article>;
     })}</div>
-    {device.family === "leak" && mode === "LOCAL" && <div className={styles.toolbar}>
+    {device.family === "leak" && mode === "LOCAL" && !python && <div className={styles.toolbar}>
       <span>Датчик протечки</span><button type="button" disabled={busy || !!unresolved || !online} onClick={() => void stimulate(1)}>Обнаружить воду</button>
       <button type="button" disabled={busy || !!unresolved || !online} onClick={() => void stimulate(0)}>Вода отсутствует</button>
     </div>}
@@ -273,10 +304,11 @@ export function DeviceRuntimePanel({ device, onClose }: { device: Device; onClos
       </div>)}
       {busy && <p>Отправка…</p>}{error && <p role="alert" className={styles.error}>{error}</p>}
       {currentCommand && <p>Команда: {COMMAND_STATUS[currentCommand.status]}{currentCommand.reason ? ` · ${currentCommand.reason}` : ""} <small>{currentCommand.commandId}</small></p>}
-      {currentCommand && mode === "UJIN" && (currentCommand.status === "PENDING" || currentCommand.status === "UNKNOWN") &&
+      {currentCommand && (mode === "UJIN" || python) && (currentCommand.status === "PENDING" || currentCommand.status === "UNKNOWN") &&
         <button type="button" disabled={busy} onClick={() => void checkCommandResult()}>Проверить результат команды</button>}
       {currentCommand?.resolution && <p>Отмечено как неизвестное: {currentCommand.resolution.note}</p>}
       {eventLookupId && !currentEvent && <p>Приём события не подтверждён. Проверяем результат. <small>{eventLookupId}</small></p>}
+      {python && currentEvent && device.family === "leak" && <button type="button" disabled={busy} onClick={() => void checkPythonEvent()}>Проверить результат действий Python</button>}
       {currentEvent && <p>{EVENT_STATUS[currentEvent.status]} · запусков: {currentEvent.runIds.length}</p>}
       {(currentEvent || currentCommand || eventLookupId) && <Link to={currentEvent || eventLookupId ? `/runs?eventId=${encodeURIComponent(currentEvent?.eventId ?? eventLookupId!)}` : "/runs"}>Открыть журнал выполнения</Link>}
     </div>

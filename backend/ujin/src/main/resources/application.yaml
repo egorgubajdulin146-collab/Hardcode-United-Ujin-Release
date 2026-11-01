@@ -19,3 +19,10 @@ ujin:
   api:
     base-url: ${UJIN_API_BASE_URL:https://api-uae-test.ujin.tech/api}
     app: ${UJIN_AUTH_APP:}
+  local-python:
+    enabled: ${UJIN_LOCAL_PYTHON_ENABLED:false}
+    owner: ${UJIN_LOCAL_PYTHON_OWNER:}
+    source-device-id: ${UJIN_LOCAL_PYTHON_SOURCE_DEVICE_ID:}
+    target-device-id: ${UJIN_LOCAL_PYTHON_TARGET_DEVICE_ID:}
+    leak-url: ${UJIN_LOCAL_PYTHON_LEAK_URL:http://leak:8080}
+    light-url: ${UJIN_LOCAL_PYTHON_LIGHT_URL:http://light:8080}
