@@ -91,7 +91,7 @@ export function ScenariosCrudPage() {
   const queryClient = useQueryClient();
   const pageSize = 20;
 
-  const { data, isLoading, error, refetch } = useQuery({
+  const { data, isLoading, error, refetch, isFetching } = useQuery({
     queryKey: ["scenarios", page, pageSize],
     queryFn: ({ signal }) => endpoints.scenarios.list({ page, size: pageSize }, signal),
     enabled: !mock,
@@ -258,13 +258,16 @@ export function ScenariosCrudPage() {
         <div className={styles.headerLeft}>
           <h1 className={styles.title}>Сценарии</h1>
           {mock && <MockBadge />}
-          <p className={styles.cardMeta}>
-            Исполнение правил выполняет наш backend. Закрытая страница не наблюдает показания Ujin —
-            проверка запускается кнопкой или переключателем наблюдения на открытой странице.
-          </p>
         </div>
         <div className={styles.headerActions}>
-          <button type="button" className={styles.iconBtn} onClick={() => refetch()} title="Обновить">
+          <button
+            type="button"
+            className={`${styles.iconBtn} ${isFetching ? styles.iconBtnBusy : ""}`}
+            onClick={() => void refetch()}
+            disabled={isFetching}
+            title="Обновить"
+            aria-label="Обновить список сценариев"
+          >
             <RefreshCw size={16} />
           </button>
           <button
@@ -277,6 +280,10 @@ export function ScenariosCrudPage() {
           </button>
         </div>
       </div>
+      <p className={styles.cardMeta}>
+        Исполнение правил выполняет наш backend. Закрытая страница не наблюдает показания Ujin —
+        проверка запускается кнопкой или переключателем наблюдения на открытой странице.
+      </p>
 
       {mock && (
         <div className={styles.mockNotice}>
@@ -318,7 +325,7 @@ export function ScenariosCrudPage() {
                     {scenario.executionMode} · {scenario.enabled ? "Включён" : "Выключен — черновик"} · v{scenario.version}
                   </span>
                   {scenario.executionMode === "UJIN" && !mock && !demo && (
-                    <div className={styles.cardMeta}>
+                    <div className={styles.pollRow}>
                       <button
                         type="button"
                         className={styles.iconBtn}

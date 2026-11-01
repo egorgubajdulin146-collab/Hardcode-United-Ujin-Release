@@ -15,19 +15,29 @@
 
 .logo {
   display: flex;
-  flex-direction: column;
-  gap: 2px;
+  align-items: center;
+  gap: var(--space-sm);
   padding: var(--space-lg);
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
 }
 
+.logoMark {
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  color: var(--color-primary);
+}
+
 .logoText {
-  font-size: var(--font-size-lg);
+  display: block;
+  font-size: var(--font-size-md);
   font-weight: 700;
   color: white;
+  letter-spacing: -0.01em;
 }
 
 .logoBadge {
+  display: block;
   font-size: var(--font-size-xs);
   color: var(--color-sidebar-text);
 }
@@ -74,10 +84,19 @@
   align-items: center;
 }
 
+.disclaimer {
+  font-size: 11px;
+  line-height: 1.4;
+  color: var(--color-sidebar-text);
+  opacity: 0.8;
+  text-align: center;
+}
+
 .sourceToggle {
   display: flex;
   align-items: center;
   gap: var(--space-sm);
+  min-height: 36px;
   width: 100%;
   padding: var(--space-sm) var(--space-md);
   background: rgba(255, 255, 255, 0.05);
@@ -135,6 +154,31 @@
 @media (max-width: 480px) {
   .content {
     padding: var(--space-md);
+  }
+
+  .navList {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    overflow: visible;
+  }
+
+  .navLink {
+    min-width: 0;
+    white-space: normal;
+  }
+
+  .sidebarFooter {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .disclaimer {
+    text-align: left;
+  }
+
+  .sourceToggle {
+    width: 100%;
+    justify-content: center;
   }
 }
 

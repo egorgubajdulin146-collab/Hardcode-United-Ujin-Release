@@ -27,11 +27,38 @@
   gap: var(--space-sm);
 }
 
+@media (max-width: 480px) {
+  .header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--space-sm);
+  }
+
+  .headerActions {
+    width: 100%;
+  }
+
+  .headerActions > .iconBtn {
+    flex: 0 0 40px;
+    height: 40px;
+  }
+
+  .headerActions > .primaryBtn {
+    flex: 1;
+    justify-content: center;
+    min-width: 0;
+    min-height: 40px;
+    white-space: nowrap;
+  }
+}
+
 .primaryBtn {
   display: flex;
   align-items: center;
   gap: var(--space-sm);
+  min-height: 36px;
   padding: var(--space-sm) var(--space-md);
+  white-space: nowrap;
   background: var(--color-primary);
   color: white;
   border: none;
@@ -51,17 +78,36 @@
 }
 
 .iconBtn {
-  display: flex;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 32px;
-  height: 32px;
+  gap: var(--space-xs);
+  min-width: 36px;
+  height: 36px;
+  padding: 0 12px;
+  white-space: nowrap;
+  flex-shrink: 0;
   background: var(--color-bg);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
   cursor: pointer;
   color: var(--color-text-secondary);
   transition: all var(--transition-fast);
+}
+
+.iconBtn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.iconBtnBusy svg {
+  animation: ujin-spin 0.9s linear infinite;
+}
+
+@keyframes ujin-spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .iconBtn:hover:not(:disabled) {

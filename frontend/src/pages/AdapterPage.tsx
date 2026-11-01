@@ -122,14 +122,16 @@ export function AdapterPage() {
             className={styles.input}
             value={signalName}
             onChange={(e) => setSignalName(e.target.value)}
-            placeholder="Например: leak или lamp, если они есть в Ujin"
+            placeholder="Ключ сигнала из настроек устройства в Ujin"
             aria-describedby="adapter-signal-help"
             required
             disabled={loading}
           />
         </div>
 
-        <p id="adapter-signal-help" className={styles.description}>Скопируйте точное имя сигнала из Ujin. Название «Свет» и код lamp — разные вещи. Если сигнал ещё не создан на платформе, чтение вернёт «Сигнал не найден».</p>
+        <p id="adapter-signal-help" className={styles.description}>
+          Укажите технический ключ сигнала из настроек устройства в Ujin. Он может отличаться от названия, которое видит пользователь.
+        </p>
 
         <button
           type="submit"

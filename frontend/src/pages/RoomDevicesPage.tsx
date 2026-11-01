@@ -139,10 +139,19 @@ export function RoomDevicesPage() {
           <h1 className={styles.pageTitle}>Устройства</h1>
           <MockBadge />
         </div>
-        <button type="button" className={styles.addButton} disabled title="Пока недоступно">
-          <Plus size={18} aria-hidden="true" />
-          <span>Добавить устройство</span>
-        </button>
+        <div className={styles.headerAction}>
+          <button
+            type="button"
+            className={styles.addButton}
+            disabled
+            title="Пока недоступно"
+            aria-label="Добавить устройство — пока недоступно в готовых примерах"
+          >
+            <Plus size={18} aria-hidden="true" />
+            <span>Добавить устройство</span>
+          </button>
+          <small className={styles.addHint}>Создание доступно в режиме подключения</small>
+        </div>
       </div>
 
       {/* Уведомление о прототипе */}

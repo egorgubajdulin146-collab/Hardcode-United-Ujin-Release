@@ -28,6 +28,7 @@
   display: flex;
   align-items: center;
   gap: var(--space-sm);
+  min-height: 36px;
   padding: var(--space-sm) var(--space-md);
   background: var(--color-primary);
   color: white;
@@ -39,8 +40,46 @@
   transition: background var(--transition-fast);
 }
 
-.addButton:hover {
+.headerAction {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: var(--space-xs);
+}
+
+.addHint {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+}
+
+.addButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.addButton:hover:not(:disabled) {
   background: var(--color-primary-hover);
+}
+
+@media (max-width: 480px) {
+  .header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--space-sm);
+  }
+
+  .headerAction {
+    align-items: stretch;
+  }
+
+  .addButton {
+    justify-content: center;
+    min-height: 40px;
+  }
+
+  .addHint {
+    text-align: left;
+  }
 }
 
 /* Комнаты */
@@ -52,10 +91,11 @@
 }
 
 .roomTab {
+  height: 36px;
   display: flex;
   align-items: center;
   gap: var(--space-sm);
-  padding: var(--space-sm) var(--space-md);
+  padding: 0 var(--space-md);
   background: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
@@ -243,8 +283,8 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 28px;
-  height: 28px;
+  width: 36px;
+  height: 36px;
   background: var(--color-bg);
   border: none;
   border-radius: var(--radius-sm);
@@ -309,6 +349,7 @@
 .emulateButton {
   width: 100%;
   padding: var(--space-sm) var(--space-md);
+  min-height: 36px;
   background: var(--color-primary);
   color: white;
   border: none;
