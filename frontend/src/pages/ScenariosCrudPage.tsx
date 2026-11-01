@@ -52,7 +52,7 @@ export function ScenariosCrudPage() {
   const watchRef = useRef<Set<string>>(new Set());
 
   const mock = isMock();
-  const { terminateSession } = useSession();
+  const { terminateSession, demo } = useSession();
 
   // Закрытие страницы и logout останавливают наблюдение.
   useEffect(() => () => { watchRef.current.clear(); }, []);
@@ -223,6 +223,7 @@ export function ScenariosCrudPage() {
     return (
       <div className={styles.page}>
         <ScenarioForm
+          localOnly={demo}
           initial={mode === "edit" && editing ? {
             title: editing.title,
             enabled: editing.enabled,
@@ -316,7 +317,7 @@ export function ScenariosCrudPage() {
                   <span className={styles.cardMeta}>
                     {scenario.executionMode} · {scenario.enabled ? "Включён" : "Выключен — черновик"} · v{scenario.version}
                   </span>
-                  {scenario.executionMode === "UJIN" && !mock && (
+                  {scenario.executionMode === "UJIN" && !mock && !demo && (
                     <div className={styles.cardMeta}>
                       <button
                         type="button"

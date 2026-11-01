@@ -10,11 +10,11 @@ const device = { id: 'device', title: 'Device', family: 'leak', platformLink: 'N
   { key: 'wet', title: 'Leak', management: 'r' },
   { key: 'lamp', title: 'Lamp', management: 'rw', min: 0, max: 1 },
 ] };
-function mount({ availability = 'ONLINE', stateError, stimulus, availabilityUpdate, bound = false,
+function mount({ provider, availability = 'ONLINE', stateError, stimulus, availabilityUpdate, bound = false,
   receipts = [], publicationSend, publicationCheck,
   send = async () => ({ status: 'PENDING', commandId: 'command' }) } = {}) {
   const calls = [];
-  const endpoints = { publications: {
+  const endpoints = { localPython: { poll: async eventId => { calls.push(['python-poll', eventId]); return {eventId, status:'PROCESSED', runIds:[]}; } }, publications: {
     send: async (id, data) => { calls.push(['publication', id, data]); return publicationSend ? publicationSend(id, data) : { ...data, deviceId: id, status: 'CONFIRMED' }; },
     readback: async (id, publicationId) => { calls.push(['readback', id, publicationId]); return publicationCheck ? publicationCheck(id, publicationId) : { ...receipts[0], deviceId: id, publicationId, status: 'CONFIRMED' }; },
   }, devices: { setAvailability: async (...args) => {
@@ -31,7 +31,7 @@ function mount({ availability = 'ONLINE', stateError, stimulus, availabilityUpda
     '../api/sessionContext': { useSession: () => ({ terminateSession() {} }) },
     'react-router-dom': { Link: props => React.createElement('a', props) },
     '@tanstack/react-query': { useQueryClient: () => ({ invalidateQueries() {}, setQueryData() {} }),
-      useQuery: options => ({ error: options.queryKey[0] === 'device-state' ? stateError : undefined, data: options.queryKey[0] === 'device-state' ? { availability, values: [{ signalKey: 'wet', value: 0, updatedAt: '2026-10-31T12:00:00Z' }] } : options.queryKey[0] === 'publications' ? receipts : undefined, refetch() {} }) },
+      useQuery: options => ({ error: options.queryKey[0] === 'device-state' ? stateError : undefined, data: options.queryKey[0] === 'device-state' ? { provider, availability, values: [{ signalKey: 'wet', value: 0, updatedAt: '2026-10-31T12:00:00Z' }] } : options.queryKey[0] === 'publications' ? receipts : undefined, refetch() {} }) },
   };
   const exports = {};
   new Function('require','exports', outputText)(name => name.endsWith('.css') ? { default: {} } : mocks[name] ?? require(name), exports);
@@ -144,4 +144,32 @@ test('failed availability update shows an error without reporting success', asyn
   assert.ok(root.root.findAllByType('p').some(p => p.children.some(c => typeof c === 'string' && c.includes('Обновите состояние'))));
   assert.equal(root.root.findAllByType('input').find(i => i.props.type === 'checkbox').props.checked, true);
   act(() => root.unmount());
+});
+
+test('Python source offers observation instead of writing Java WET state', async () => {
+  const { root, calls } = mount({ provider: 'PYTHON' });
+  assert.equal(root.root.findAllByType('button').filter(b => b.children.includes('Обнаружить воду') || b.children.includes('Вода отсутствует')).length, 0);
+  await act(async () => root.root.findAllByType('button').find(b => b.children.includes('Проверить показание Python')).props.onClick());
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0][0], 'python-poll');
+  assert.equal(typeof calls[0][1], 'string');
+  act(() => root.unmount());
+});
+
+test('Python observation stops when the checkbox is off or the panel unmounts', async t => {
+  t.mock.timers.enable({ apis: ['setTimeout'] });
+  const { root, calls } = mount({ provider: 'PYTHON' });
+  const watch = root.root.findAllByType('input').find(input => input.props.type === 'checkbox' && input.props.onChange && input.parent?.children.some(child => typeof child === 'string' && child.includes('Наблюдать Python')));
+  assert.ok(watch);
+  await act(async () => watch.props.onChange({ target: { checked: true } }));
+  await act(async () => t.mock.timers.tick(3000));
+  assert.equal(calls.filter(call => call[0] === 'python-poll').length, 1);
+  await act(async () => watch.props.onChange({ target: { checked: false } }));
+  await act(async () => t.mock.timers.tick(6000));
+  assert.equal(calls.filter(call => call[0] === 'python-poll').length, 1);
+  await act(async () => watch.props.onChange({ target: { checked: true } }));
+  act(() => root.unmount());
+  await act(async () => t.mock.timers.tick(6000));
+  assert.equal(calls.filter(call => call[0] === 'python-poll').length, 1);
+  t.mock.timers.reset();
 });

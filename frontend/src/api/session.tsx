@@ -2,9 +2,12 @@ import { useState, useCallback, useRef, useEffect, type ReactNode } from "react"
 import { useQueryClient } from "@tanstack/react-query";
 import { SessionContext } from "./sessionContext";
 import { clearCsrf, fetchCsrf } from "./authClient";
+import { setDataSource } from "./dataSource";
 
 export function SessionProvider({ children }: { children: ReactNode }) {
   const [authed, setAuthed] = useState(false);
+  const [demo, setDemo] = useState(false);
+  const [demoAvailable, setDemoAvailable] = useState(false);
   const [checking, setChecking] = useState(true);
   const [checkFailed, setCheckFailed] = useState(false);
   const queryClient = useQueryClient();
@@ -19,8 +22,11 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const terminateSession = useCallback(() => {
+    setChecking(false);
+    setCheckFailed(false);
     bumpEpoch();
     setAuthed(false);
+    setDemo(false);
     clearCsrf();
     queryClient.cancelQueries();
     queryClient.clear();
@@ -30,7 +36,11 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     terminateSession();
   }, [terminateSession]);
 
-  const onLogin = useCallback(() => {
+  const onLogin = useCallback((guest = false) => {
+    setChecking(false);
+    setCheckFailed(false);
+    setDemo(guest);
+    if (guest) setDataSource("api");
     bumpEpoch();
     setAuthed(true);
     queryClient.clear();
@@ -47,14 +57,18 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     const timeout = setTimeout(() => controller.abort(), 10_000);
     try {
       await fetchCsrf(controller.signal);
-      const resp = await fetch("/api/v1/devices?size=1", {
+      const resp = await fetch("/api/auth/session", {
         credentials: "include",
         signal: controller.signal,
       });
       if (!current()) return;
-      if (resp.status === 200) setAuthed(true);
-      else if (resp.status === 401) setAuthed(false);
-      else throw new Error(`Session check: HTTP ${resp.status}`);
+      if (resp.status !== 200) throw new Error(`Session check: HTTP ${resp.status}`);
+      const info = await resp.json();
+      if (!current()) return;
+      setAuthed(info.authenticated === true);
+      setDemo(info.demo === true);
+      setDemoAvailable(info.demoAvailable === true);
+      if (info.demo === true) setDataSource("api");
     } catch {
       if (current()) setCheckFailed(true);
     } finally {
@@ -73,7 +87,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
 
   return (
     <SessionContext.Provider
-      value={{ authed, checking, checkFailed, checkSession, sessionEpoch, setAuthed, terminateSession, onLogout, onLogin }}
+      value={{ authed, demo, demoAvailable, checking, checkFailed, checkSession, sessionEpoch, setAuthed, terminateSession, onLogout, onLogin }}
     >
       {children}
     </SessionContext.Provider>

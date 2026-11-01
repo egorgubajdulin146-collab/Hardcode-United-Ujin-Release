@@ -63,6 +63,22 @@ export async function login(credentials: UjinCredentials): Promise<void> {
   }
 }
 
+export async function loginDemo(): Promise<void> {
+  const token = csrfToken ?? (await fetchCsrf());
+  try {
+    const response = await fetch("/api/auth/demo", { method: "POST", credentials: "include", headers: { "X-XSRF-TOKEN": token } });
+    if (response.status === 204) { await fetchCsrf(); return; }
+    if (response.status === 404) throw new AuthError("forbidden", "Гостевое демо выключено на сервере.");
+    if (response.status === 409) throw new AuthError("forbidden", "Сначала выйдите из текущего аккаунта.");
+    if (response.status === 429) throw new AuthError("server_error", "Демо временно занято. Попробуйте позже.");
+    if (response.status === 403) throw new AuthError("forbidden", "Не удалось начать демо. Обновите страницу и попробуйте снова.");
+    throw new AuthError("server_error", `Не удалось начать демо (HTTP ${response.status}).`);
+  } catch (error) {
+    if (error instanceof AuthError) throw error;
+    throw new AuthError("network", "Сервер недоступен.");
+  }
+}
+
 export async function logout(): Promise<void> {
   // Всегда свежий CSRF перед выходом
   const token = await fetchCsrf();

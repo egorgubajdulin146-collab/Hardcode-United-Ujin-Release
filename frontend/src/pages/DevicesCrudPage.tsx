@@ -30,7 +30,7 @@ export function DevicesCrudPage() {
   const deleteEpochRef = useRef(0);
 
   const mock = isMock();
-  const { terminateSession } = useSession();
+  const { terminateSession, demo } = useSession();
   const queryClient = useQueryClient();
   const pageSize = 20;
 
@@ -239,7 +239,7 @@ export function DevicesCrudPage() {
           conflictType={conflictType}
           onReloadFresh={handleReloadFresh}
         />
-        {mode === "edit" && editing && (
+        {mode === "edit" && editing && !demo && (
           <PlatformBindingSection
             deviceId={editing.id}
             signals={editing.signals}
@@ -285,7 +285,7 @@ export function DevicesCrudPage() {
       {items.length === 0 ? (
         <EmptyState
           title="Устройства не найдены"
-          description={mock ? "Переключите источник на API" : "В вашем каталоге пока нет устройств. Нажмите «Добавить устройство» и выберите шаблон или заполните форму. Устройства Ujin автоматически сюда не импортируются; привязка настраивается после сохранения."}
+          description={demo ? "Добавьте датчик протечки и лампу из шаблонов, затем создайте локальное правило. Учётка Ujin для этого не нужна." : mock ? "Переключите источник на API" : "В вашем каталоге пока нет устройств. Нажмите «Добавить устройство» и выберите шаблон или заполните форму. Устройства Ujin автоматически сюда не импортируются; привязка настраивается после сохранения."}
         />
       ) : (
         <div className={styles.list}>

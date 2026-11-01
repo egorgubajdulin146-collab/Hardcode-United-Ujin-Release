@@ -10,14 +10,14 @@ import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
 @Configuration
 public class SessionSecurity {
     @Bean
-    SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
-        return http.csrf(csrf ->
+    SecurityFilterChain securityFilterChain(HttpSecurity http, com.shastage.ujin.web.demo.GuestDemoService guests) throws Exception {
+        return http.addFilterBefore(new com.shastage.ujin.web.demo.GuestDemoFilter(guests), org.springframework.security.web.authentication.logout.LogoutFilter.class).csrf(csrf ->
                         csrf.csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse()))
                 .authorizeHttpRequests(auth ->
                         auth.dispatcherTypeMatchers(jakarta.servlet.DispatcherType.ERROR)
                                 .permitAll()
                                 .requestMatchers(
-                                        "/api/auth/login", "/api/auth/csrf", "/actuator/health")
+                                        "/api/auth/login", "/api/auth/csrf", "/api/auth/demo", "/api/auth/session", "/actuator/health")
                                 .permitAll()
                                 .anyRequest()
                                 .authenticated())

@@ -50,6 +50,8 @@ public class UjinSessionController {
         if (credentials == null || credentials.login() == null || credentials.password() == null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST);
         }
+        if (credentials.login().startsWith(com.shastage.ujin.web.demo.GuestDemoService.PREFIX))
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST);
         String token;
         try {
             token = client.authenticate(credentials.login(), credentials.password(), app);
@@ -65,6 +67,9 @@ public class UjinSessionController {
                         case BAD_RESPONSE, PLATFORM_ERROR -> HttpStatus.BAD_GATEWAY;
                     });
         }
+        HttpSession previous = request.getSession(false);
+        if (previous != null && previous.getAttribute(com.shastage.ujin.web.demo.GuestDemoService.ATTRIBUTE) != null)
+            previous.invalidate();
         HttpSession session = request.getSession(true);
         request.changeSessionId();
         session.setAttribute("UJIN_TOKEN", token);

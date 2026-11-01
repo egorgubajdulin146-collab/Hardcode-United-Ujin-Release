@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { LogIn, AlertCircle, Loader2 } from "lucide-react";
-import { login, fetchCsrf, AuthError } from "../api/authClient";
+import { login, loginDemo, fetchCsrf, AuthError } from "../api/authClient";
 import { useSession } from "../api/sessionContext";
 import styles from "./LoginPage.module.css";
 
@@ -11,7 +11,14 @@ export function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
-  const { onLogin } = useSession();
+  const { onLogin, demoAvailable } = useSession();
+  const startDemo = async () => {
+    if (loading) return;
+    setLoading(true); setError(null);
+    try { await fetchCsrf(); await loginDemo(); setPassword(""); onLogin(true); navigate("/devices"); }
+    catch (error) { setError(error instanceof AuthError ? error.message : "Не удалось начать демо."); }
+    finally { setLoading(false); }
+  };
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -97,6 +104,11 @@ export function LoginPage() {
             )}
           </button>
         </form>
+        {demoAvailable && <div className={styles.demoSection}>
+          <button type="button" className={styles.demoButton} disabled={loading} onClick={() => void startDemo()}>Попробовать без Ujin</button>
+          <p>Создайте устройства и сценарий, запустите локальную эмуляцию и проверьте журнал. Доступы Ujin не нужны.</p>
+          <small>Отдельная гостевая сессия на 30 минут: до 8 устройств и 8 сценариев. После выхода доступ к этим данным теряется. Реальное оборудование недоступно.</small>
+        </div>}
       </div>
     </div>
   );

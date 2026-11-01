@@ -5,6 +5,7 @@ import styles from "./ScenarioForm.module.css";
 import { SignalValueField } from "./SignalValueField";
 
 interface Props {
+  localOnly?: boolean;
   initial?: ScenarioWrite & { expectedVersion?: number };
   freshData?: (ScenarioWrite & { expectedVersion?: number }) | null;
   devices: Device[];
@@ -20,7 +21,7 @@ interface Props {
 }
 
 export function ScenarioForm({
-  initial, freshData, devices, devicesLoading, devicesError, onRetryDevices,
+  localOnly = false, initial, freshData, devices, devicesLoading, devicesError, onRetryDevices,
   onSubmit, onCancel, loading, error, conflictType, onReloadFresh,
 }: Props) {
   // Стабильная инициализация — useRef для начального значения
@@ -153,6 +154,7 @@ export function ScenarioForm({
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
+    if (localOnly && executionMode !== "LOCAL") return;
     const trigger: Trigger = {
       deviceId: triggerDeviceId,
       signalKey: triggerSignalKey,
@@ -257,7 +259,7 @@ export function ScenarioForm({
             disabled={loading}
           >
             <option value="LOCAL">Локально — на эмуляторах</option>
-            <option value="UJIN">Через Ujin — по показанию платформы</option>
+            <option value="UJIN" disabled={localOnly}>{localOnly ? "Ujin недоступен в гостевом демо" : "Через Ujin — по показанию платформы"}</option>
           </select>
         </div>
         <div className={styles.field}>
@@ -409,7 +411,7 @@ export function ScenarioForm({
         <button type="button" className={styles.cancelBtn} onClick={onCancel} disabled={loading}>
           Отмена
         </button>
-        <button type="submit" className={styles.submitBtn} disabled={loading || (executionMode === "UJIN" && enabled)}>
+        <button type="submit" className={styles.submitBtn} disabled={loading || (localOnly && executionMode !== "LOCAL")}>
           {loading ? <Loader2 size={16} className={styles.spinner} /> : null}
           {initRef.current?.expectedVersion ? "Сохранить" : "Создать"}
         </button>
