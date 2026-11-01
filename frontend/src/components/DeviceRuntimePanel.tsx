@@ -71,11 +71,26 @@ export function DeviceRuntimePanel({ device, onClose }: { device: Device; onClos
   const active = useRef(true);
   const queryClient = useQueryClient();
   useEffect(() => { active.current = true; return () => { active.current = false; }; }, []);
+  // Escape закрывает панель, когда ничего не отправляется.
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    const handler = (event: KeyboardEvent) => {
+      if (event.key === "Escape" && !busy) onClose();
+    };
+    document.addEventListener("keydown", handler);
+    return () => document.removeEventListener("keydown", handler);
+  }, [busy, onClose]);
   const state = useQuery({
     queryKey: ["device-state", device.id, mode],
     queryFn: ({ signal }) => endpoints.devices.getState(device.id, mode, signal),
     retry: false,
-    refetchInterval: 5000,
+    refetchInterval: query => {
+      const failure = query.state.error as { status?: number } | undefined;
+      const status = failure?.status;
+      // Конфигурационные и правовые ошибки не опрашиваем повторно: причина уже показана.
+      if (status === 401 || status === 403 || status === 404 || status === 409) return false;
+      return 5000;
+    },
   });
   const integration = useQuery({
     queryKey: ["ujin-status"], queryFn: ({ signal }) => endpoints.ujin.getStatus(signal), enabled: mode === "UJIN", retry: false,

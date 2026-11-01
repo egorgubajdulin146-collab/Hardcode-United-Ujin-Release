@@ -287,3 +287,17 @@
 
 .signalRow { align-items: flex-start; }
 .signalRow > .removeBtn { margin-top: 22px; }
+
+/* Узкие экраны: строки сигналов и событий переносятся, кнопки не сжимаются */
+@media (max-width: 640px) {
+  .signalRow {
+    flex-wrap: wrap;
+  }
+  .signalRow > * {
+    min-width: 140px;
+  }
+  .signalRow > .removeBtn {
+    margin-top: 0;
+    margin-left: auto;
+  }
+}

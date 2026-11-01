@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef, type FormEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { X, AlertCircle, Loader2, ArrowRight, Download, RefreshCw } from "lucide-react";
 import type { ScenarioWrite, Device, Trigger, Action, SignalDefinition } from "../api/types";
 import styles from "./ScenarioForm.module.css";
@@ -27,6 +27,16 @@ export function ScenarioForm({
   // Стабильная инициализация — useRef для начального значения
   const initRef = useRef(initial);
   const [title, setTitle] = useState(initial?.title ?? "");
+
+  // Escape закрывает форму, как и кнопка «Закрыть».
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    const handler = (event: KeyboardEvent) => {
+      if (event.key === "Escape") onCancel();
+    };
+    document.addEventListener("keydown", handler);
+    return () => document.removeEventListener("keydown", handler);
+  }, [onCancel]);
   const [enabled, setEnabled] = useState(initial?.enabled ?? true);
   const [executionMode, setExecutionMode] = useState(initial?.executionMode ?? "LOCAL");
   const [triggerDeviceId, setTriggerDeviceId] = useState(initial?.trigger?.deviceId ?? "");
