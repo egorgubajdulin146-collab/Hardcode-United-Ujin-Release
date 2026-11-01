@@ -14,4 +14,7 @@ public interface RunJpaRepository extends JpaRepository<RunEntity, UUID> {
     Page<RunEntity> findByEventId(UUID eventId, Pageable pageable);
     java.util.List<RunEntity> findByActionDeviceIdAndOwnerAndStatusIn(
             UUID actionDeviceId, String owner, java.util.Collection<String> statuses);
+    java.util.List<RunEntity> findByCommandId(UUID commandId);
+    java.util.List<RunEntity> findByScenarioIdAndOwnerAndStatusAndReason(
+            UUID scenarioId, String owner, String status, String reason);
 }
