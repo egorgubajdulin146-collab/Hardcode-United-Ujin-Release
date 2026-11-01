@@ -529,6 +529,8 @@ public class LocalRuntimeService {
             result.put("action", action);
         }
 
+        if (run.getCommandId() != null) result.put("commandId", run.getCommandId().toString());
+
         var entries = run.getEntries().stream().map(e -> {
             Map<String, Object> entry = new LinkedHashMap<>();
             entry.put("at", e.getAt().toString());
